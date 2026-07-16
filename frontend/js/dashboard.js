@@ -58,6 +58,9 @@ const workoutPlanList =
 const planTotal =
   document.querySelector("#planTotal");
 
+const coachingButton =
+  document.querySelector(".coaching-button");
+
 const weeklyWorkoutDays =
   document.querySelector("#weeklyWorkoutDays");
 
@@ -756,6 +759,52 @@ window.addEventListener(
         "대시보드 로딩 실패:",
         error
       );
+    }
+  }
+);
+
+
+coachingButton.addEventListener(
+  "click",
+  async (event) => {
+    event.preventDefault();
+
+    const userId = getLoginUserId();
+
+    if (!userId) {
+      window.location.href = "/login";
+      return;
+    }
+
+    coachingButton.setAttribute("aria-busy", "true");
+
+    try {
+      const response = await fetch(
+        `/api/workouts/plans/today/${userId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const squatPlan = data.items?.find(
+          (item) =>
+            item.exercise_code === "SQUAT"
+            && item.ai_coaching_supported
+        );
+
+        if (squatPlan) {
+          saveCoachingPlan(squatPlan);
+        } else {
+          clearCoachingPlan();
+        }
+      } else {
+        clearCoachingPlan();
+      }
+    } catch (error) {
+      console.error("코칭 계획 조회 실패:", error);
+      clearCoachingPlan();
+    } finally {
+      coachingButton.removeAttribute("aria-busy");
+      window.location.href = "/coaching";
     }
   }
 );

@@ -660,21 +660,8 @@ async function deletePlan(userId, workoutPlanId) {
 }
 
 function moveToCoaching(item) {
-  // 현재 코칭 카운터는 세트별 목표 변경을 지원하지 않으므로
-  // 첫 번째 세트의 반복 횟수를 전체 세트의 targetReps로 사용합니다.
-  const firstSetReps = item.sets?.[0]?.repetition_count;
-  const params =
-    new URLSearchParams({
-      exercise_code:
-        item.exercise_code,
-      reps:
-        String(firstSetReps || item.repetition_count),
-      sets:
-        String(item.sets?.length || item.set_count),
-    });
-
-  window.location.href =
-    `/coaching?${params.toString()}`;
+  saveCoachingPlan(item);
+  window.location.href = "/coaching";
 }
 
 function getButtonState(item) {
