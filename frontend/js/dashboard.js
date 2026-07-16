@@ -785,14 +785,17 @@ coachingButton.addEventListener(
 
       if (response.ok) {
         const data = await response.json();
-        const squatPlan = data.items?.find(
+        const coachingPlans = (data.items || []).filter(
           (item) =>
-            item.exercise_code === "SQUAT"
-            && item.ai_coaching_supported
+            item.ai_coaching_supported
+            && Array.isArray(item.sets)
+            && item.sets.some(
+              (set) => Number(set.repetition_count || 0) > 0
+            )
         );
 
-        if (squatPlan) {
-          saveCoachingPlan(squatPlan);
+        if (coachingPlans.length === 1) {
+          saveCoachingPlan(coachingPlans[0]);
         } else {
           clearCoachingPlan();
         }

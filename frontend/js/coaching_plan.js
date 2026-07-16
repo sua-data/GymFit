@@ -1,4 +1,9 @@
 const GYMFIT_COACHING_PLAN_KEY = "gymfitCoachingPlan";
+const COACHING_EXERCISE_CODES = [
+  "SQUAT",
+  "PUSHUP",
+  "SHOULDER_PRESS",
+];
 
 function saveCoachingPlan(plan) {
   const sets = Array.isArray(plan?.sets)
@@ -10,10 +15,20 @@ function saveCoachingPlan(plan) {
         )
     : [];
 
+  const exerciseCode = String(plan?.exercise_code || "").toUpperCase();
+  if (
+    !COACHING_EXERCISE_CODES.includes(exerciseCode)
+    || !plan?.workout_plan_id
+    || sets.length === 0
+  ) {
+    clearCoachingPlan();
+    return null;
+  }
+
   const coachingPlan = {
     workout_plan_id: plan?.workout_plan_id ?? null,
-    exercise_code: plan?.exercise_code ?? "SQUAT",
-    exercise_name: plan?.exercise_name ?? "스쿼트",
+    exercise_code: exerciseCode,
+    exercise_name: plan?.exercise_name ?? exerciseCode,
     estimated_minutes: Number(plan?.estimated_minutes || 0),
     sets,
   };
@@ -32,7 +47,15 @@ function loadCoachingPlan() {
   }
   try {
     const plan = JSON.parse(savedPlan);
-    return plan && typeof plan === "object" ? plan : null;
+    if (
+      !plan
+      || typeof plan !== "object"
+      || !COACHING_EXERCISE_CODES.includes(plan.exercise_code)
+    ) {
+      clearCoachingPlan();
+      return null;
+    }
+    return plan;
   } catch {
     clearCoachingPlan();
     return null;

@@ -43,6 +43,8 @@ KST = timezone(
 
 AI_COACHING_EXERCISE_CODES = {
     "SQUAT",
+    "PUSHUP",
+    "SHOULDER_PRESS",
 }
 
 def korea_now_naive() -> datetime:
@@ -1484,30 +1486,6 @@ def create_workout_record(
 
         db.add(workout_record)
         db.flush()
-
-        today = completed_at.date()
-
-        today_plan = db.scalar(
-            select(WorkoutPlan).where(
-                WorkoutPlan.user_id
-                == request.user_id,
-                WorkoutPlan.exercise_id
-                == exercise.exercise_id,
-                WorkoutPlan.plan_date
-                == today,
-            )
-        )
-
-        if today_plan:
-            today_plan.is_completed = True
-            today_plan_sets = db.scalars(
-                select(WorkoutPlanSet).where(
-                    WorkoutPlanSet.workout_plan_id
-                    == today_plan.workout_plan_id
-                )
-            ).all()
-            for plan_set in today_plan_sets:
-                plan_set.is_completed = True
 
         db.commit()
         db.refresh(workout_record)

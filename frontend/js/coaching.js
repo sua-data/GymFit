@@ -151,6 +151,8 @@ let coachingWorkoutPlanId = null;
 let isPlanCoaching = false;
 let coachingEstimatedMinutes = 0;
 let freeCoachingRows = [];
+let todayCoachingPlans = [];
+let coachingModeRequestId = 0;
 
 let postureScores = [];
 
@@ -391,10 +393,15 @@ function validateFreeCoachingSets() {
   }));
 }
 
-function getValidSquatPlan(plan) {
+function getValidCoachingPlan(plan, expectedExerciseCode = null) {
+  const exerciseCode = String(plan?.exercise_code || "").toUpperCase();
   if (
     !plan
-    || plan.exercise_code !== "SQUAT"
+    || !isCoachingExerciseCode(exerciseCode)
+    || (
+      expectedExerciseCode
+      && exerciseCode !== expectedExerciseCode
+    )
     || !plan.workout_plan_id
     || !Array.isArray(plan.sets)
   ) {
@@ -411,6 +418,7 @@ function getValidSquatPlan(plan) {
   return sets.length
     ? {
         ...plan,
+        exercise_code: exerciseCode,
         sets,
       }
     : null;
@@ -489,7 +497,10 @@ function renderRoutineCoachingSets() {
 }
 
 function applyDetailedCoachingPlan(plan) {
-  const validPlan = getValidSquatPlan(plan);
+  const validPlan = getValidCoachingPlan(
+    plan,
+    selectedExerciseCode
+  );
 
   if (!validPlan) {
     return false;
@@ -499,8 +510,10 @@ function applyDetailedCoachingPlan(plan) {
   coachingWorkoutPlanId = validPlan.workout_plan_id;
   coachingEstimatedMinutes = Number(validPlan.estimated_minutes || 0);
   isPlanCoaching = coachingWorkoutPlanId !== null;
-  selectedExerciseCode = "SQUAT";
-  selectedExerciseName = validPlan.exercise_name || "스쿼트";
+  selectedExerciseCode = validPlan.exercise_code;
+  selectedExerciseName = validPlan.exercise_name
+    || getExerciseAnalyzer(selectedExerciseCode)?.displayName
+    || selectedExerciseCode;
   targetSets = coachingSets.length;
   targetReps = Number(coachingSets[0].repetition_count);
   totalTargetReps = coachingSets.reduce(
@@ -510,7 +523,7 @@ function applyDetailedCoachingPlan(plan) {
 
   freeCoachingSettings.hidden = true;
   coachingSettingsEyebrow.textContent = "TODAY ROUTINE";
-  coachingSettingsTitle.textContent = "오늘의 스쿼트";
+  coachingSettingsTitle.textContent = `오늘의 ${selectedExerciseName}`;
   routineCoachingSets.hidden = false;
   renderRoutineCoachingSets();
   coachingModeLabel.textContent = isPlanCoaching
@@ -536,7 +549,7 @@ function prepareFreeCoaching() {
   freeCoachingSettings.hidden = false;
   renderFreeCoachingRows();
   coachingSettingsEyebrow.textContent = "FREE COACHING";
-  coachingSettingsTitle.textContent = "자유 코칭 설정";
+  coachingSettingsTitle.textContent = `${selectedExerciseName} 자유 코칭 설정`;
   routineCoachingSets.hidden = true;
   routineCoachingSets.innerHTML = "";
   targetSets = coachingSets.length;
@@ -586,87 +599,12 @@ function formatRestTime(seconds) {
    전달받은 운동 및 목표
 ========================= */
 
-function applyCoachingQuery() {
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const hasExerciseCode =
-    params.has("exercise_code");
-
-  const hasReps =
-    params.has("reps");
-
-  const hasSets =
-    params.has("sets");
-
-  const exerciseCode =
-    params.get(
-      "exercise_code"
-    );
-
-  const requestedReps =
-    Number(params.get("reps"));
-
-  const requestedSets =
-    Number(params.get("sets"));
-
-  const targetTab =
-    Array.from(
-      exerciseTabs
-    ).find(
-      (tab) =>
-        tab.dataset.exerciseCode
-        === exerciseCode
-    );
-
-  if (
-    !hasExerciseCode
-    || !hasReps
-    || !hasSets
-    || !targetTab
-    || !Number.isInteger(
-      requestedReps
-    )
-    || requestedReps <= 0
-    || !Number.isInteger(
-      requestedSets
-    )
-    || requestedSets <= 0
-  ) {
-    return false;
-  }
-
-  exerciseTabs.forEach(
-    (tab) => {
-      tab.classList.remove(
-        "active"
-      );
-    }
-  );
-
-  targetTab.classList.add(
-    "active"
-  );
-
-  selectedExerciseCode =
-    targetTab.dataset.exerciseCode;
-
-  selectedExerciseName =
-    targetTab.dataset.exerciseName;
-
-  targetReps = requestedReps;
-  targetSets = requestedSets;
-  return true;
-}
-
-
-async function applyTodaySquatPlan() {
+async function fetchTodayCoachingPlans() {
   const userId =
     getLoginUserId();
 
   if (!userId) {
+    todayCoachingPlans = [];
     return "no-user";
   }
 
@@ -677,66 +615,22 @@ async function applyTodaySquatPlan() {
       );
 
     if (!response.ok) {
+      todayCoachingPlans = [];
       return "error";
     }
 
     const data =
       await response.json();
 
-    const squatPlan =
-      data.items?.find(
-        (item) =>
-          item.exercise_code
-          === "SQUAT"
-          && item.ai_coaching_supported
-      );
-
-    if (!squatPlan) {
-      clearCoachingPlan();
-      return "none";
-    }
-
-    saveCoachingPlan(squatPlan);
-
-    const squatTab =
-      Array.from(
-        exerciseTabs
-      ).find(
-        (tab) =>
-          tab.dataset.exerciseCode
-          === "SQUAT"
-      );
-
-    if (!squatTab) {
-      return "error";
-    }
-
-    if (!applyDetailedCoachingPlan(squatPlan)) {
-      clearCoachingPlan();
-      return "none";
-    }
-
-    exerciseTabs.forEach(
-      (tab) => {
-        tab.classList.remove(
-          "active"
-        );
-      }
+    todayCoachingPlans = (data.items || []).filter(
+      (item) =>
+        item.ai_coaching_supported
+        && getValidCoachingPlan(item)
     );
-
-    squatTab.classList.add(
-      "active"
-    );
-
-    selectedExerciseCode =
-      squatTab.dataset.exerciseCode;
-
-    selectedExerciseName =
-      squatTab.dataset.exerciseName;
-
-    return "applied";
+    return "loaded";
 
   } catch (error) {
+    todayCoachingPlans = [];
     console.error(
       "오늘의 코칭 목표 조회 실패:",
       error
@@ -744,6 +638,71 @@ async function applyTodaySquatPlan() {
 
     return "error";
   }
+}
+
+function selectExerciseTab(exerciseCode) {
+  const targetTab = Array.from(exerciseTabs).find(
+    (tab) => tab.dataset.exerciseCode === exerciseCode
+  );
+  if (!targetTab) {
+    return false;
+  }
+
+  exerciseTabs.forEach((tab) => {
+    tab.classList.toggle("active", tab === targetTab);
+  });
+  selectedExerciseCode = targetTab.dataset.exerciseCode;
+  selectedExerciseName = targetTab.dataset.exerciseName;
+  return true;
+}
+
+function applySelectedExerciseMode() {
+  const selectedPlan = todayCoachingPlans.find(
+    (plan) => plan.exercise_code === selectedExerciseCode
+  );
+
+  if (selectedPlan && applyDetailedCoachingPlan(selectedPlan)) {
+    saveCoachingPlan(selectedPlan);
+  } else {
+    clearCoachingPlan();
+    prepareFreeCoaching();
+  }
+
+  currentSetIndex = 0;
+  currentReps = 0;
+  currentSets = 0;
+  totalCompletedReps = 0;
+  setSettingsMessage();
+  updateTargetDisplay();
+  updateCounterDisplay();
+}
+
+async function changeSelectedExercise(exerciseCode) {
+  if (isWorkoutActive || !selectExerciseTab(exerciseCode)) {
+    return;
+  }
+
+  const requestId = ++coachingModeRequestId;
+  startButton.disabled = true;
+  coachingSettingsCard.hidden = true;
+  setProgressCard.hidden = true;
+  coachingModeLoading.hidden = false;
+  coachingModeLoading.textContent =
+    `${selectedExerciseName}의 오늘 계획을 확인하고 있습니다.`;
+
+  const result = await fetchTodayCoachingPlans();
+  if (requestId !== coachingModeRequestId) {
+    return;
+  }
+
+  applySelectedExerciseMode();
+  if (result === "error") {
+    setSettingsMessage(
+      "오늘의 운동 계획을 불러오지 못해 자유 코칭으로 시작합니다."
+    );
+  }
+  finishModeLoading();
+  movementState.textContent = `${selectedExerciseName} 준비`;
 }
 
 
@@ -979,7 +938,7 @@ async function startNextSet() {
   restCard.hidden = true;
 
   try {
-    await resetSquatAnalyzer();
+    await resetCurrentExerciseAnalyzer();
   } catch (error) {
     console.error("다음 세트 분석 초기화 실패:", error);
   }
@@ -1000,6 +959,11 @@ async function startNextSet() {
 function getPostureScoreFromStatus(
   status
 ) {
+  const commonScore = Number(status.posture_score);
+  if (Number.isFinite(commonScore)) {
+    return Math.max(0, Math.min(100, Math.round(commonScore)));
+  }
+
   if (!status.pose_valid) {
     return 0;
   }
@@ -1084,9 +1048,7 @@ function applyPoseStatus(
 
   if (status.pose_valid) {
     movementState.textContent =
-      status.stage === "DOWN"
-        ? `${selectedExerciseName} 내려가는 중`
-        : `${selectedExerciseName} 일어서는 중`;
+      `${selectedExerciseName} ${status.stage_text || "동작 중"}`;
 
     postureScoreValue.textContent =
       score;
@@ -1104,7 +1066,7 @@ function applyPoseStatus(
 
     const angleTexts = [];
 
-    if (status.average_angle !== null) {
+    if (status.average_angle != null) {
       angleTexts.push(
         `무릎 ${Math.round(
           status.average_angle
@@ -1112,11 +1074,23 @@ function applyPoseStatus(
       );
     }
 
-    if (status.torso_angle !== null) {
+    if (status.torso_angle != null) {
       angleTexts.push(
         `상체 기울기 ${Math.round(
           status.torso_angle
         )}도`
+      );
+    }
+
+    if (status.elbow_angle != null) {
+      angleTexts.push(
+        `팔꿈치 ${Math.round(status.elbow_angle)}도`
+      );
+    }
+
+    if (status.average_elbow_angle != null) {
+      angleTexts.push(
+        `양팔 평균 ${Math.round(status.average_elbow_angle)}도`
       );
     }
 
@@ -1142,15 +1116,15 @@ function applyPoseStatus(
 
   feedbackText.textContent =
     status.person_valid
-      ? "엉덩이, 무릎, 발목이 모두 보이도록 위치를 조정하세요."
-      : "카메라에 전신이 나오도록 이동하세요.";
+      ? getExerciseAnalyzer(selectedExerciseCode)?.cameraGuide
+        || "필요한 관절이 보이도록 위치를 조정하세요."
+      : "카메라에 몸이 나오도록 이동하세요.";
 }
 
 
 async function sendFrameForAnalysis() {
   if (
     !isWorkoutActive
-    || selectedExerciseCode !== "SQUAT"
     || analysisInProgress
     || !cameraVideo.videoWidth
     || !cameraVideo.videoHeight
@@ -1213,12 +1187,17 @@ async function sendFrameForAnalysis() {
     formData.append(
       "image",
       imageBlob,
-      "squat-frame.jpg"
+      `${selectedExerciseCode.toLowerCase()}-frame.jpg`
     );
+
+    const analyzer = getExerciseAnalyzer(selectedExerciseCode);
+    if (!analyzer) {
+      throw new Error("지원하지 않는 코칭 운동입니다.");
+    }
 
     const response =
       await fetch(
-        "/api/coaching/squat/analyze",
+        `/api/coaching/${analyzer.apiPath}/analyze`,
         {
           method: "POST",
           body: formData
@@ -1239,7 +1218,7 @@ async function sendFrameForAnalysis() {
 
   } catch (error) {
     console.error(
-      "스쿼트 자세 분석 실패:",
+      `${selectedExerciseName} 자세 분석 실패:`,
       error
     );
 
@@ -1273,10 +1252,15 @@ function stopPoseAnalysis() {
 }
 
 
-async function resetSquatAnalyzer() {
+async function resetCurrentExerciseAnalyzer() {
+  const analyzer = getExerciseAnalyzer(selectedExerciseCode);
+  if (!analyzer) {
+    throw new Error("지원하지 않는 코칭 운동입니다.");
+  }
+
   const response =
     await fetch(
-      "/api/coaching/squat/reset",
+      `/api/coaching/${analyzer.apiPath}/reset`,
       {
         method: "POST"
       }
@@ -1288,7 +1272,7 @@ async function resetSquatAnalyzer() {
   if (!response.ok) {
     throw new Error(
       data.detail
-      || "스쿼트 분석 상태를 초기화하지 못했습니다."
+      || `${selectedExerciseName} 분석 상태를 초기화하지 못했습니다.`
     );
   }
 
@@ -1330,12 +1314,9 @@ async function startWorkout() {
       updateCounterDisplay();
     }
 
-    if (
-      selectedExerciseCode
-      !== "SQUAT"
-    ) {
+    if (!isCoachingExerciseCode(selectedExerciseCode)) {
       throw new Error(
-        "현재 AI 자세 분석은 스쿼트만 지원합니다."
+        "지원하지 않는 코칭 운동입니다."
       );
     }
 
@@ -1363,7 +1344,7 @@ async function startWorkout() {
     updateCounterDisplay();
 
     await startCamera();
-    await resetSquatAnalyzer();
+    await resetCurrentExerciseAnalyzer();
 
     workoutStartedAt =
       new Date();
@@ -1767,28 +1748,7 @@ exerciseTabs.forEach(
   (tab) => {
     tab.addEventListener(
       "click",
-      () => {
-        exerciseTabs.forEach(
-          (item) => {
-            item.classList.remove(
-              "active"
-            );
-          }
-        );
-
-        tab.classList.add(
-          "active"
-        );
-
-        selectedExerciseCode =
-          tab.dataset.exerciseCode;
-
-        selectedExerciseName =
-          tab.dataset.exerciseName;
-
-        movementState.textContent =
-          `${selectedExerciseName} 준비`;
-      }
+      () => changeSelectedExercise(tab.dataset.exerciseCode)
     );
   }
 );
@@ -1939,27 +1899,36 @@ async function initializeCoachingTargets() {
   restoreFreeCoachingSets();
   restoreRestDuration();
   const savedPlan = loadCoachingPlan();
+  const params = new URLSearchParams(window.location.search);
+  const requestedExerciseCode = String(
+    params.get("exercise_code") || ""
+  ).toUpperCase();
 
   startButton.disabled = true;
   coachingSettingsCard.hidden = true;
   setProgressCard.hidden = true;
   coachingModeLoading.hidden = false;
 
-  if (savedPlan && !getValidSquatPlan(savedPlan)) {
+  const validSavedPlan = getValidCoachingPlan(savedPlan);
+  if (savedPlan && !validSavedPlan) {
     clearCoachingPlan();
   }
 
-  const todayPlanResult = await applyTodaySquatPlan();
+  const initialExerciseCode = validSavedPlan?.exercise_code
+    || (
+      isCoachingExerciseCode(requestedExerciseCode)
+        ? requestedExerciseCode
+        : selectedExerciseCode
+    );
+  selectExerciseTab(initialExerciseCode);
 
-  if (todayPlanResult !== "applied") {
-    clearCoachingPlan();
-    prepareFreeCoaching();
+  const todayPlanResult = await fetchTodayCoachingPlans();
+  applySelectedExerciseMode();
 
-    if (todayPlanResult === "error") {
-      setSettingsMessage(
-        "오늘의 운동 계획을 불러오지 못해 자유 코칭으로 시작합니다."
-      );
-    }
+  if (todayPlanResult === "error") {
+    setSettingsMessage(
+      "오늘의 운동 계획을 불러오지 못해 자유 코칭으로 시작합니다."
+    );
   }
 
   finishModeLoading();
