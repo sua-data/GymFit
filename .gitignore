@@ -68,3 +68,7 @@ results/*
 *.tmp
 *.temp
 ~$*
+
+*_backup_*.sql
+*.dump
+*.bak
