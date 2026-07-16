@@ -128,6 +128,15 @@ def coaching_page():
         FRONTEND_DIR / "coaching.html"
     )
 
+@app.get(
+    "/routine",
+    include_in_schema=False,
+)
+def routine_page():
+    return FileResponse(
+        FRONTEND_DIR / "routine.html"
+    )
+
 @app.get("/health")
 def health_check():
     return {

@@ -18,6 +18,7 @@ from sqlalchemy.orm import (
 
 from backend.database import Base
 from backend.models.exercise import Exercise
+from backend.models.user_exercise import UserExercise
 
 
 class WorkoutPlan(Base):
@@ -29,6 +30,12 @@ class WorkoutPlan(Base):
             "exercise_id",
             "plan_date",
             name="uq_workout_plan_user_exercise_date",
+        ),
+        UniqueConstraint(
+            "user_id",
+            "user_exercise_id",
+            "plan_date",
+            name="uq_workout_plan_user_custom_date",
         ),
     )
 
@@ -51,16 +58,27 @@ class WorkoutPlan(Base):
         comment="회원 번호",
     )
 
-    exercise_id: Mapped[int] = mapped_column(
+    exercise_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey(
             "exercise.exercise_id",
             ondelete="RESTRICT",
             onupdate="CASCADE",
         ),
-        nullable=False,
+        nullable=True,
         index=True,
         comment="운동 종목 번호",
+    )
+
+    user_exercise_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey(
+            "user_exercise.user_exercise_id",
+            ondelete="RESTRICT",
+            onupdate="CASCADE",
+        ),
+        nullable=True,
+        index=True,
     )
 
     plan_date: Mapped[date] = mapped_column(
@@ -117,4 +135,5 @@ class WorkoutPlan(Base):
         comment="수정 일시",
     )
 
-    exercise: Mapped[Exercise] = relationship()
+    exercise: Mapped[Exercise | None] = relationship()
+    user_exercise: Mapped[UserExercise | None] = relationship()

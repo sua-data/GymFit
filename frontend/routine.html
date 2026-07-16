@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="description"
+    content="GYMFIT 오늘의 운동 루틴"
+  >
+
+  <title>GYMFIT | 루틴</title>
+
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=2">
+  <link rel="stylesheet" href="/static/css/routine.css?v=1">
+
+  <script src="/static/js/common_layout.js?v=2" defer></script>
+  <script src="/static/js/routine.js?v=2" defer></script>
+</head>
+
+<body
+  data-page="routine"
+  data-header-title="오늘의 루틴"
+  data-header-subtitle="계획한 운동을 차례로 완료해 보세요"
+>
+  <main class="routine-page">
+    <div class="routine-container">
+      <div id="topHeaderContainer"></div>
+
+      <section class="routine-heading">
+        <div>
+          <p id="routineDate">-</p>
+          <h1>운동 루틴</h1>
+        </div>
+
+        <div class="routine-heading-actions">
+          <span id="routineProgress">0 / 0 완료</span>
+
+          <button
+            type="button"
+            class="routine-add-button"
+            id="routineAddButton"
+          >
+            루틴 추가
+          </button>
+        </div>
+      </section>
+
+      <section class="routine-summary">
+        <div>
+          <span>운동 종목</span>
+          <strong id="exerciseCount">0</strong>
+        </div>
+
+        <div>
+          <span>예상 시간</span>
+          <strong><b id="totalMinutes">0</b>분</strong>
+        </div>
+      </section>
+
+      <section
+        id="routineMessage"
+        class="routine-message"
+      >
+        오늘의 운동 계획을 불러오는 중입니다.
+      </section>
+
+      <section
+        id="routineList"
+        class="routine-list"
+        aria-live="polite"
+      ></section>
+    </div>
+
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+
+    <div
+      class="routine-sheet-overlay"
+      id="routineSheetOverlay"
+      hidden
+    >
+      <section
+        class="routine-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="routineSheetTitle"
+      >
+        <div class="routine-sheet-handle"></div>
+
+        <div class="routine-sheet-heading">
+          <div>
+            <span>NEW ROUTINE</span>
+            <h2 id="routineSheetTitle">루틴 추가</h2>
+          </div>
+
+          <button
+            type="button"
+            class="routine-sheet-close"
+            id="routineSheetCloseButton"
+            aria-label="닫기"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="routineForm">
+          <label
+            class="routine-field"
+            id="routineExerciseSelectField"
+          >
+            <span>운동 선택</span>
+
+            <select
+              name="exercise_selection"
+              id="routineExerciseSelect"
+              required
+              disabled
+            >
+              <option value="">
+                운동 목록을 불러오는 중입니다.
+              </option>
+            </select>
+          </label>
+
+          <div
+            class="exercise-load-state"
+            id="exerciseLoadState"
+          >
+            <p id="exerciseLoadMessage">
+              운동 목록을 불러오는 중입니다.
+            </p>
+
+            <button
+              type="button"
+              id="exerciseRetryButton"
+              hidden
+            >
+              다시 시도
+            </button>
+          </div>
+
+          <label
+            class="routine-field"
+            id="customExerciseNameField"
+            hidden
+          >
+            <span>직접 입력 운동명</span>
+
+            <input
+              type="text"
+              id="customExerciseName"
+              maxlength="100"
+              autocomplete="off"
+              placeholder="예: 플랭크"
+            >
+          </label>
+
+          <label
+            class="routine-field"
+            id="routineExerciseNameField"
+            hidden
+          >
+            <span>운동</span>
+
+            <input
+              type="text"
+              id="routineExerciseName"
+              readonly
+            >
+          </label>
+
+          <label class="routine-field">
+            <span>날짜</span>
+
+            <input
+              type="date"
+              name="plan_date"
+              id="routinePlanDate"
+              required
+            >
+          </label>
+
+          <div class="routine-field-grid">
+            <label class="routine-field">
+              <span>세트 수</span>
+
+              <input
+                type="number"
+                name="set_count"
+                min="1"
+                max="100"
+                value="3"
+                inputmode="numeric"
+                required
+              >
+            </label>
+
+            <label class="routine-field">
+              <span>반복 횟수</span>
+
+              <input
+                type="number"
+                name="repetition_count"
+                min="1"
+                max="10000"
+                value="10"
+                inputmode="numeric"
+                required
+              >
+            </label>
+          </div>
+
+          <label class="routine-field">
+            <span>예상 운동 시간</span>
+
+            <div class="routine-input-unit">
+              <input
+                type="number"
+                name="estimated_minutes"
+                min="1"
+                max="1440"
+                value="15"
+                inputmode="numeric"
+                required
+              >
+
+              <span>분</span>
+            </div>
+          </label>
+
+          <p
+            class="routine-form-error"
+            id="routineFormError"
+            role="alert"
+            hidden
+          ></p>
+
+          <div class="routine-form-actions">
+            <button
+              type="button"
+              class="routine-cancel-button"
+              id="routineCancelButton"
+            >
+              취소
+            </button>
+
+            <button
+              type="submit"
+              class="routine-save-button"
+              id="routineSaveButton"
+              disabled
+            >
+              저장
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

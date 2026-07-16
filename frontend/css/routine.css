@@ -1,0 +1,514 @@
+:root {
+  --gymfit-green: #a8ff35;
+  --routine-card: #242424;
+  --routine-card-dark: #181818;
+  --routine-border: rgba(255, 255, 255, 0.1);
+  --routine-muted: rgba(255, 255, 255, 0.48);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #000000;
+}
+
+body {
+  margin: 0;
+  color: #ffffff;
+  background: #000000;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.routine-sheet-open {
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.routine-page {
+  width: 100%;
+  min-height: 100dvh;
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 0, rgba(168, 255, 53, 0.05), transparent 28%),
+    #000000;
+}
+
+.routine-container {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: max(22px, env(safe-area-inset-top)) 22px 34px;
+}
+
+.routine-heading {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.routine-heading-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.routine-add-button {
+  min-width: 92px;
+  height: 38px;
+  padding: 0 14px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.routine-heading p {
+  margin: 0 0 6px;
+  color: var(--gymfit-green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.routine-heading h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 850;
+  letter-spacing: -0.8px;
+}
+
+#routineProgress {
+  color: var(--routine-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.routine-summary {
+  margin-top: 22px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--routine-card);
+  border: 1px solid var(--routine-border);
+  border-radius: 20px;
+}
+
+.routine-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routine-summary > div + div {
+  padding-left: 18px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.routine-summary span {
+  color: var(--routine-muted);
+  font-size: 12px;
+}
+
+.routine-summary strong {
+  font-size: 23px;
+  font-weight: 850;
+}
+
+.routine-summary b {
+  color: var(--gymfit-green);
+}
+
+.routine-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.routine-card {
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  background: var(--routine-card);
+  border: 1px solid var(--routine-border);
+  border-radius: 20px;
+}
+
+.routine-card.completed {
+  opacity: 0.62;
+}
+
+.routine-card-index {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #000000;
+  background: var(--gymfit-green);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.routine-card-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.routine-card-heading span {
+  color: var(--gymfit-green);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.routine-card-heading h2 {
+  margin: 5px 0 0;
+  font-size: 19px;
+  font-weight: 850;
+  letter-spacing: -0.5px;
+}
+
+.routine-meta {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.routine-meta span {
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, 0.72);
+  background: var(--routine-card-dark);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.routine-start-button {
+  width: 100%;
+  height: 44px;
+  margin-top: 16px;
+  padding: 0 16px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.routine-start-button:disabled {
+  color: rgba(255, 255, 255, 0.42);
+  background: #171717;
+  cursor: default;
+}
+
+.routine-card-actions {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.routine-card-actions .routine-start-button {
+  margin-top: 0;
+}
+
+.routine-edit-button,
+.routine-delete-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.routine-edit-button {
+  color: var(--gymfit-green);
+  background: rgba(168, 255, 53, 0.08);
+  border: 1px solid rgba(168, 255, 53, 0.18);
+}
+
+.routine-delete-button {
+  color: #ff7373;
+  background: rgba(255, 82, 82, 0.09);
+  border: 1px solid rgba(255, 82, 82, 0.18);
+  font-size: 18px;
+}
+
+.routine-edit-button:disabled,
+.routine-delete-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.routine-message {
+  margin-top: 20px;
+  padding: 28px 18px;
+  color: var(--routine-muted);
+  background: var(--routine-card);
+  border: 1px solid var(--routine-border);
+  border-radius: 20px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.routine-message[hidden] {
+  display: none;
+}
+
+.routine-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-top: env(safe-area-inset-top);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.routine-sheet-overlay[hidden] {
+  display: none;
+}
+
+.routine-sheet {
+  width: 100%;
+  max-width: 430px;
+  max-height: calc(100dvh - 28px);
+  padding: 10px 22px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: #202020;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.45);
+  animation: routine-sheet-up 180ms ease-out;
+}
+
+.routine-sheet-handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 18px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.routine-sheet-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.routine-sheet-heading span {
+  color: var(--gymfit-green);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.routine-sheet-heading h2 {
+  margin: 5px 0 0;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -0.6px;
+}
+
+.routine-sheet-close {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#routineForm {
+  margin-top: 23px;
+}
+
+.routine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routine-field + .routine-field,
+.routine-field-grid,
+.routine-field-grid + .routine-field {
+  margin-top: 16px;
+}
+
+.routine-field > span {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.routine-field input,
+.routine-field select {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  outline: none;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.routine-field input:focus,
+.routine-field select:focus {
+  border-color: var(--gymfit-green);
+  box-shadow: 0 0 0 3px rgba(168, 255, 53, 0.08);
+}
+
+.routine-field[hidden],
+.exercise-load-state[hidden] {
+  display: none;
+}
+
+.routine-field input:disabled,
+.routine-field input[readonly],
+.routine-field select:disabled {
+  opacity: 0.6;
+}
+
+.exercise-load-state {
+  min-height: 20px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.exercise-load-state p {
+  margin: 0;
+  color: var(--routine-muted);
+  font-size: 11px;
+}
+
+.exercise-load-state p.error {
+  color: #ff8585;
+}
+
+.exercise-load-state button {
+  padding: 5px 8px;
+  color: var(--gymfit-green);
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.exercise-load-state button[hidden] {
+  display: none;
+}
+
+.routine-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.routine-field-grid .routine-field {
+  margin-top: 0;
+}
+
+.routine-input-unit {
+  position: relative;
+}
+
+.routine-input-unit input {
+  padding-right: 48px;
+}
+
+.routine-input-unit > span {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  color: var(--routine-muted);
+  font-size: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.routine-form-error {
+  margin: 16px 0 0;
+  padding: 11px 12px;
+  color: #ff8585;
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.14);
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.routine-form-error[hidden] {
+  display: none;
+}
+
+.routine-form-actions {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+}
+
+.routine-cancel-button,
+.routine-save-button {
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.routine-cancel-button {
+  color: rgba(255, 255, 255, 0.72);
+  background: #151515;
+}
+
+.routine-save-button {
+  color: #050505;
+  background: var(--gymfit-green);
+}
+
+.routine-save-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@keyframes routine-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}

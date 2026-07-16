@@ -24,6 +24,7 @@ from backend.models.exercise import Exercise
 from backend.models.notification import Notification
 from backend.models.workout_plan import WorkoutPlan
 from backend.models.workout_record import WorkoutRecord
+from backend.models.user_exercise import UserExercise
 
 
 router = APIRouter(
@@ -315,11 +316,17 @@ def get_dashboard(
         select(
             WorkoutPlan,
             Exercise,
+            UserExercise,
         )
-        .join(
+        .outerjoin(
             Exercise,
             WorkoutPlan.exercise_id
             == Exercise.exercise_id,
+        )
+        .outerjoin(
+            UserExercise,
+            (WorkoutPlan.user_exercise_id == UserExercise.user_exercise_id)
+            & (WorkoutPlan.user_id == UserExercise.user_id),
         )
         .where(
             WorkoutPlan.user_id == user_id,
@@ -334,14 +341,23 @@ def get_dashboard(
 
     total_plan_minutes = 0
 
-    for plan, exercise in plan_rows:
+    for plan, exercise, user_exercise in plan_rows:
+        if (exercise is None) == (user_exercise is None):
+            continue
+
+        exercise_name = (
+            exercise.exercise_name
+            if exercise is not None
+            else user_exercise.exercise_name
+        )
+
         plan_items.append(
             {
                 "workout_plan_id": (
                     plan.workout_plan_id
                 ),
                 "exercise_name": (
-                    exercise.exercise_name
+                    exercise_name
                 ),
                 "set_count": plan.set_count,
                 "repetition_count": (

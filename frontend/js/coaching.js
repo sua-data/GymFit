@@ -139,12 +139,278 @@ function getLoginUserId() {
 
     return (
       user.user_id
-      ?? user.id
+      ?? user.userId
       ?? null
     );
 
   } catch {
     return null;
+  }
+}
+
+
+/* =========================
+   전달받은 운동 및 목표
+========================= */
+
+function selectOrAddOption(
+  selectElement,
+  value,
+  suffix
+) {
+  if (
+    !Number.isInteger(value)
+    || value <= 0
+  ) {
+    return null;
+  }
+
+  const optionExists =
+    Array.from(
+      selectElement.options
+    ).some(
+      (option) =>
+        Number(option.value)
+        === value
+    );
+
+  if (!optionExists) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value = String(value);
+    option.textContent =
+      `${value}${suffix}`;
+
+    selectElement.appendChild(
+      option
+    );
+  }
+
+  selectElement.value =
+    String(value);
+
+  return value;
+}
+
+
+function applyCoachingQuery() {
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const hasExerciseCode =
+    params.has("exercise_code");
+
+  const hasReps =
+    params.has("reps");
+
+  const hasSets =
+    params.has("sets");
+
+  const exerciseCode =
+    params.get(
+      "exercise_code"
+    );
+
+  const requestedReps =
+    Number(params.get("reps"));
+
+  const requestedSets =
+    Number(params.get("sets"));
+
+  const targetTab =
+    Array.from(
+      exerciseTabs
+    ).find(
+      (tab) =>
+        tab.dataset.exerciseCode
+        === exerciseCode
+    );
+
+  if (
+    !hasExerciseCode
+    || !hasReps
+    || !hasSets
+    || !targetTab
+    || !Number.isInteger(
+      requestedReps
+    )
+    || requestedReps <= 0
+    || !Number.isInteger(
+      requestedSets
+    )
+    || requestedSets <= 0
+  ) {
+    return false;
+  }
+
+  exerciseTabs.forEach(
+    (tab) => {
+      tab.classList.remove(
+        "active"
+      );
+    }
+  );
+
+  targetTab.classList.add(
+    "active"
+  );
+
+  selectedExerciseCode =
+    targetTab.dataset.exerciseCode;
+
+  selectedExerciseName =
+    targetTab.dataset.exerciseName;
+
+  const appliedReps =
+    selectOrAddOption(
+      targetRepsSelect,
+      requestedReps,
+      "회"
+    );
+
+  if (appliedReps !== null) {
+    targetReps = appliedReps;
+  }
+
+  const appliedSets =
+    selectOrAddOption(
+      targetSetsSelect,
+      requestedSets,
+      "세트"
+    );
+
+  if (appliedSets !== null) {
+    targetSets = appliedSets;
+  }
+
+  return (
+    appliedReps !== null
+    && appliedSets !== null
+  );
+}
+
+
+async function applyTodaySquatPlan() {
+  const userId =
+    getLoginUserId();
+
+  if (!userId) {
+    return false;
+  }
+
+  try {
+    const response =
+      await fetch(
+        `/api/workouts/plans/today/${userId}`
+      );
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data =
+      await response.json();
+
+    const squatPlan =
+      data.items?.find(
+        (item) =>
+          item.exercise_code
+          === "SQUAT"
+          && item.ai_coaching_supported
+      );
+
+    if (!squatPlan) {
+      return false;
+    }
+
+    const squatTab =
+      Array.from(
+        exerciseTabs
+      ).find(
+        (tab) =>
+          tab.dataset.exerciseCode
+          === "SQUAT"
+      );
+
+    if (!squatTab) {
+      return false;
+    }
+
+    const plannedReps =
+      Number(
+        squatPlan.repetition_count
+      );
+
+    const plannedSets =
+      Number(
+        squatPlan.set_count
+      );
+
+    if (
+      !Number.isInteger(plannedReps)
+      || plannedReps <= 0
+      || !Number.isInteger(plannedSets)
+      || plannedSets <= 0
+    ) {
+      return false;
+    }
+
+    const appliedReps =
+      selectOrAddOption(
+        targetRepsSelect,
+        plannedReps,
+        "회"
+      );
+
+    const appliedSets =
+      selectOrAddOption(
+        targetSetsSelect,
+        plannedSets,
+        "세트"
+      );
+
+    if (
+      appliedReps === null
+      || appliedSets === null
+    ) {
+      return false;
+    }
+
+    exerciseTabs.forEach(
+      (tab) => {
+        tab.classList.remove(
+          "active"
+        );
+      }
+    );
+
+    squatTab.classList.add(
+      "active"
+    );
+
+    selectedExerciseCode =
+      squatTab.dataset.exerciseCode;
+
+    selectedExerciseName =
+      squatTab.dataset.exerciseName;
+
+    targetReps = appliedReps;
+    targetSets = appliedSets;
+
+    return true;
+
+  } catch (error) {
+    console.error(
+      "오늘의 코칭 목표 조회 실패:",
+      error
+    );
+
+    return false;
   }
 }
 
@@ -1081,5 +1347,17 @@ window.addEventListener(
    초기 실행
 ========================= */
 
-updateTargetDisplay();
-updateCounterDisplay();
+async function initializeCoachingTargets() {
+  const urlTargetApplied =
+    applyCoachingQuery();
+
+  if (!urlTargetApplied) {
+    await applyTodaySquatPlan();
+  }
+
+  updateTargetDisplay();
+  updateCounterDisplay();
+}
+
+
+initializeCoachingTargets();
