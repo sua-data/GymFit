@@ -196,6 +196,32 @@ button {
   font-weight: 650;
 }
 
+.routine-set-summary {
+  margin: 14px 0 0;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  background: #191919;
+  border-radius: 13px;
+}
+
+.routine-set-summary:empty {
+  display: none;
+}
+
+.routine-set-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+.routine-set-summary strong {
+  color: var(--gymfit-green);
+}
+
 .routine-start-button {
   width: 100%;
   height: 44px;
@@ -437,6 +463,103 @@ button {
 
 .routine-field-grid .routine-field {
   margin-top: 0;
+}
+
+.routine-set-editor {
+  margin-top: 18px;
+  padding: 14px;
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.routine-set-editor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.routine-set-editor-heading span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.routine-set-editor-heading p {
+  margin: 4px 0 0;
+  color: var(--routine-muted);
+  font-size: 10px;
+}
+
+.routine-set-editor-heading button {
+  min-width: 76px;
+  height: 34px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+#routineSetRows {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.routine-set-row {
+  padding: 11px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  background: #222222;
+  border-radius: 12px;
+}
+
+.routine-set-order {
+  grid-column: 1 / -1;
+  color: var(--gymfit-green);
+  font-size: 11px;
+}
+
+.routine-set-row label {
+  min-width: 0;
+}
+
+.routine-set-row label span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--routine-muted);
+  font-size: 9px;
+}
+
+.routine-set-row input {
+  width: 100%;
+  height: 38px;
+  padding: 0 8px;
+  color: #ffffff;
+  background: #131313;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  outline: none;
+}
+
+.routine-set-row input:focus {
+  border-color: var(--gymfit-green);
+}
+
+.routine-set-delete {
+  grid-column: 1 / -1;
+  height: 30px;
+  color: #ff8585;
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.14);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .routine-input-unit {

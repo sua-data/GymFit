@@ -341,14 +341,18 @@ async function applyTodaySquatPlan() {
       return false;
     }
 
+    // 세트별 반복 횟수가 서로 달라도 현재 코칭 카운터는
+    // 첫 번째 세트의 반복 횟수를 전체 세트 목표로 사용합니다.
     const plannedReps =
       Number(
-        squatPlan.repetition_count
+        squatPlan.sets?.[0]?.repetition_count
+        ?? squatPlan.repetition_count
       );
 
     const plannedSets =
       Number(
-        squatPlan.set_count
+        squatPlan.sets?.length
+        || squatPlan.set_count
       );
 
     if (

@@ -17,10 +17,10 @@
 
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=2">
-  <link rel="stylesheet" href="/static/css/routine.css?v=1">
+  <link rel="stylesheet" href="/static/css/routine.css?v=3">
 
   <script src="/static/js/common_layout.js?v=2" defer></script>
-  <script src="/static/js/routine.js?v=2" defer></script>
+  <script src="/static/js/routine.js?v=3" defer></script>
 </head>
 
 <body
@@ -186,34 +186,22 @@
             >
           </label>
 
-          <div class="routine-field-grid">
-            <label class="routine-field">
-              <span>세트 수</span>
+          <div class="routine-set-editor">
+            <div class="routine-set-editor-heading">
+              <div>
+                <span>세트 상세</span>
+                <p>반복 횟수 또는 유지 시간을 입력하세요.</p>
+              </div>
 
-              <input
-                type="number"
-                name="set_count"
-                min="1"
-                max="100"
-                value="3"
-                inputmode="numeric"
-                required
+              <button
+                type="button"
+                id="routineAddSetButton"
               >
-            </label>
+                세트 추가
+              </button>
+            </div>
 
-            <label class="routine-field">
-              <span>반복 횟수</span>
-
-              <input
-                type="number"
-                name="repetition_count"
-                min="1"
-                max="10000"
-                value="10"
-                inputmode="numeric"
-                required
-              >
-            </label>
+            <div id="routineSetRows"></div>
           </div>
 
           <label class="routine-field">

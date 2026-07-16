@@ -4,6 +4,7 @@ from datetime import (
     timedelta,
     timezone
 )
+from decimal import Decimal
 
 from fastapi import (
     APIRouter,
@@ -14,7 +15,8 @@ from fastapi import (
 from pydantic import (
     BaseModel,
     Field,
-    field_validator
+    field_validator,
+    model_validator
 )
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +28,7 @@ from backend.models import (
     User,
     UserExercise,
     WorkoutPlan,
+    WorkoutPlanSet,
     WorkoutRecord
 )
 
@@ -150,6 +153,44 @@ class WorkoutRecordCreateResponse(BaseModel):
     best_posture_score: int
 
 
+class WorkoutPlanSetItem(BaseModel):
+    workout_plan_set_id: int | None
+    set_order: int
+    repetition_count: int | None
+    duration_seconds: int | None
+    weight_kg: Decimal | None
+    is_completed: bool
+
+
+class WorkoutPlanSetInput(BaseModel):
+    repetition_count: int | None = Field(
+        default=None,
+        ge=1,
+        le=10000
+    )
+    duration_seconds: int | None = Field(
+        default=None,
+        ge=1,
+        le=86400
+    )
+    weight_kg: Decimal | None = Field(
+        default=None,
+        ge=0,
+        le=99999.99
+    )
+
+    @model_validator(mode="after")
+    def require_repetition_or_duration(self):
+        if (
+            self.repetition_count is None
+            and self.duration_seconds is None
+        ):
+            raise ValueError(
+                "각 세트에는 반복 횟수 또는 유지 시간이 필요합니다."
+            )
+        return self
+
+
 class TodayWorkoutPlanItem(BaseModel):
     workout_plan_id: int
     exercise_type: str
@@ -162,6 +203,7 @@ class TodayWorkoutPlanItem(BaseModel):
     estimated_minutes: int
     is_completed: bool
     ai_coaching_supported: bool
+    sets: list[WorkoutPlanSetItem]
 
 
 class TodayWorkoutPlanResponse(BaseModel):
@@ -201,12 +243,14 @@ class WorkoutPlanCreate(BaseModel):
 
     plan_date: date
 
-    set_count: int = Field(
+    set_count: int | None = Field(
+        default=None,
         ge=1,
         le=100,
     )
 
-    repetition_count: int = Field(
+    repetition_count: int | None = Field(
+        default=None,
         ge=1,
         le=10000,
     )
@@ -215,6 +259,21 @@ class WorkoutPlanCreate(BaseModel):
         ge=1,
         le=1440,
     )
+    sets: list[WorkoutPlanSetInput] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+    )
+
+    @model_validator(mode="after")
+    def require_sets_or_legacy_summary(self):
+        if self.sets:
+            return self
+        if self.set_count and self.repetition_count:
+            return self
+        raise ValueError(
+            "세트 상세 또는 기존 세트 수와 반복 횟수가 필요합니다."
+        )
 
     @field_validator(
         "exercise_code"
@@ -265,12 +324,14 @@ class WorkoutPlanUpdate(BaseModel):
         gt=0
     )
 
-    set_count: int = Field(
+    set_count: int | None = Field(
+        default=None,
         ge=1,
         le=100,
     )
 
-    repetition_count: int = Field(
+    repetition_count: int | None = Field(
+        default=None,
         ge=1,
         le=10000,
     )
@@ -279,6 +340,21 @@ class WorkoutPlanUpdate(BaseModel):
         ge=1,
         le=1440,
     )
+    sets: list[WorkoutPlanSetInput] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+    )
+
+    @model_validator(mode="after")
+    def require_sets_or_legacy_summary(self):
+        if self.sets:
+            return self
+        if self.set_count and self.repetition_count:
+            return self
+        raise ValueError(
+            "세트 상세 또는 기존 세트 수와 반복 횟수가 필요합니다."
+        )
 
 
 class WorkoutPlanUpdateResponse(BaseModel):
@@ -351,10 +427,88 @@ def get_owned_user_exercise(
     return user_exercise
 
 
+def build_plan_set_inputs(
+    sets: list[WorkoutPlanSetInput] | None,
+    set_count: int | None,
+    repetition_count: int | None,
+) -> list[WorkoutPlanSetInput]:
+    if sets:
+        return sets
+
+    if set_count is None or repetition_count is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="세트 상세 정보가 필요합니다.",
+        )
+
+    return [
+        WorkoutPlanSetInput(
+            repetition_count=repetition_count,
+        )
+        for _ in range(set_count)
+    ]
+
+
+def sync_plan_sets(
+    db: Session,
+    workout_plan: WorkoutPlan,
+    set_inputs: list[WorkoutPlanSetInput],
+) -> list[WorkoutPlanSet]:
+    existing_sets = db.scalars(
+        select(WorkoutPlanSet).where(
+            WorkoutPlanSet.workout_plan_id
+            == workout_plan.workout_plan_id
+        )
+    ).all()
+
+    for existing_set in existing_sets:
+        db.delete(existing_set)
+
+    db.flush()
+
+    plan_sets = []
+
+    for index, set_input in enumerate(set_inputs, start=1):
+        plan_set = WorkoutPlanSet(
+            workout_plan_id=workout_plan.workout_plan_id,
+            set_order=index,
+            repetition_count=set_input.repetition_count,
+            duration_seconds=set_input.duration_seconds,
+            weight_kg=set_input.weight_kg,
+            is_completed=workout_plan.is_completed,
+        )
+        db.add(plan_set)
+        plan_sets.append(plan_set)
+
+    workout_plan.set_count = len(set_inputs)
+    workout_plan.repetition_count = (
+        set_inputs[0].repetition_count or 0
+    )
+
+    return plan_sets
+
+
+def get_plan_sets(
+    db: Session,
+    workout_plan: WorkoutPlan,
+) -> list[WorkoutPlanSet]:
+    plan_sets = db.scalars(
+        select(WorkoutPlanSet)
+        .where(
+            WorkoutPlanSet.workout_plan_id
+            == workout_plan.workout_plan_id
+        )
+        .order_by(WorkoutPlanSet.set_order.asc())
+    ).all()
+
+    return list(plan_sets)
+
+
 def create_plan_item(
     workout_plan: WorkoutPlan,
     exercise: Exercise | None,
     user_exercise: UserExercise | None,
+    plan_sets: list[WorkoutPlanSet],
 ) -> TodayWorkoutPlanItem:
     if (exercise is None) == (user_exercise is None):
         raise HTTPException(
@@ -399,6 +553,17 @@ def create_plan_item(
             exercise_code
             in AI_COACHING_EXERCISE_CODES
         ),
+        sets=[
+            WorkoutPlanSetItem(
+                workout_plan_set_id=plan_set.workout_plan_set_id,
+                set_order=plan_set.set_order,
+                repetition_count=plan_set.repetition_count,
+                duration_seconds=plan_set.duration_seconds,
+                weight_kg=plan_set.weight_kg,
+                is_completed=plan_set.is_completed,
+            )
+            for plan_set in plan_sets
+        ],
     )
 
 
@@ -679,6 +844,7 @@ def get_today_workout_plan(
                 plan,
                 exercise,
                 user_exercise,
+                get_plan_sets(db, plan),
             )
         )
 
@@ -807,16 +973,15 @@ def create_or_update_workout_plan(
         )
     )
 
+    set_inputs = build_plan_set_inputs(
+        request.sets,
+        request.set_count,
+        request.repetition_count,
+    )
     created = existing_plan is None
 
     if existing_plan:
         workout_plan = existing_plan
-        workout_plan.set_count = (
-            request.set_count
-        )
-        workout_plan.repetition_count = (
-            request.repetition_count
-        )
         workout_plan.estimated_minutes = (
             request.estimated_minutes
         )
@@ -828,10 +993,8 @@ def create_or_update_workout_plan(
                 user_exercise.user_exercise_id if user_exercise else None
             ),
             plan_date=request.plan_date,
-            set_count=request.set_count,
-            repetition_count=(
-                request.repetition_count
-            ),
+            set_count=len(set_inputs),
+            repetition_count=set_inputs[0].repetition_count or 0,
             estimated_minutes=(
                 request.estimated_minutes
             ),
@@ -840,8 +1003,16 @@ def create_or_update_workout_plan(
         db.add(workout_plan)
 
     try:
+        db.flush()
+        plan_sets = sync_plan_sets(
+            db,
+            workout_plan,
+            set_inputs,
+        )
         db.commit()
         db.refresh(workout_plan)
+        for plan_set in plan_sets:
+            db.refresh(plan_set)
 
     except IntegrityError as error:
         db.rollback()
@@ -881,6 +1052,7 @@ def create_or_update_workout_plan(
             workout_plan,
             exercise,
             user_exercise,
+            plan_sets,
         ),
     )
 
@@ -956,19 +1128,25 @@ def update_workout_plan(
             detail="운동 참조가 올바르지 않은 비정상 계획입니다.",
         )
 
-    workout_plan.set_count = (
-        request.set_count
-    )
-    workout_plan.repetition_count = (
-        request.repetition_count
+    set_inputs = build_plan_set_inputs(
+        request.sets,
+        request.set_count,
+        request.repetition_count,
     )
     workout_plan.estimated_minutes = (
         request.estimated_minutes
     )
 
     try:
+        plan_sets = sync_plan_sets(
+            db,
+            workout_plan,
+            set_inputs,
+        )
         db.commit()
         db.refresh(workout_plan)
+        for plan_set in plan_sets:
+            db.refresh(plan_set)
 
     except Exception as error:
         db.rollback()
@@ -992,6 +1170,7 @@ def update_workout_plan(
             workout_plan,
             exercise,
             user_exercise,
+            plan_sets,
         ),
     )
 
@@ -1067,6 +1246,9 @@ def complete_workout_plan(
     workout_plan.is_completed = True
 
     try:
+        plan_sets = get_plan_sets(db, workout_plan)
+        for plan_set in plan_sets:
+            plan_set.is_completed = True
         db.commit()
         db.refresh(workout_plan)
 
@@ -1092,6 +1274,7 @@ def complete_workout_plan(
             workout_plan,
             exercise,
             user_exercise,
+            plan_sets,
         ),
     )
 
@@ -1317,6 +1500,14 @@ def create_workout_record(
 
         if today_plan:
             today_plan.is_completed = True
+            today_plan_sets = db.scalars(
+                select(WorkoutPlanSet).where(
+                    WorkoutPlanSet.workout_plan_id
+                    == today_plan.workout_plan_id
+                )
+            ).all()
+            for plan_set in today_plan_sets:
+                plan_set.is_completed = True
 
         db.commit()
         db.refresh(workout_record)

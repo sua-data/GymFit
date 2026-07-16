@@ -19,6 +19,7 @@ from sqlalchemy.orm import (
 from backend.database import Base
 from backend.models.exercise import Exercise
 from backend.models.user_exercise import UserExercise
+from backend.models.workout_plan_set import WorkoutPlanSet
 
 
 class WorkoutPlan(Base):
@@ -137,3 +138,8 @@ class WorkoutPlan(Base):
 
     exercise: Mapped[Exercise | None] = relationship()
     user_exercise: Mapped[UserExercise | None] = relationship()
+    sets: Mapped[list[WorkoutPlanSet]] = relationship(
+        back_populates="workout_plan",
+        cascade="all, delete-orphan",
+        order_by="WorkoutPlanSet.set_order",
+    )

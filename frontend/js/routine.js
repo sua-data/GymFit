@@ -46,6 +46,10 @@ const customExerciseNameField = document.querySelector(
 const customExerciseName = document.querySelector(
   "#customExerciseName"
 );
+const routineSetRows = document.querySelector("#routineSetRows");
+const routineAddSetButton = document.querySelector(
+  "#routineAddSetButton"
+);
 
 let activePlanDate = null;
 let isSavingPlan = false;
@@ -296,6 +300,144 @@ function clearFormError() {
   routineFormError.hidden = true;
 }
 
+function normalizeOptionalNumber(value) {
+  const text = String(value ?? "").trim();
+  return text === "" ? null : Number(text);
+}
+
+function createSetRow(setData = {}, copyPrevious = false) {
+  const previousRow = routineSetRows.lastElementChild;
+  const previousValues = previousRow
+    ? {
+        weight_kg: previousRow.querySelector(
+          '[data-set-field="weight_kg"]'
+        ).value,
+        repetition_count: previousRow.querySelector(
+          '[data-set-field="repetition_count"]'
+        ).value,
+        duration_seconds: previousRow.querySelector(
+          '[data-set-field="duration_seconds"]'
+        ).value,
+      }
+    : {};
+  const values = copyPrevious ? previousValues : setData;
+  const row = document.createElement("div");
+  row.className = "routine-set-row";
+  row.innerHTML = `
+    <strong class="routine-set-order"></strong>
+    <label>
+      <span>무게 kg</span>
+      <input
+        type="number"
+        min="0"
+        max="99999.99"
+        step="0.01"
+        inputmode="decimal"
+        data-set-field="weight_kg"
+        value="${escapeHtml(values.weight_kg ?? "")}"
+      >
+    </label>
+    <label>
+      <span>반복 회</span>
+      <input
+        type="number"
+        min="1"
+        max="10000"
+        inputmode="numeric"
+        data-set-field="repetition_count"
+        value="${escapeHtml(values.repetition_count ?? "")}"
+      >
+    </label>
+    <label>
+      <span>시간 초</span>
+      <input
+        type="number"
+        min="1"
+        max="86400"
+        inputmode="numeric"
+        data-set-field="duration_seconds"
+        value="${escapeHtml(values.duration_seconds ?? "")}"
+      >
+    </label>
+    <button type="button" class="routine-set-delete">삭제</button>
+  `;
+  row.querySelector(".routine-set-delete").addEventListener(
+    "click",
+    () => {
+      if (routineSetRows.children.length <= 1) {
+        showFormError("최소 1세트가 필요합니다.");
+        return;
+      }
+      row.remove();
+      updateSetOrders();
+    }
+  );
+  routineSetRows.appendChild(row);
+  updateSetOrders();
+}
+
+function updateSetOrders() {
+  Array.from(routineSetRows.children).forEach((row, index) => {
+    row.querySelector(".routine-set-order").textContent =
+      `${index + 1}세트`;
+  });
+}
+
+function renderSetRows(sets) {
+  routineSetRows.innerHTML = "";
+  const sourceSets = sets?.length
+    ? sets
+    : [{ repetition_count: 10 }];
+  sourceSets.forEach((setData) => createSetRow(setData));
+}
+
+function collectSetPayload() {
+  const rows = Array.from(routineSetRows.children);
+  if (!rows.length) {
+    throw new Error("최소 1세트가 필요합니다.");
+  }
+
+  return rows.map((row, index) => {
+    const weightKg = normalizeOptionalNumber(
+      row.querySelector('[data-set-field="weight_kg"]').value
+    );
+    const repetitionCount = normalizeOptionalNumber(
+      row.querySelector('[data-set-field="repetition_count"]').value
+    );
+    const durationSeconds = normalizeOptionalNumber(
+      row.querySelector('[data-set-field="duration_seconds"]').value
+    );
+
+    if (repetitionCount === null && durationSeconds === null) {
+      throw new Error(
+        `${index + 1}세트에 반복 횟수 또는 유지 시간을 입력해 주세요.`
+      );
+    }
+    if (
+      (weightKg !== null && !Number.isFinite(weightKg))
+      || (
+        repetitionCount !== null
+        && !Number.isInteger(repetitionCount)
+      )
+      || (
+        durationSeconds !== null
+        && !Number.isInteger(durationSeconds)
+      )
+      || (weightKg !== null && weightKg < 0)
+      || (repetitionCount !== null && repetitionCount <= 0)
+      || (durationSeconds !== null && durationSeconds <= 0)
+    ) {
+      throw new Error(`${index + 1}세트 입력값을 확인해 주세요.`);
+    }
+
+    return {
+      weight_kg: weightKg,
+      repetition_count: repetitionCount,
+      duration_seconds: durationSeconds,
+    };
+  });
+}
+
 function resetRoutineForm() {
   formMode = "create";
   editingPlan = null;
@@ -313,6 +455,7 @@ function resetRoutineForm() {
   routineExerciseSelect.disabled =
     exerciseListState !== "ready";
   routinePlanDate.disabled = false;
+  renderSetRows([{ repetition_count: 10 }]);
 
   clearFormError();
   updateSaveButtonState();
@@ -351,11 +494,16 @@ function openEditRoutineSheet(item) {
   routineExerciseSelect.disabled = true;
   routinePlanDate.value = activePlanDate;
   routinePlanDate.disabled = true;
-  routineForm.elements.set_count.value = item.set_count;
-  routineForm.elements.repetition_count.value =
-    item.repetition_count;
   routineForm.elements.estimated_minutes.value =
     item.estimated_minutes;
+  renderSetRows(
+    item.sets?.length
+      ? item.sets
+      : Array.from(
+          { length: item.set_count },
+          () => ({ repetition_count: item.repetition_count })
+        )
+  );
 
   clearFormError();
   updateSaveButtonState();
@@ -512,14 +660,17 @@ async function deletePlan(userId, workoutPlanId) {
 }
 
 function moveToCoaching(item) {
+  // 현재 코칭 카운터는 세트별 목표 변경을 지원하지 않으므로
+  // 첫 번째 세트의 반복 횟수를 전체 세트의 targetReps로 사용합니다.
+  const firstSetReps = item.sets?.[0]?.repetition_count;
   const params =
     new URLSearchParams({
       exercise_code:
         item.exercise_code,
       reps:
-        String(item.repetition_count),
+        String(firstSetReps || item.repetition_count),
       sets:
-        String(item.set_count),
+        String(item.sets?.length || item.set_count),
     });
 
   window.location.href =
@@ -535,7 +686,13 @@ function getButtonState(item) {
     };
   }
 
-  if (item.ai_coaching_supported) {
+  if (
+    item.ai_coaching_supported
+    && Number(
+      item.sets?.[0]?.repetition_count
+      ?? item.repetition_count
+    ) > 0
+  ) {
     return {
       label: "코칭 시작",
       disabled: false,
@@ -574,6 +731,25 @@ function renderPlan(data) {
     card.className =
       `routine-card${item.is_completed ? " completed" : ""}`;
 
+    const setDetails = (item.sets || []).map((setItem) => {
+      const details = [];
+      if (setItem.weight_kg !== null) {
+        details.push(`${Number(setItem.weight_kg)}kg`);
+      }
+      if (setItem.repetition_count !== null) {
+        details.push(`${setItem.repetition_count}회`);
+      }
+      if (setItem.duration_seconds !== null) {
+        details.push(`${setItem.duration_seconds}초`);
+      }
+      return `
+        <li>
+          <strong>${setItem.set_order}세트</strong>
+          <span>${details.join(" × ")}</span>
+        </li>
+      `;
+    }).join("");
+
     card.innerHTML = `
       <div class="routine-card-index">
         ${item.is_completed ? "✓" : String(index + 1).padStart(2, "0")}
@@ -590,6 +766,10 @@ function renderPlan(data) {
           <span>${Number(item.repetition_count) || 0}회</span>
           <span>${Number(item.estimated_minutes) || 0}분</span>
         </div>
+
+        <ol class="routine-set-summary">
+          ${setDetails}
+        </ol>
 
         <div class="routine-card-actions">
           <button
@@ -726,6 +906,10 @@ routineAddButton.addEventListener("click", openCreateRoutineSheet);
 routineSheetCloseButton.addEventListener("click", closeRoutineSheet);
 routineCancelButton.addEventListener("click", closeRoutineSheet);
 exerciseRetryButton.addEventListener("click", loadActiveExercises);
+routineAddSetButton.addEventListener(
+  "click",
+  () => createSetRow({}, true)
+);
 routineExerciseSelect.addEventListener("change", () => {
   syncCustomExerciseField();
 });
@@ -791,10 +975,18 @@ routineForm.addEventListener("submit", async (event) => {
   clearFormError();
 
   const formData = new FormData(routineForm);
+  let sets;
+
+  try {
+    sets = collectSetPayload();
+  } catch (error) {
+    showFormError(error.message);
+    return;
+  }
+
   const editablePayload = {
-    set_count: Number(formData.get("set_count")),
-    repetition_count: Number(formData.get("repetition_count")),
     estimated_minutes: Number(formData.get("estimated_minutes")),
+    sets,
   };
 
   isSavingPlan = true;
