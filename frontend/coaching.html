@@ -24,7 +24,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=3"
+    href="/static/css/coaching.css?v=7"
   >
 
   <script
@@ -33,7 +33,12 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=3"
+    src="/static/js/coaching_plan.js?v=1"
+    defer
+  ></script>
+
+  <script
+    src="/static/js/coaching.js?v=7"
     defer
   ></script>
 </head>
@@ -81,31 +86,100 @@
       </section>
 
 
-      <!-- 목표 설정 -->
-      <section class="target-card">
-        <div>
-          <span>목표 반복</span>
+      <!-- 코칭 시작 설정 -->
+      <section class="coaching-mode-loading" id="coachingModeLoading">
+        오늘의 운동 계획을 확인하고 있습니다.
+      </section>
 
-          <select id="targetRepsSelect">
-            <option value="5">5회</option>
-            <option value="10" selected>10회</option>
-            <option value="12">12회</option>
-            <option value="15">15회</option>
-            <option value="20">20회</option>
-          </select>
+      <section class="coaching-settings-card" id="coachingSettingsCard" hidden>
+        <div class="coaching-settings-heading">
+          <div>
+            <span id="coachingSettingsEyebrow">FREE COACHING</span>
+            <h2 id="coachingSettingsTitle">자유 코칭 설정</h2>
+          </div>
+          <p id="coachingSettingsMessage"></p>
         </div>
 
-        <div>
-          <span>목표 세트</span>
+        <div class="free-coaching-settings" id="freeCoachingSettings" hidden>
+          <div class="free-coaching-set-list" id="freeCoachingSetList"></div>
 
-          <select id="targetSetsSelect">
-            <option value="1">1세트</option>
-            <option value="2">2세트</option>
-            <option value="3" selected>3세트</option>
-            <option value="4">4세트</option>
-            <option value="5">5세트</option>
-          </select>
+          <button
+            type="button"
+            class="free-set-add-button"
+            id="freeSetAddButton"
+          >
+            + 세트 추가
+          </button>
         </div>
+
+        <div
+          class="routine-coaching-sets"
+          id="routineCoachingSets"
+          hidden
+        ></div>
+
+        <fieldset class="rest-setting">
+          <legend>세트 사이 휴식</legend>
+
+          <div class="rest-preset-buttons">
+            <button type="button" data-rest-seconds="0">0초</button>
+            <button type="button" data-rest-seconds="30">30초</button>
+            <button
+              type="button"
+              data-rest-seconds="60"
+              class="active"
+            >60초</button>
+            <button type="button" data-rest-seconds="90">90초</button>
+          </div>
+
+          <label class="custom-rest-input">
+            <span>직접 입력</span>
+            <input
+              type="number"
+              id="customRestSeconds"
+              min="0"
+              max="300"
+              inputmode="numeric"
+              placeholder="0~300"
+            >
+            <b>초</b>
+          </label>
+        </fieldset>
+      </section>
+
+      <section class="set-progress-card" id="setProgressCard" hidden>
+        <div>
+          <span>현재 세트</span>
+          <strong>
+            <b id="coachingSetCurrent">1</b>
+            /
+            <small id="coachingSetTotal">3</small>
+          </strong>
+        </div>
+        <div>
+          <span>중량</span>
+          <strong id="coachingSetWeight">맨몸</strong>
+        </div>
+        <p>
+          전체 반복
+          <b id="totalCompletedRepCount">0</b>
+          /
+          <span id="totalTargetRepCount">30</span>회
+        </p>
+        <p id="coachingPlanMeta">스쿼트 · 자유 코칭</p>
+        <em id="coachingModeLabel">자유 코칭</em>
+      </section>
+
+      <section class="rest-card" id="restCard" hidden>
+        <strong id="restTitle">1세트 완료</strong>
+        <p>
+          다음 세트까지
+          <b id="restTime">01:00</b>
+        </p>
+        <span id="nextSetSummary"></span>
+        <button type="button" id="skipRestButton">
+          휴식 건너뛰기
+        </button>
       </section>
 
 

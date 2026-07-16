@@ -3,16 +3,6 @@ const exerciseTabs =
     ".exercise-tab"
   );
 
-const targetRepsSelect =
-  document.querySelector(
-    "#targetRepsSelect"
-  );
-
-const targetSetsSelect =
-  document.querySelector(
-    "#targetSetsSelect"
-  );
-
 const cameraVideo =
   document.querySelector(
     "#cameraVideo"
@@ -83,6 +73,55 @@ const finishButton =
     "#finishButton"
   );
 
+const coachingSetCurrent =
+  document.querySelector("#coachingSetCurrent");
+const coachingSetTotal =
+  document.querySelector("#coachingSetTotal");
+const coachingSetWeight =
+  document.querySelector("#coachingSetWeight");
+const totalCompletedRepCount =
+  document.querySelector("#totalCompletedRepCount");
+const totalTargetRepCount =
+  document.querySelector("#totalTargetRepCount");
+const coachingModeLabel =
+  document.querySelector("#coachingModeLabel");
+const coachingPlanMeta =
+  document.querySelector("#coachingPlanMeta");
+const restCard =
+  document.querySelector("#restCard");
+const restTitle =
+  document.querySelector("#restTitle");
+const restTime =
+  document.querySelector("#restTime");
+const nextSetSummary =
+  document.querySelector("#nextSetSummary");
+const skipRestButton =
+  document.querySelector("#skipRestButton");
+const coachingSettingsEyebrow =
+  document.querySelector("#coachingSettingsEyebrow");
+const coachingSettingsTitle =
+  document.querySelector("#coachingSettingsTitle");
+const coachingSettingsMessage =
+  document.querySelector("#coachingSettingsMessage");
+const routineCoachingSets =
+  document.querySelector("#routineCoachingSets");
+const restPresetButtons =
+  document.querySelectorAll("[data-rest-seconds]");
+const customRestSeconds =
+  document.querySelector("#customRestSeconds");
+const coachingModeLoading =
+  document.querySelector("#coachingModeLoading");
+const coachingSettingsCard =
+  document.querySelector("#coachingSettingsCard");
+const freeCoachingSettings =
+  document.querySelector("#freeCoachingSettings");
+const freeCoachingSetList =
+  document.querySelector("#freeCoachingSetList");
+const freeSetAddButton =
+  document.querySelector("#freeSetAddButton");
+const setProgressCard =
+  document.querySelector("#setProgressCard");
+
 
 let selectedExerciseCode =
   "SQUAT";
@@ -95,6 +134,23 @@ let targetSets = 3;
 
 let currentReps = 0;
 let currentSets = 0;
+let coachingSets = [];
+let currentSetIndex = 0;
+let totalTargetReps = 0;
+let totalCompletedReps = 0;
+let isCurrentSetCompleted = false;
+let isResting = false;
+let isWorkoutFinished = false;
+let isSavingWorkout = false;
+let workoutRecordSaved = false;
+let savedWorkoutResult = null;
+let restIntervalId = null;
+let restSecondsRemaining = 0;
+let restDurationSeconds = 60;
+let coachingWorkoutPlanId = null;
+let isPlanCoaching = false;
+let coachingEstimatedMinutes = 0;
+let freeCoachingRows = [];
 
 let postureScores = [];
 
@@ -117,6 +173,10 @@ const captureContext =
   );
 
 const ANALYSIS_INTERVAL_MS = 350;
+const COACHING_REST_STORAGE_KEY =
+  "gymfitCoachingRestSeconds";
+const FREE_COACHING_SETS_STORAGE_KEY =
+  "gymfitFreeCoachingSets";
 
 
 /* =========================
@@ -148,53 +208,383 @@ function getLoginUserId() {
   }
 }
 
+function getCurrentCoachingSet() {
+  return coachingSets[currentSetIndex] || null;
+}
 
-/* =========================
-   전달받은 운동 및 목표
-========================= */
+function formatSetWeight(weight) {
+  const value = Number(weight || 0);
+  return value > 0 ? `${value}kg` : "맨몸";
+}
 
-function selectOrAddOption(
-  selectElement,
-  value,
-  suffix
-) {
+function createDefaultFreeCoachingSets() {
+  return Array.from({ length: 3 }, (_, index) => ({
+    set_order: index + 1,
+    repetition_count: 10,
+    weight_kg: 0,
+  }));
+}
+
+function normalizeFreeCoachingSets(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 20) {
+    return null;
+  }
+
+  const normalized = value.map((set, index) => {
+    const weight = set.weight_kg === "" ? 0 : Number(set.weight_kg);
+    const repetitions = Number(set.repetition_count);
+
+    if (
+      !Number.isFinite(weight)
+      || weight < 0
+      || weight > 500
+      || Math.round(weight * 10) !== weight * 10
+      || !Number.isInteger(repetitions)
+      || repetitions < 1
+      || repetitions > 100
+    ) {
+      return null;
+    }
+
+    return {
+      set_order: index + 1,
+      weight_kg: weight,
+      repetition_count: repetitions,
+    };
+  });
+
+  return normalized.every(Boolean) ? normalized : null;
+}
+
+function saveFreeCoachingSets() {
+  sessionStorage.setItem(
+    FREE_COACHING_SETS_STORAGE_KEY,
+    JSON.stringify(freeCoachingRows)
+  );
+}
+
+function restoreFreeCoachingSets() {
+  const savedValue = sessionStorage.getItem(
+    FREE_COACHING_SETS_STORAGE_KEY
+  );
+
+  if (!savedValue) {
+    freeCoachingRows = createDefaultFreeCoachingSets();
+    return;
+  }
+
+  try {
+    const normalized = normalizeFreeCoachingSets(JSON.parse(savedValue));
+    if (!normalized) {
+      throw new Error("Invalid free coaching sets");
+    }
+    freeCoachingRows = normalized;
+  } catch {
+    sessionStorage.removeItem(FREE_COACHING_SETS_STORAGE_KEY);
+    freeCoachingRows = createDefaultFreeCoachingSets();
+  }
+}
+
+function readFreeCoachingRowsFromInputs() {
+  return Array.from(
+    freeCoachingSetList.querySelectorAll(".free-coaching-set-row")
+  ).map((row, index) => ({
+    set_order: index + 1,
+    weight_kg: row.querySelector("[data-free-weight]").value,
+    repetition_count: row.querySelector("[data-free-reps]").value,
+  }));
+}
+
+function renderFreeCoachingRows() {
+  freeCoachingSetList.innerHTML = freeCoachingRows
+    .map(
+      (set, index) => `
+        <div class="free-coaching-set-row" data-free-set-index="${index}">
+          <strong class="free-coaching-set-order">${index + 1}세트</strong>
+          <div class="free-coaching-set-field">
+            <span>중량</span>
+            <label>
+              <input
+                type="number"
+                min="0"
+                max="500"
+                step="0.1"
+                inputmode="decimal"
+                value="${Number(set.weight_kg || 0)}"
+                data-free-weight
+                aria-label="${index + 1}세트 중량"
+              >
+              <b>kg</b>
+            </label>
+          </div>
+          <div class="free-coaching-set-field">
+            <span>반복</span>
+            <label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                inputmode="numeric"
+                value="${Number(set.repetition_count)}"
+                data-free-reps
+                aria-label="${index + 1}세트 반복 횟수"
+              >
+              <b>회</b>
+            </label>
+          </div>
+          <button
+            type="button"
+            class="free-set-delete-button"
+            data-free-set-delete="${index}"
+            aria-label="${index + 1}세트 삭제"
+            ${freeCoachingRows.length === 1 ? "disabled" : ""}
+          >×</button>
+        </div>
+      `
+    )
+    .join("");
+
+  freeSetAddButton.disabled = freeCoachingRows.length >= 20;
+}
+
+function setFreeCoachingInputsDisabled(disabled) {
+  freeCoachingSetList.querySelectorAll("input, button").forEach((element) => {
+    element.disabled = disabled
+      || (
+        element.matches("[data-free-set-delete]")
+        && freeCoachingRows.length === 1
+      );
+  });
+  freeSetAddButton.disabled = disabled || freeCoachingRows.length >= 20;
+}
+
+function validateFreeCoachingSets() {
+  const rows = readFreeCoachingRowsFromInputs();
+  const normalized = normalizeFreeCoachingSets(rows);
+
+  if (!normalized) {
+    const invalidIndex = rows.findIndex((set) => {
+      const weight = set.weight_kg === "" ? 0 : Number(set.weight_kg);
+      const repetitions = Number(set.repetition_count);
+      return (
+        !Number.isFinite(weight)
+        || weight < 0
+        || weight > 500
+        || Math.round(weight * 10) !== weight * 10
+        || !Number.isInteger(repetitions)
+        || repetitions < 1
+        || repetitions > 100
+      );
+    });
+    setSettingsMessage(
+      `${Math.max(0, invalidIndex) + 1}세트의 중량은 0~500kg(소수 첫째 자리), 반복은 1~100회로 입력해 주세요.`
+    );
+    return null;
+  }
+
+  freeCoachingRows = normalized;
+  saveFreeCoachingSets();
+  return normalized.map((set) => ({
+    ...set,
+    duration_seconds: null,
+  }));
+}
+
+function getValidSquatPlan(plan) {
   if (
-    !Number.isInteger(value)
-    || value <= 0
+    !plan
+    || plan.exercise_code !== "SQUAT"
+    || !plan.workout_plan_id
+    || !Array.isArray(plan.sets)
   ) {
     return null;
   }
 
-  const optionExists =
-    Array.from(
-      selectElement.options
-    ).some(
-      (option) =>
-        Number(option.value)
-        === value
+  const sets = plan.sets
+    .filter((set) => Number(set.repetition_count || 0) > 0)
+    .sort(
+      (first, second) =>
+        Number(first.set_order) - Number(second.set_order)
     );
 
-  if (!optionExists) {
-    const option =
-      document.createElement(
-        "option"
-      );
-
-    option.value = String(value);
-    option.textContent =
-      `${value}${suffix}`;
-
-    selectElement.appendChild(
-      option
-    );
-  }
-
-  selectElement.value =
-    String(value);
-
-  return value;
+  return sets.length
+    ? {
+        ...plan,
+        sets,
+      }
+    : null;
 }
 
+function finishModeLoading() {
+  coachingModeLoading.hidden = true;
+  coachingSettingsCard.hidden = false;
+  setProgressCard.hidden = false;
+  startButton.disabled = false;
+}
+
+function setSettingsMessage(message = "") {
+  coachingSettingsMessage.textContent = message;
+}
+
+function updateRestSettingUi() {
+  restPresetButtons.forEach((button) => {
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.restSeconds) === restDurationSeconds
+    );
+  });
+  customRestSeconds.value = [0, 30, 60, 90].includes(
+    restDurationSeconds
+  )
+    ? ""
+    : String(restDurationSeconds);
+}
+
+function setRestDuration(value) {
+  const seconds = Number(value);
+  if (
+    !Number.isInteger(seconds)
+    || seconds < 0
+    || seconds > 300
+  ) {
+    setSettingsMessage("휴식시간은 0~300초로 입력해 주세요.");
+    return false;
+  }
+
+  restDurationSeconds = seconds;
+  sessionStorage.setItem(
+    COACHING_REST_STORAGE_KEY,
+    String(restDurationSeconds)
+  );
+  setSettingsMessage();
+  updateRestSettingUi();
+  return true;
+}
+
+function restoreRestDuration() {
+  const savedValue = sessionStorage.getItem(
+    COACHING_REST_STORAGE_KEY
+  );
+  if (savedValue === null || !setRestDuration(savedValue)) {
+    restDurationSeconds = 60;
+    updateRestSettingUi();
+  }
+}
+
+function renderRoutineCoachingSets() {
+  routineCoachingSets.innerHTML = coachingSets
+    .map(
+      (set) => `
+        <div class="routine-coaching-set">
+          <strong>${Number(set.set_order)}세트</strong>
+          <span>
+            ${formatSetWeight(set.weight_kg)}
+            × ${Number(set.repetition_count)}회
+          </span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function applyDetailedCoachingPlan(plan) {
+  const validPlan = getValidSquatPlan(plan);
+
+  if (!validPlan) {
+    return false;
+  }
+
+  coachingSets = validPlan.sets;
+  coachingWorkoutPlanId = validPlan.workout_plan_id;
+  coachingEstimatedMinutes = Number(validPlan.estimated_minutes || 0);
+  isPlanCoaching = coachingWorkoutPlanId !== null;
+  selectedExerciseCode = "SQUAT";
+  selectedExerciseName = validPlan.exercise_name || "스쿼트";
+  targetSets = coachingSets.length;
+  targetReps = Number(coachingSets[0].repetition_count);
+  totalTargetReps = coachingSets.reduce(
+    (sum, set) => sum + Number(set.repetition_count || 0),
+    0
+  );
+
+  freeCoachingSettings.hidden = true;
+  coachingSettingsEyebrow.textContent = "TODAY ROUTINE";
+  coachingSettingsTitle.textContent = "오늘의 스쿼트";
+  routineCoachingSets.hidden = false;
+  renderRoutineCoachingSets();
+  coachingModeLabel.textContent = isPlanCoaching
+    ? "루틴 코칭"
+    : "자유 코칭";
+  coachingPlanMeta.textContent =
+    `${selectedExerciseName} · ${
+      coachingEstimatedMinutes > 0
+        ? `예상 ${coachingEstimatedMinutes}분`
+        : "시간 미설정"
+    }`;
+  return true;
+}
+
+function prepareFreeCoaching() {
+  coachingSets = freeCoachingRows.map((set) => ({
+    ...set,
+    duration_seconds: null,
+  }));
+  coachingWorkoutPlanId = null;
+  coachingEstimatedMinutes = 0;
+  isPlanCoaching = false;
+  freeCoachingSettings.hidden = false;
+  renderFreeCoachingRows();
+  coachingSettingsEyebrow.textContent = "FREE COACHING";
+  coachingSettingsTitle.textContent = "자유 코칭 설정";
+  routineCoachingSets.hidden = true;
+  routineCoachingSets.innerHTML = "";
+  targetSets = coachingSets.length;
+  targetReps = Number(coachingSets[0].repetition_count);
+  totalTargetReps = coachingSets.reduce(
+    (sum, set) => sum + Number(set.repetition_count || 0),
+    0
+  );
+  coachingModeLabel.textContent = "자유 코칭";
+  coachingPlanMeta.textContent = `${selectedExerciseName} · 자유 코칭`;
+}
+
+function updateDetailedProgressDisplay() {
+  const currentSet = getCurrentCoachingSet();
+  const currentTarget = Number(currentSet?.repetition_count || targetReps);
+
+  coachingSetCurrent.textContent = String(
+    Math.min(currentSetIndex + 1, coachingSets.length || 1)
+  );
+  coachingSetTotal.textContent = String(coachingSets.length || targetSets);
+  coachingSetWeight.textContent = formatSetWeight(currentSet?.weight_kg);
+  currentRepCount.textContent = currentReps;
+  targetRepCount.textContent = currentTarget;
+  currentSetCount.textContent = currentSets;
+  targetSetCount.textContent = coachingSets.length || targetSets;
+  totalCompletedRepCount.textContent = totalCompletedReps;
+  totalTargetRepCount.textContent = totalTargetReps;
+}
+
+function clearRestTimer() {
+  if (restIntervalId !== null) {
+    window.clearInterval(restIntervalId);
+    restIntervalId = null;
+  }
+}
+
+function formatRestTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${
+    String(remainingSeconds).padStart(2, "0")
+  }`;
+}
+
+
+/* =========================
+   전달받은 운동 및 목표
+========================= */
 
 function applyCoachingQuery() {
   const params =
@@ -266,32 +656,9 @@ function applyCoachingQuery() {
   selectedExerciseName =
     targetTab.dataset.exerciseName;
 
-  const appliedReps =
-    selectOrAddOption(
-      targetRepsSelect,
-      requestedReps,
-      "회"
-    );
-
-  if (appliedReps !== null) {
-    targetReps = appliedReps;
-  }
-
-  const appliedSets =
-    selectOrAddOption(
-      targetSetsSelect,
-      requestedSets,
-      "세트"
-    );
-
-  if (appliedSets !== null) {
-    targetSets = appliedSets;
-  }
-
-  return (
-    appliedReps !== null
-    && appliedSets !== null
-  );
+  targetReps = requestedReps;
+  targetSets = requestedSets;
+  return true;
 }
 
 
@@ -300,7 +667,7 @@ async function applyTodaySquatPlan() {
     getLoginUserId();
 
   if (!userId) {
-    return false;
+    return "no-user";
   }
 
   try {
@@ -310,7 +677,7 @@ async function applyTodaySquatPlan() {
       );
 
     if (!response.ok) {
-      return false;
+      return "error";
     }
 
     const data =
@@ -325,8 +692,11 @@ async function applyTodaySquatPlan() {
       );
 
     if (!squatPlan) {
-      return false;
+      clearCoachingPlan();
+      return "none";
     }
+
+    saveCoachingPlan(squatPlan);
 
     const squatTab =
       Array.from(
@@ -338,51 +708,12 @@ async function applyTodaySquatPlan() {
       );
 
     if (!squatTab) {
-      return false;
+      return "error";
     }
 
-    // 세트별 반복 횟수가 서로 달라도 현재 코칭 카운터는
-    // 첫 번째 세트의 반복 횟수를 전체 세트 목표로 사용합니다.
-    const plannedReps =
-      Number(
-        squatPlan.sets?.[0]?.repetition_count
-        ?? squatPlan.repetition_count
-      );
-
-    const plannedSets =
-      Number(
-        squatPlan.sets?.length
-        || squatPlan.set_count
-      );
-
-    if (
-      !Number.isInteger(plannedReps)
-      || plannedReps <= 0
-      || !Number.isInteger(plannedSets)
-      || plannedSets <= 0
-    ) {
-      return false;
-    }
-
-    const appliedReps =
-      selectOrAddOption(
-        targetRepsSelect,
-        plannedReps,
-        "회"
-      );
-
-    const appliedSets =
-      selectOrAddOption(
-        targetSetsSelect,
-        plannedSets,
-        "세트"
-      );
-
-    if (
-      appliedReps === null
-      || appliedSets === null
-    ) {
-      return false;
+    if (!applyDetailedCoachingPlan(squatPlan)) {
+      clearCoachingPlan();
+      return "none";
     }
 
     exerciseTabs.forEach(
@@ -403,10 +734,7 @@ async function applyTodaySquatPlan() {
     selectedExerciseName =
       squatTab.dataset.exerciseName;
 
-    targetReps = appliedReps;
-    targetSets = appliedSets;
-
-    return true;
+    return "applied";
 
   } catch (error) {
     console.error(
@@ -414,7 +742,7 @@ async function applyTodaySquatPlan() {
       error
     );
 
-    return false;
+    return "error";
   }
 }
 
@@ -484,30 +812,12 @@ function stopCamera() {
 ========================= */
 
 function updateTargetDisplay() {
-  targetReps =
-    Number(
-      targetRepsSelect.value
-    );
-
-  targetSets =
-    Number(
-      targetSetsSelect.value
-    );
-
-  targetRepCount.textContent =
-    targetReps;
-
-  targetSetCount.textContent =
-    targetSets;
+  updateDetailedProgressDisplay();
 }
 
 
 function updateCounterDisplay() {
-  currentRepCount.textContent =
-    currentReps;
-
-  currentSetCount.textContent =
-    currentSets;
+  updateDetailedProgressDisplay();
 }
 
 
@@ -564,39 +874,122 @@ function registerRepetition(
   if (
     !isWorkoutActive
     || isGoalCompleted
+    || isCurrentSetCompleted
+    || isResting
+    || isWorkoutFinished
   ) {
+    return;
+  }
+
+  const currentSet = getCurrentCoachingSet();
+  const currentSetTargetReps = Number(
+    currentSet?.repetition_count || 0
+  );
+
+  if (currentSetTargetReps <= 0) {
     return;
   }
 
   postureScores.push(score);
 
   currentReps += 1;
+  totalCompletedReps += 1;
 
   movementState.textContent =
-    `${selectedExerciseName} ${currentReps}회`;
+    `${currentSetIndex + 1}세트 ${currentReps}회`;
 
-  if (currentReps >= targetReps) {
+  updateCounterDisplay();
+  updatePostureFeedback(score);
+
+  if (currentReps >= currentSetTargetReps) {
+    if (isCurrentSetCompleted) {
+      return;
+    }
+
+    isCurrentSetCompleted = true;
     currentSets += 1;
-    currentReps = 0;
 
     movementState.textContent =
       `${currentSets}세트 완료`;
 
-    updateCounterDisplay();
-    updatePostureFeedback(score);
-
-    if (
-      currentSets >= targetSets
-    ) {
+    if (currentSetIndex >= coachingSets.length - 1) {
       finishWorkoutAutomatically();
       return;
     }
 
+    startRestPeriod();
+    return;
+  }
+}
+
+
+function startRestPeriod() {
+  clearRestTimer();
+  stopPoseAnalysis();
+  isResting = true;
+  restSecondsRemaining = restDurationSeconds;
+
+  if (restDurationSeconds === 0) {
+    restCard.hidden = true;
+    startNextSet();
     return;
   }
 
+  restCard.hidden = false;
+  restTitle.textContent = `${currentSetIndex + 1}세트 완료`;
+
+  const nextSet = coachingSets[currentSetIndex + 1];
+  nextSetSummary.textContent =
+    `다음 세트: ${formatSetWeight(nextSet?.weight_kg)} × ${
+      Number(nextSet?.repetition_count || 0)
+    }회`;
+
+  const updateRestDisplay = () => {
+    restTime.textContent = formatRestTime(restSecondsRemaining);
+  };
+
+  updateRestDisplay();
+  restIntervalId = window.setInterval(() => {
+    restSecondsRemaining -= 1;
+    updateRestDisplay();
+
+    if (restSecondsRemaining <= 0) {
+      startNextSet();
+    }
+  }, 1000);
+}
+
+
+async function startNextSet() {
+  if (!isResting || isWorkoutFinished) {
+    return;
+  }
+
+  clearRestTimer();
+  currentSetIndex += 1;
+
+  if (currentSetIndex >= coachingSets.length) {
+    finishWorkoutAutomatically();
+    return;
+  }
+
+  currentReps = 0;
+  isCurrentSetCompleted = false;
+  isResting = false;
+  restCard.hidden = true;
+
+  try {
+    await resetSquatAnalyzer();
+  } catch (error) {
+    console.error("다음 세트 분석 초기화 실패:", error);
+  }
+
+  movementState.textContent = `${currentSetIndex + 1}세트 준비`;
+  feedbackTitle.textContent = "다음 세트를 시작합니다.";
+  feedbackText.textContent =
+    "서 있는 시작 자세를 잡은 뒤 스쿼트를 진행하세요.";
   updateCounterDisplay();
-  updatePostureFeedback(score);
+  startPoseAnalysis();
 }
 
 
@@ -912,6 +1305,32 @@ async function startWorkout() {
     updateTargetDisplay();
 
     if (
+      !setRestDuration(
+        customRestSeconds.value === ""
+          ? restDurationSeconds
+          : customRestSeconds.value
+      )
+    ) {
+      return;
+    }
+
+    if (!isPlanCoaching) {
+      const validatedSets = validateFreeCoachingSets();
+      if (!validatedSets) {
+        return;
+      }
+
+      coachingSets = validatedSets;
+      targetSets = coachingSets.length;
+      targetReps = Number(coachingSets[0].repetition_count);
+      totalTargetReps = coachingSets.reduce(
+        (sum, set) => sum + Number(set.repetition_count),
+        0
+      );
+      updateCounterDisplay();
+    }
+
+    if (
       selectedExerciseCode
       !== "SQUAT"
     ) {
@@ -920,8 +1339,24 @@ async function startWorkout() {
       );
     }
 
+    if (!coachingSets.length) {
+      throw new Error(
+        "반복 횟수가 설정된 세트가 없습니다."
+      );
+    }
+
+    clearRestTimer();
+    currentSetIndex = 0;
     currentReps = 0;
     currentSets = 0;
+    totalCompletedReps = 0;
+    isCurrentSetCompleted = false;
+    isResting = false;
+    isWorkoutFinished = false;
+    isSavingWorkout = false;
+    workoutRecordSaved = false;
+    savedWorkoutResult = null;
+    restCard.hidden = true;
 
     postureScores = [];
 
@@ -939,7 +1374,7 @@ async function startWorkout() {
     startPoseAnalysis();
 
     movementState.textContent =
-      "운동 중";
+      "1세트 준비";
 
     postureStatus.textContent =
       "ACTIVE";
@@ -953,8 +1388,11 @@ async function startWorkout() {
     startButton.disabled = true;
     finishButton.disabled = false;
 
-    targetRepsSelect.disabled = true;
-    targetSetsSelect.disabled = true;
+    setFreeCoachingInputsDisabled(true);
+    restPresetButtons.forEach((button) => {
+      button.disabled = true;
+    });
+    customRestSeconds.disabled = true;
 
     exerciseTabs.forEach(
       (tab) => {
@@ -1088,10 +1526,7 @@ function getSavedFeedbackMessage(
 ========================= */
 
 function getTotalRepetitions() {
-  return (
-    currentSets * targetReps
-    + currentReps
-  );
+  return totalCompletedReps;
 }
 
 
@@ -1189,16 +1624,57 @@ async function saveWorkoutRecord() {
   return data;
 }
 
+async function completeLinkedWorkoutPlan() {
+  if (!coachingWorkoutPlanId) {
+    return;
+  }
+
+  const userId = getLoginUserId();
+  if (!userId) {
+    return;
+  }
+
+  const response = await fetch(
+    `/api/workouts/plans/${coachingWorkoutPlanId}/complete`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: userId
+      })
+    }
+  );
+
+  if (!response.ok) {
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
+    throw new Error(
+      data.detail || "연결된 루틴을 완료 처리하지 못했습니다."
+    );
+  }
+}
+
 
 /* =========================
    운동 종료
 ========================= */
 
 async function finishWorkout() {
-  if (!isWorkoutActive) {
+  if (
+    !isWorkoutActive
+    || !isWorkoutFinished
+    || isSavingWorkout
+  ) {
     return;
   }
 
+  isSavingWorkout = true;
   finishButton.disabled = true;
 
   stopPoseAnalysis();
@@ -1207,15 +1683,21 @@ async function finishWorkout() {
     "저장 중";
 
   try {
-    const result =
-      await saveWorkoutRecord();
+    if (!workoutRecordSaved) {
+      savedWorkoutResult = await saveWorkoutRecord();
+      workoutRecordSaved = true;
+    }
+
+    await completeLinkedWorkoutPlan();
 
     isWorkoutActive = false;
 
     stopCamera();
+    clearRestTimer();
+    clearCoachingPlan();
 
     alert(
-      result.message
+      savedWorkoutResult?.message
       || "운동 기록이 저장되었습니다."
     );
 
@@ -1233,12 +1715,9 @@ async function finishWorkout() {
       || "운동 기록을 저장하지 못했습니다."
     );
 
+    isSavingWorkout = false;
     finishButton.disabled = false;
-
-    movementState.textContent =
-      "운동 중";
-
-    startPoseAnalysis();
+    movementState.textContent = "저장 실패";
   }
 }
 
@@ -1247,10 +1726,18 @@ async function finishWorkout() {
    목표 완료
 ========================= */
 
-function finishWorkoutAutomatically() {
+async function finishWorkoutAutomatically() {
+  if (isWorkoutFinished) {
+    return;
+  }
+
+  isWorkoutFinished = true;
   isGoalCompleted = true;
+  isCurrentSetCompleted = true;
+  clearRestTimer();
 
   stopPoseAnalysis();
+  stopCamera();
 
   movementState.textContent =
     "운동 완료";
@@ -1262,10 +1749,13 @@ function finishWorkoutAutomatically() {
     "목표 운동을 완료했습니다.";
 
   feedbackText.textContent =
-    "운동 종료 버튼을 눌러 기록을 저장하세요.";
+    "운동 기록과 연결된 루틴을 저장하고 있습니다.";
 
   startButton.disabled = true;
-  finishButton.disabled = false;
+  finishButton.disabled = true;
+  updateCounterDisplay();
+
+  await finishWorkout();
 }
 
 
@@ -1308,15 +1798,88 @@ exerciseTabs.forEach(
    이벤트
 ========================= */
 
-targetRepsSelect.addEventListener(
-  "change",
-  updateTargetDisplay
-);
+freeCoachingSetList.addEventListener("input", () => {
+  setSettingsMessage();
+  const normalized = normalizeFreeCoachingSets(
+    readFreeCoachingRowsFromInputs()
+  );
+  if (normalized) {
+    freeCoachingRows = normalized;
+    saveFreeCoachingSets();
+  }
+});
 
+freeCoachingSetList.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest("[data-free-set-delete]");
+  if (!deleteButton || isWorkoutActive || freeCoachingRows.length <= 1) {
+    return;
+  }
 
-targetSetsSelect.addEventListener(
-  "change",
-  updateTargetDisplay
+  const rows = readFreeCoachingRowsFromInputs();
+  rows.splice(Number(deleteButton.dataset.freeSetDelete), 1);
+  const normalizedRows = normalizeFreeCoachingSets(rows);
+  if (!normalizedRows) {
+    setSettingsMessage(
+      "남아 있는 세트의 중량과 반복 횟수를 확인해 주세요."
+    );
+    return;
+  }
+
+  freeCoachingRows = normalizedRows;
+  saveFreeCoachingSets();
+  prepareFreeCoaching();
+  updateCounterDisplay();
+});
+
+freeSetAddButton.addEventListener("click", () => {
+  if (isWorkoutActive || freeCoachingRows.length >= 20) {
+    if (freeCoachingRows.length >= 20) {
+      setSettingsMessage("자유 코칭은 최대 20세트까지 설정할 수 있습니다.");
+    }
+    return;
+  }
+
+  const currentRows = normalizeFreeCoachingSets(
+    readFreeCoachingRowsFromInputs()
+  );
+  if (!currentRows) {
+    setSettingsMessage(
+      "현재 세트의 중량과 반복 횟수를 먼저 확인해 주세요."
+    );
+    return;
+  }
+  freeCoachingRows = currentRows;
+
+  const previousSet = freeCoachingRows.at(-1) || {
+    weight_kg: 0,
+    repetition_count: 10,
+  };
+  freeCoachingRows.push({
+    set_order: freeCoachingRows.length + 1,
+    weight_kg: previousSet.weight_kg,
+    repetition_count: previousSet.repetition_count,
+  });
+  saveFreeCoachingSets();
+  prepareFreeCoaching();
+  updateCounterDisplay();
+});
+
+restPresetButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setRestDuration(button.dataset.restSeconds);
+  });
+});
+
+customRestSeconds.addEventListener("change", () => {
+  if (customRestSeconds.value === "") {
+    return;
+  }
+  setRestDuration(customRestSeconds.value);
+});
+
+skipRestButton.addEventListener(
+  "click",
+  startNextSet
 );
 
 
@@ -1326,15 +1889,36 @@ startButton.addEventListener(
 );
 
 
-finishButton.addEventListener(
-  "click",
-  finishWorkout
-);
+finishButton.addEventListener("click", async () => {
+  if (isWorkoutFinished) {
+    await finishWorkout();
+    return;
+  }
+
+  if (!isWorkoutActive) {
+    return;
+  }
+
+  const shouldExit = window.confirm(
+    "운동을 종료하면 현재 진행 내용은 저장되지 않습니다."
+  );
+
+  if (!shouldExit) {
+    return;
+  }
+
+  isWorkoutActive = false;
+  clearRestTimer();
+  stopCamera();
+  clearCoachingPlan();
+  window.location.href = "/routine";
+});
 
 
 window.addEventListener(
   "beforeunload",
   (event) => {
+    clearRestTimer();
     stopCamera();
 
     if (!isWorkoutActive) {
@@ -1352,13 +1936,33 @@ window.addEventListener(
 ========================= */
 
 async function initializeCoachingTargets() {
-  const urlTargetApplied =
-    applyCoachingQuery();
+  restoreFreeCoachingSets();
+  restoreRestDuration();
+  const savedPlan = loadCoachingPlan();
 
-  if (!urlTargetApplied) {
-    await applyTodaySquatPlan();
+  startButton.disabled = true;
+  coachingSettingsCard.hidden = true;
+  setProgressCard.hidden = true;
+  coachingModeLoading.hidden = false;
+
+  if (savedPlan && !getValidSquatPlan(savedPlan)) {
+    clearCoachingPlan();
   }
 
+  const todayPlanResult = await applyTodaySquatPlan();
+
+  if (todayPlanResult !== "applied") {
+    clearCoachingPlan();
+    prepareFreeCoaching();
+
+    if (todayPlanResult === "error") {
+      setSettingsMessage(
+        "오늘의 운동 계획을 불러오지 못해 자유 코칭으로 시작합니다."
+      );
+    }
+  }
+
+  finishModeLoading();
   updateTargetDisplay();
   updateCounterDisplay();
 }
