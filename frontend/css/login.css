@@ -1,0 +1,589 @@
+:root {
+  --gymfit-green: #A8FF35;
+  --white: #ffffff;
+
+  --gray-300: #b3b3b3;
+  --gray-400: #969696;
+  --gray-500: #777777;
+
+  --field-border: rgba(255, 255, 255, 0.13);
+  --danger: #ff7070;
+}
+
+/* =========================
+   전체 화면
+========================= */
+
+body {
+  overflow: hidden;
+}
+
+.login-page {
+  position: relative;
+
+  width: 100%;
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background-image: url("/static/assets/img/login-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  overflow: hidden;
+}
+
+/* 배경 이미지 위 어두운 오버레이 */
+.login-page::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  background: rgba(0, 0, 0, 0.4);
+
+  pointer-events: none;
+}
+
+/* =========================
+   로그인 콘텐츠
+========================= */
+
+.login-container {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+
+  padding:
+    max(40px, env(safe-area-inset-top))
+    30px
+    max(32px, env(safe-area-inset-bottom));
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* =========================
+   브랜드 영역
+========================= */
+
+.login-header {
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.gymfit-symbol {
+  width: 255px;
+  max-width: 74%;
+  height: auto;
+
+  margin: 0 auto 6px;
+}
+
+.gymfit-text {
+  width: 225px;
+  max-width: 68%;
+  height: auto;
+
+  margin: 0 auto 8px;
+}
+
+.login-slogan {
+  color: rgba(255, 255, 255, 0.94);
+
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.8px;
+}
+
+/* =========================
+   로그인 폼
+========================= */
+
+.login-form {
+  width: 100%;
+}
+
+.input-group {
+  position: relative;
+
+  width: 100%;
+  height: 58px;
+
+  margin-bottom: 14px;
+}
+
+.input-group input {
+  width: 100%;
+  height: 100%;
+
+  padding: 0 58px 0 62px;
+
+  color: var(--white);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(72, 72, 72, 0.34) 0%,
+      rgba(35, 35, 35, 0.8) 100%
+    );
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+  outline: none;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 8px 24px rgba(0, 0, 0, 0.18);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.input-group input:focus {
+  border-color: rgba(156, 255, 36, 0.75);
+
+  box-shadow:
+    0 0 0 3px rgba(156, 255, 36, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+/* 입력창 왼쪽 아이콘 */
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 21px;
+  z-index: 2;
+
+  width: 24px;
+  height: 24px;
+
+  color: rgba(255, 255, 255, 0.58);
+
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.input-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 비밀번호 보기 버튼 */
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 17px;
+
+  width: 32px;
+  height: 32px;
+
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: transparent;
+  border: none;
+  outline: none;
+  border-radius: 0;
+
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.password-toggle:hover,
+.password-toggle:focus,
+.password-toggle:focus-visible,
+.password-toggle:active {
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.password-toggle img {
+  width: 24px;
+  height: 24px;
+
+  object-fit: contain;
+  opacity: 0.7;
+}
+
+.password-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.password-toggle img {
+  width: 24px;
+  height: 24px;
+
+  object-fit: contain;
+  opacity: 0.7;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.password-toggle:hover img {
+  opacity: 0.95;
+  transform: scale(1.04);
+}
+
+/* 오류 메시지 */
+.error-message {
+  min-height: 18px;
+
+  margin: -2px 5px 8px;
+
+  color: var(--danger);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* =========================
+   로그인 버튼
+========================= */
+
+.login-button {
+  width: 100%;
+  height: 58px;
+
+  color: #080808;
+
+  background:
+    linear-gradient(
+      180deg,
+      #aaff38 0%,
+      var(--gymfit-green) 56%,
+      #91ef1f 100%
+    );
+
+  border: none;
+  outline: none;
+  border-radius: 18px;
+
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 25px rgba(156, 255, 36, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+
+  transition:
+    transform 0.12s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.login-button:focus,
+.login-button:focus-visible {
+  border: none;
+  outline: none;
+}
+
+.login-button:hover {
+  filter: brightness(1.03);
+
+  box-shadow:
+    0 12px 28px rgba(156, 255, 36, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.login-button:active {
+  transform: scale(0.985);
+}
+
+.login-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* =========================
+   비밀번호 찾기
+========================= */
+
+.password-find {
+  margin-top: 17px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 14px;
+}
+
+.password-find a {
+  color: var(--gymfit-green);
+  font-weight: 700;
+
+  transition: opacity 0.2s ease;
+}
+
+.password-find a:hover {
+  opacity: 0.82;
+}
+
+/* =========================
+   또는 구분선
+========================= */
+
+.divider {
+  width: 100%;
+
+  margin: 21px 0 19px;
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+
+  flex: 1;
+  height: 1px;
+}
+
+.divider::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.24)
+    );
+}
+
+.divider::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.24),
+      rgba(255, 255, 255, 0.04)
+    );
+}
+
+.divider span {
+  color: rgba(255, 255, 255, 0.44);
+
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* =========================
+   구글 로그인
+========================= */
+
+.google-button {
+  width: 100%;
+  height: 58px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+
+  color: var(--white);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(72, 72, 72, 0.34) 0%,
+      rgba(35, 35, 35, 0.8) 100%
+    );
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+
+  font-size: 17px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 22px rgba(0, 0, 0, 0.17);
+
+  transition:
+    transform 0.12s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.google-button:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(84, 84, 84, 0.4) 0%,
+      rgba(42, 42, 42, 0.85) 100%
+    );
+}
+
+.google-button:active {
+  transform: scale(0.985);
+}
+
+.google-button img {
+  width: 25px;
+  height: 25px;
+
+  object-fit: contain;
+}
+
+/* =========================
+   회원가입
+========================= */
+
+.signup-area {
+  margin-top: 22px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 14px;
+}
+
+.signup-area a {
+  color: var(--gymfit-green);
+  font-weight: 800;
+
+  transition: opacity 0.2s ease;
+}
+
+.signup-area a:hover {
+  opacity: 0.82;
+}
+
+/* =========================
+   높이가 작은 화면
+========================= */
+
+@media (max-height: 760px) {
+  body {
+    overflow-y: auto;
+  }
+
+  .login-container {
+    min-height: 100dvh;
+
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+
+  .login-header {
+    margin-bottom: 20px;
+  }
+
+  .gymfit-symbol {
+    width: 205px;
+    margin-bottom: 6px;
+  }
+
+  .gymfit-text {
+    width: 195px;
+    margin-bottom: 6px;
+  }
+
+  .login-slogan {
+    font-size: 13px;
+  }
+
+  .input-group,
+  .login-button,
+  .google-button {
+    height: 52px;
+  }
+
+  .password-find {
+    margin-top: 11px;
+  }
+
+  .divider {
+    margin: 14px 0;
+  }
+
+  .signup-area {
+    margin-top: 16px;
+  }
+}
+
+/* =========================
+   좁은 모바일
+========================= */
+
+@media (max-width: 360px) {
+  .login-container {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .gymfit-symbol {
+    width: 125px;
+  }
+
+  .gymfit-text {
+    width: 248px;
+  }
+
+  .signup-area {
+    gap: 9px;
+    font-size: 13px;
+  }
+}
+
+/* 로그인 화면 자동완성 전용 */
+.login-page input:-webkit-autofill,
+.login-page input:-webkit-autofill:hover,
+.login-page input:-webkit-autofill:focus,
+.login-page input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+
+  -webkit-box-shadow:
+    0 0 0 1000px #292929 inset !important;
+
+  box-shadow:
+    0 0 0 1000px #292929 inset !important;
+
+  border-color:
+    rgba(255, 255, 255, 0.13) !important;
+}

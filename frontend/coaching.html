@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <title>
+    GYMFIT | 실시간 자세 코칭
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common_layout.css?v=2"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/coaching.css?v=3"
+  >
+
+  <script
+    src="/static/js/common_layout.js?v=2"
+    defer
+  ></script>
+
+  <script
+    src="/static/js/coaching.js?v=3"
+    defer
+  ></script>
+</head>
+
+<body
+  data-page="coaching"
+  data-header-title="실시간 자세 코칭"
+  data-header-subtitle="YOLO 자세 분석 · 자동 카운트"
+>
+  <main class="coaching-page">
+    <div class="coaching-container">
+
+      <!-- 헤더 -->
+      <div id="topHeaderContainer"></div>
+
+
+      <!-- 운동 선택 -->
+      <section class="exercise-tabs">
+        <button
+          type="button"
+          class="exercise-tab active"
+          data-exercise-code="SQUAT"
+          data-exercise-name="스쿼트"
+        >
+          스쿼트
+        </button>
+
+        <button
+          type="button"
+          class="exercise-tab"
+          data-exercise-code="PUSHUP"
+          data-exercise-name="푸시업"
+        >
+          푸시업
+        </button>
+
+        <button
+          type="button"
+          class="exercise-tab"
+          data-exercise-code="SHOULDER_PRESS"
+          data-exercise-name="숄더 프레스"
+        >
+          숄더 프레스
+        </button>
+      </section>
+
+
+      <!-- 목표 설정 -->
+      <section class="target-card">
+        <div>
+          <span>목표 반복</span>
+
+          <select id="targetRepsSelect">
+            <option value="5">5회</option>
+            <option value="10" selected>10회</option>
+            <option value="12">12회</option>
+            <option value="15">15회</option>
+            <option value="20">20회</option>
+          </select>
+        </div>
+
+        <div>
+          <span>목표 세트</span>
+
+          <select id="targetSetsSelect">
+            <option value="1">1세트</option>
+            <option value="2">2세트</option>
+            <option value="3" selected>3세트</option>
+            <option value="4">4세트</option>
+            <option value="5">5세트</option>
+          </select>
+        </div>
+      </section>
+
+
+      <!-- 카메라 -->
+      <section class="camera-card">
+        <video
+          id="cameraVideo"
+          autoplay
+          muted
+          playsinline
+        ></video>
+
+        <canvas
+          id="poseCanvas"
+        ></canvas>
+
+        <div
+          class="camera-placeholder"
+          id="cameraPlaceholder"
+        >
+          <strong>카메라 준비 중</strong>
+
+          <span>
+            운동 시작 버튼을 눌러주세요.
+          </span>
+        </div>
+
+        <div class="live-badge">
+          <span></span>
+          LIVE
+        </div>
+
+        <div class="exercise-status">
+          <span>현재 동작</span>
+
+          <strong id="movementState">
+            준비
+          </strong>
+        </div>
+      </section>
+
+
+      <!-- 실시간 수치 -->
+      <section class="coaching-stats">
+        <article class="stat-card">
+          <span>반복 횟수</span>
+
+          <strong>
+            <b id="currentRepCount">0</b>
+            /
+            <small id="targetRepCount">10</small>
+          </strong>
+        </article>
+
+        <article class="stat-card">
+          <span>세트</span>
+
+          <strong>
+            <b id="currentSetCount">0</b>
+            /
+            <small id="targetSetCount">3</small>
+          </strong>
+        </article>
+
+        <article class="stat-card score-card">
+          <span>자세 점수</span>
+
+          <strong>
+            <b id="postureScoreValue">0</b>점
+          </strong>
+        </article>
+
+        <article class="stat-card">
+          <span>상태</span>
+
+          <strong
+            class="status-value"
+            id="postureStatus"
+          >
+            READY
+          </strong>
+        </article>
+      </section>
+
+
+      <!-- 피드백 -->
+      <section class="feedback-card">
+        <div
+          class="feedback-check"
+          id="feedbackIcon"
+        >
+          ✓
+        </div>
+
+        <div>
+          <strong id="feedbackTitle">
+            운동을 시작해 주세요.
+          </strong>
+
+          <p id="feedbackText">
+            카메라에 전신이 보이도록 위치를 조정하세요.
+          </p>
+        </div>
+      </section>
+
+
+      <!-- 버튼 -->
+      <section class="coaching-actions">
+        <button
+          type="button"
+          class="primary-button"
+          id="startButton"
+        >
+          운동 시작
+        </button>
+
+        <button
+          type="button"
+          class="secondary-button"
+          id="finishButton"
+          disabled
+        >
+          종료 및 기록 저장
+        </button>
+      </section>
+    </div>
+
+    <div id="sideMenuContainer"></div>
+
+    <div
+      id="bottomNavigationContainer"
+    ></div>
+  </main>
+</body>
+</html>

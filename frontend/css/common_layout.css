@@ -1,0 +1,428 @@
+:root {
+  --gymfit-green: #a8ff35;
+  --layout-black: #000000;
+  --layout-card: #171717;
+  --layout-border:
+    rgba(255, 255, 255, 0.09);
+  --layout-muted:
+    rgba(255, 255, 255, 0.45);
+}
+
+/*==========================
+    공통 헤더
+==========================*/
+.common-header {
+  width: 100%;
+  min-height: 66px;
+
+  display: grid;
+  grid-template-columns:
+    44px minmax(0, 1fr) 44px;
+
+  gap: 10px;
+  align-items: center;
+}
+
+.common-menu-button,
+.common-notification-button {
+  width: 44px;
+  height: 44px;
+
+  padding: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #ffffff;
+  background: transparent;
+
+  border: 0;
+  outline: 0;
+}
+
+.common-menu-button {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.common-menu-button span {
+  width: 27px;
+  height: 2px;
+
+  display: block;
+
+  background: #ffffff;
+  border-radius: 999px;
+}
+
+.common-header-title {
+  min-width: 0;
+}
+
+.common-header-logo {
+  width: 100%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.common-header-logo[hidden] {
+  display: none;
+}
+
+.common-header-logo img {
+  width: auto;
+  height: 34px;
+
+  display: block;
+  object-fit: contain;
+}
+
+.common-header-text[hidden] {
+  display: none;
+}
+
+.common-header-text h1 {
+  margin: 0;
+
+  color: #ffffff;
+
+  font-size: 21px;
+  font-weight: 850;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+}
+
+.common-header-text p {
+  margin: 5px 0 0;
+
+  color:
+    rgba(255, 255, 255, 0.42);
+
+  font-size: 12px;
+}
+
+/* =========================
+   하단 네비게이션
+========================= */
+
+.bottom-navigation {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+
+  width: 100%;
+  height:
+    calc(
+      78px
+      + env(safe-area-inset-bottom)
+    );
+
+  padding:
+    8px 14px
+    env(safe-area-inset-bottom);
+
+  display: grid;
+  grid-template-columns:
+    repeat(5, 1fr);
+
+  background:
+    rgba(20, 20, 20, 0.97);
+
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  backdrop-filter:
+    blur(18px);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  gap: 4px;
+
+  color: rgba(255, 255, 255, 0.42);
+
+  font-size: 10px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.nav-item.active {
+  color: var(--gymfit-green);
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+
+  display: block;
+
+  background-color: currentColor;
+
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.nav-icon-home {
+  mask-image:
+    url("/static/assets/icons/home.svg");
+
+  -webkit-mask-image:
+    url("/static/assets/icons/home.svg");
+}
+
+.nav-icon-routine {
+  mask-image:
+    url("/static/assets/icons/routine.svg");
+
+  -webkit-mask-image:
+    url("/static/assets/icons/routine.svg");
+}
+
+.nav-icon-coaching {
+  mask-image:
+    url("/static/assets/icons/coaching.svg");
+
+  -webkit-mask-image:
+    url("/static/assets/icons/coaching.svg");
+}
+
+.nav-icon-records {
+  mask-image:
+    url("/static/assets/icons/chart.svg");
+
+  -webkit-mask-image:
+    url("/static/assets/icons/chart.svg");
+}
+
+.nav-icon-mypage {
+  mask-image:
+    url("/static/assets/icons/my.svg");
+
+  -webkit-mask-image:
+    url("/static/assets/icons/my.svg");
+}
+
+/* =========================
+   사이드 메뉴 오버레이
+========================= */
+
+.side-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+
+  background:
+    rgba(0, 0, 0, 0.72);
+
+  backdrop-filter:
+    blur(3px);
+}
+
+.side-menu-overlay[hidden] {
+  display: none;
+}
+
+
+/* =========================
+   사이드 메뉴
+========================= */
+
+.side-menu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 310;
+
+  width: min(320px, 84vw);
+  height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+
+  color: #ffffff;
+  background: var(--layout-card);
+
+  border-right:
+    1px solid var(--layout-border);
+
+  transform:
+    translateX(-100%);
+
+  transition:
+    transform 0.25s ease;
+}
+
+.side-menu.open {
+  transform:
+    translateX(0);
+}
+
+.side-menu-header {
+  min-height: 112px;
+
+  padding:
+    max(
+      24px,
+      env(safe-area-inset-top)
+    )
+    20px
+    20px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  border-bottom:
+    1px solid var(--layout-border);
+}
+
+.side-menu-user {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.side-menu-user strong {
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.side-menu-user span {
+  color: var(--gymfit-green);
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.side-menu-close-button {
+  width: 38px;
+  height: 38px;
+
+  padding: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: #252525;
+
+  border: 0;
+  border-radius: 11px;
+
+  cursor: pointer;
+}
+
+.side-menu-close-button img {
+  width: 20px;
+  height: 20px;
+
+  display: block;
+  object-fit: contain;
+}
+
+.side-menu-list {
+  flex: 1;
+
+  padding: 14px 12px;
+
+  overflow-y: auto;
+}
+
+.side-menu-section {
+  margin-bottom: 12px;
+}
+
+.side-menu-section-title {
+  display: block;
+
+  padding: 16px 12px 8px;
+
+  color:
+    rgba(255, 255, 255, 0.34);
+
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.9px;
+}
+
+.side-menu-item {
+  width: 100%;
+  min-height: 52px;
+
+  padding: 0 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  color:
+    rgba(255, 255, 255, 0.88);
+  background: transparent;
+
+  border-radius: 13px;
+
+  font-size: 14px;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.side-menu-item:hover {
+  background:
+    rgba(255, 255, 255, 0.06);
+}
+
+.side-menu-item span:last-child {
+  color:
+    rgba(255, 255, 255, 0.32);
+
+  font-size: 21px;
+}
+
+.side-menu-footer {
+  padding:
+    16px
+    16px
+    calc(
+      16px
+      + env(safe-area-inset-bottom)
+    );
+
+  border-top:
+    1px solid var(--layout-border);
+}
+
+.logout-button {
+  width: 100%;
+  height: 48px;
+
+  color: #ff7474;
+  background: #202020;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+body.side-menu-open {
+  overflow: hidden;
+}

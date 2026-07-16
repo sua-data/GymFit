@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="description"
+    content="GYMFIT 트레이너 프로필 입력 페이지"
+  >
+
+  <title>GYMFIT | 트레이너 회원가입 2단계</title>
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/signup_trainer_step2.css"
+  >
+
+  <script src="/static/js/signup_trainer_step2.js?v=2" defer></script>
+</head>
+
+<body>
+  <main class="trainer-step2-page">
+    <section class="trainer-step2-container">
+
+      <!-- 상단 -->
+      <header class="signup-header">
+        <button
+          type="button"
+          class="back-button"
+          id="backButton"
+          aria-label="이전 단계"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 12H5"></path>
+            <path d="M11 18L5 12L11 6"></path>
+          </svg>
+        </button>
+
+        <div
+          class="step-progress"
+          aria-label="트레이너 회원가입 2단계"
+        >
+          <div class="step-item completed">
+            <span>1</span>
+          </div>
+
+          <div class="step-line">
+            <div class="step-line-active"></div>
+          </div>
+
+          <div class="step-item active">
+            <span>2</span>
+          </div>
+        </div>
+
+        <div class="header-spacer"></div>
+      </header>
+
+      <!-- 제목 -->
+      <div class="signup-title-area">
+        <h1 id="pageTitle">
+          회원가입
+        </h1>
+
+        <p id="pageDescription">
+          트레이너 정보를 입력해주세요.
+        </p>
+      </div>
+
+      <form
+        class="trainer-profile-form"
+        id="trainerProfileForm"
+        novalidate
+      >
+
+        <!-- 성별 -->
+        <section class="form-section">
+          <h2>성별</h2>
+
+          <div
+            class="option-row"
+            role="radiogroup"
+            aria-label="성별"
+          >
+            <button
+              type="button"
+              class="select-button"
+              data-group="gender"
+              data-value="MALE"
+            >
+              남성
+            </button>
+
+            <button
+              type="button"
+              class="select-button"
+              data-group="gender"
+              data-value="FEMALE"
+            >
+              여성
+            </button>
+
+            <button
+              type="button"
+              class="select-button"
+              data-group="gender"
+              data-value="NONE"
+            >
+              선택 안함
+            </button>
+          </div>
+        </section>
+
+        <!-- 생년월일 -->
+        <section class="form-section">
+          <label
+            class="section-label"
+            for="birthDate"
+          >
+            생년월일
+          </label>
+
+          <div class="date-input-wrapper">
+            <input
+              type="date"
+              id="birthDate"
+              name="birthDate"
+              aria-label="생년월일"
+            >
+
+            <span
+              class="date-text"
+              id="dateText"
+            >
+              생년월일을 선택하세요.
+            </span>
+
+            <svg
+              class="calendar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect
+                x="3"
+                y="5"
+                width="18"
+                height="16"
+                rx="2"
+              ></rect>
+
+              <path d="M8 3V7"></path>
+              <path d="M16 3V7"></path>
+              <path d="M3 10H21"></path>
+            </svg>
+          </div>
+        </section>
+
+        <!-- 활동 헬스장 -->
+        <section class="form-section">
+          <label
+            class="section-label"
+            for="gymName"
+          >
+            활동 헬스장
+          </label>
+
+          <div class="input-wrapper">
+            <input
+              type="text"
+              id="gymName"
+              name="gymName"
+              placeholder="활동 중인 헬스장을 입력하세요."
+              autocomplete="organization"
+            >
+          </div>
+        </section>
+
+        <!-- 경력 -->
+        <section class="form-section">
+          <label
+            class="section-label"
+            for="careerYears"
+          >
+            경력
+          </label>
+
+          <div class="number-input-wrapper">
+            <input
+              type="number"
+              id="careerYears"
+              name="careerYears"
+              min="0"
+              max="50"
+              step="1"
+              placeholder="경력을 입력하세요."
+              inputmode="numeric"
+            >
+
+            <span class="unit">년</span>
+          </div>
+        </section>
+
+        <!-- 전문 분야 -->
+        <section class="form-section specialty-section">
+          <h2>전문 분야</h2>
+
+          <div
+            class="specialty-grid"
+            role="group"
+            aria-label="전문 분야"
+          >
+            <button
+              type="button"
+              class="specialty-button"
+              data-specialty="WEIGHT_TRAINING"
+            >
+              웨이트 트레이닝
+            </button>
+
+            <button
+              type="button"
+              class="specialty-button"
+              data-specialty="DIET"
+            >
+              다이어트
+            </button>
+
+            <button
+              type="button"
+              class="specialty-button"
+              data-specialty="BODY_CORRECTION"
+            >
+              체형 교정
+            </button>
+
+            <button
+              type="button"
+              class="specialty-button"
+              data-specialty="REHABILITATION"
+            >
+              재활 운동
+            </button>
+          </div>
+
+          <p class="section-help">
+            전문 분야는 여러 개 선택할 수 있습니다.
+          </p>
+        </section>
+
+        <!-- 보유 자격증 -->
+        <section class="form-section">
+          <label
+            class="section-label"
+            for="certificationInput"
+          >
+            보유 자격증 <span>(선택)</span>
+          </label>
+
+          <div class="certification-input-row">
+            <div class="input-wrapper">
+              <input
+                type="text"
+                id="certificationInput"
+                name="certificationInput"
+                placeholder="자격증명을 입력하세요."
+              >
+            </div>
+
+            <button
+              type="button"
+              class="add-certification-button"
+              id="addCertificationButton"
+            >
+              추가
+            </button>
+          </div>
+
+          <p class="section-help">
+            자격증은 여러 개 등록할 수 있습니다.
+          </p>
+
+          <div
+            class="certification-list"
+            id="certificationList"
+          ></div>
+        </section>
+
+        <!-- 자기소개 -->
+        <section class="form-section introduction-section">
+          <label
+            class="section-label"
+            for="introduction"
+          >
+            자기소개 <span>(선택)</span>
+          </label>
+
+          <div class="textarea-wrapper">
+            <textarea
+              id="introduction"
+              name="introduction"
+              maxlength="300"
+              placeholder="회원에게 보여줄 자기소개를 입력하세요."
+            ></textarea>
+
+            <span
+              class="character-count"
+              id="characterCount"
+            >
+              0 / 300
+            </span>
+          </div>
+        </section>
+
+        <!-- Google 신규 가입 약관 -->
+        <div
+          class="google-agreement-area"
+          id="googleAgreementArea"
+          hidden
+        >
+          <!-- 전체 동의 -->
+          <label class="agreement-all-item">
+            <input
+              type="checkbox"
+              id="googleAgreeAll"
+            >
+
+            <span class="custom-checkbox"></span>
+
+            <strong>전체 동의</strong>
+          </label>
+
+          <div class="agreement-divider"></div>
+
+          <!-- 이용약관 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                id="googleTerms"
+                class="google-agreement-checkbox"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                이용약관 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-agreement="terms"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 개인정보 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                id="googlePrivacy"
+                class="google-agreement-checkbox"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                개인정보 처리방침 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-agreement="privacy"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 트레이너 운영정책 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                id="googleTrainerPolicy"
+                class="google-agreement-checkbox"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                트레이너 운영정책 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-agreement="trainer-policy"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 마케팅 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                id="googleMarketing"
+                class="google-agreement-checkbox"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                마케팅 정보 수신 동의
+                <em>(선택)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-agreement="marketing"
+            >
+              보기
+            </button>
+          </div>
+        </div>
+
+        <p
+          class="form-message"
+          id="formMessage"
+          aria-live="polite"
+        ></p>
+
+        <button
+          type="submit"
+          class="complete-button"
+          id="completeButton"
+        >
+          가입 완료
+        </button>
+
+        <button
+          type="button"
+          class="skip-button"
+          id="skipButton"
+        >
+          나중에 설정하기
+        </button>
+
+      </form>
+    </section>
+  </main>
+</body>
+</html>

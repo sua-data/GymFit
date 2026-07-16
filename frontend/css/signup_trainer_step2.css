@@ -1,0 +1,963 @@
+:root {
+  --gymfit-green: #A8FF35;
+
+  --black: #000000;
+  --white: #ffffff;
+
+  --field-bg: #292929;
+  --field-border: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.84);
+  --text-muted: rgba(255, 255, 255, 0.42);
+
+  --danger: #ff7070;
+}
+
+body {
+  overflow-y: auto;
+  background: var(--black);
+}
+
+.trainer-step2-page {
+  width: 100%;
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+
+  background: var(--black);
+}
+
+.trainer-step2-container {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+
+  padding:
+    max(28px, env(safe-area-inset-top))
+    32px
+    max(42px, env(safe-area-inset-bottom));
+}
+
+/* =========================
+   상단
+========================= */
+
+.signup-header {
+  width: 100%;
+  height: 50px;
+
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+}
+
+.back-button {
+  width: 40px;
+  height: 40px;
+
+  padding: 0;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+
+  color: var(--white);
+  background: transparent;
+
+  border: none;
+  outline: none;
+
+  cursor: pointer;
+}
+
+.back-button svg {
+  width: 28px;
+  height: 28px;
+}
+
+.header-spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.step-progress {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.step-item {
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #777777;
+  background: var(--black);
+
+  border: 2px solid #404040;
+  border-radius: 50%;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.step-item.completed {
+  color: var(--gymfit-green);
+  background: var(--black);
+  border-color: var(--gymfit-green);
+}
+
+.step-item.active {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.step-line {
+  position: relative;
+
+  width: 84px;
+  height: 3px;
+
+  background: #404040;
+}
+
+.step-line-active {
+  width: 100%;
+  height: 100%;
+
+  background: var(--gymfit-green);
+}
+
+/* =========================
+   제목
+========================= */
+
+.signup-title-area {
+  margin-top: 72px;
+  margin-bottom: 46px;
+}
+
+.signup-title-area h1 {
+  margin: 0;
+
+  color: var(--text-primary);
+
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+
+.signup-title-area p {
+  margin: 8px 0 0;
+
+  color: var(--text-secondary);
+
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.3px;
+}
+
+/* =========================
+   공통
+========================= */
+
+.trainer-profile-form {
+  width: 100%;
+}
+
+.form-section {
+  margin-bottom: 28px;
+}
+
+.form-section h2,
+.section-label {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: rgba(255, 255, 255, 0.96);
+
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+}
+
+.section-label span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* =========================
+   성별
+========================= */
+
+.option-row {
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.select-button {
+  height: 54px;
+
+  color: rgba(255, 255, 255, 0.92);
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 17px;
+  outline: none;
+
+  font-size: 15px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.select-button.active {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.select-button:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   기본 입력
+========================= */
+
+.input-wrapper,
+.number-input-wrapper,
+.date-input-wrapper {
+  position: relative;
+
+  width: 100%;
+  height: 60px;
+}
+
+.input-wrapper input,
+.number-input-wrapper input {
+  width: 100%;
+  height: 100%;
+
+  padding: 0 22px;
+
+  color: var(--white);
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+  outline: none;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.number-input-wrapper input {
+  padding-right: 58px;
+}
+
+.input-wrapper input::placeholder,
+.number-input-wrapper input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.input-wrapper input:focus,
+.number-input-wrapper input:focus {
+  border-color: rgba(168, 255, 53, 0.72);
+
+  box-shadow:
+    0 0 0 3px rgba(168, 255, 53, 0.08);
+}
+
+.number-input-wrapper input::-webkit-inner-spin-button,
+.number-input-wrapper input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.unit {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+
+  color: rgba(255, 255, 255, 0.48);
+
+  font-size: 14px;
+  font-weight: 650;
+
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* =========================
+   생년월일
+========================= */
+
+.date-input-wrapper {
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+
+  overflow: hidden;
+}
+
+.date-input-wrapper input {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+
+  width: 100%;
+  height: 100%;
+
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-text {
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  z-index: 1;
+
+  color: rgba(255, 255, 255, 0.4);
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.date-text.has-value {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.calendar-icon {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  z-index: 1;
+
+  width: 25px;
+  height: 25px;
+
+  color: rgba(255, 255, 255, 0.48);
+
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* =========================
+   전문 분야
+========================= */
+
+.specialty-grid {
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.specialty-button {
+  min-height: 54px;
+
+  padding: 10px 12px;
+
+  color: rgba(255, 255, 255, 0.9);
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 17px;
+  outline: none;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.specialty-button.active {
+  color: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.specialty-button:active {
+  transform: scale(0.98);
+}
+
+.section-help {
+  margin: 10px 4px 0;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* =========================
+   자격증
+========================= */
+
+.certification-input-row {
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: 1fr 76px;
+  gap: 10px;
+}
+
+.add-certification-button {
+  height: 60px;
+
+  color: #050505;
+  background: var(--gymfit-green);
+
+  border: none;
+  border-radius: 18px;
+  outline: none;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.12s ease,
+    filter 0.15s ease;
+}
+
+.add-certification-button:hover {
+  filter: brightness(1.02);
+}
+
+.add-certification-button:active {
+  transform: scale(0.98);
+}
+
+.certification-list {
+  width: 100%;
+
+  margin-top: 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.certification-item {
+  width: 100%;
+  min-height: 50px;
+
+  padding: 10px 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+
+  font-size: 14px;
+}
+
+.certification-item span {
+  min-width: 0;
+
+  overflow-wrap: anywhere;
+}
+
+.remove-certification-button {
+  flex-shrink: 0;
+
+  padding: 5px 7px;
+
+  color: rgba(255, 255, 255, 0.48);
+  background: transparent;
+
+  border: none;
+  outline: none;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+.remove-certification-button:hover {
+  color: #ff7070;
+}
+
+/* =========================
+   자기소개
+========================= */
+
+.textarea-wrapper {
+  position: relative;
+
+  width: 100%;
+}
+
+.textarea-wrapper textarea {
+  width: 100%;
+  min-height: 142px;
+
+  padding: 18px 20px 42px;
+
+  color: var(--white);
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+  outline: none;
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+
+  resize: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.textarea-wrapper textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.textarea-wrapper textarea:focus {
+  border-color: rgba(168, 255, 53, 0.72);
+
+  box-shadow:
+    0 0 0 3px rgba(168, 255, 53, 0.08);
+}
+
+.character-count {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* =========================
+   메시지
+========================= */
+
+.form-message {
+  margin: 10px 4px 0;
+
+  color: var(--danger);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.form-message:empty {
+  display: none;
+}
+
+/* =========================
+   완료 버튼
+========================= */
+
+.complete-button {
+  width: 100%;
+  height: 62px;
+
+  margin-top: 36px;
+
+  color: #050505;
+  background: var(--gymfit-green);
+
+  border: none;
+  border-radius: 18px;
+  outline: none;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 24px rgba(168, 255, 53, 0.17);
+
+  transition:
+    transform 0.12s ease,
+    filter 0.15s ease;
+}
+
+.complete-button:active {
+  transform: scale(0.985);
+}
+
+.complete-button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+/* =========================
+   나중에 설정
+========================= */
+
+.skip-button {
+  display: block;
+
+  margin: 20px auto 0;
+  padding: 5px 10px;
+
+  color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+
+  border: none;
+  outline: none;
+
+  font-size: 14px;
+  font-weight: 400;
+
+  cursor: pointer;
+}
+
+.skip-button:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* =========================
+   작은 화면
+========================= */
+
+@media (max-width: 370px) {
+  .trainer-step2-container {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .step-item {
+    width: 30px;
+    height: 30px;
+
+    font-size: 13px;
+  }
+
+  .step-line {
+    width: 76px;
+  }
+
+  .signup-title-area {
+    margin-top: 60px;
+  }
+
+  .signup-title-area h1 {
+    font-size: 31px;
+  }
+
+  .signup-title-area p {
+    font-size: 15px;
+  }
+
+  .specialty-grid {
+    gap: 8px;
+  }
+
+  .specialty-button {
+    font-size: 13px;
+  }
+
+  .certification-input-row {
+    grid-template-columns: 1fr 68px;
+    gap: 8px;
+  }
+
+  .add-certification-button {
+    font-size: 13px;
+  }
+}
+
+/* =========================
+   Google 약관 동의
+========================= */
+
+.google-agreement-area {
+  width: 100%;
+
+  margin-top: 28px;
+  padding: 20px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+}
+
+.google-agreement-area[hidden] {
+  display: none;
+}
+
+
+/* =========================
+   전체 동의
+========================= */
+
+.google-agreement-area
+.agreement-all-item {
+  width: 100%;
+  min-height: 38px;
+
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 0;
+
+  color: rgba(255, 255, 255, 0.94);
+
+  border: none;
+
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.45;
+
+  cursor: pointer;
+}
+
+
+/* =========================
+   구분선
+========================= */
+
+.google-agreement-area
+.agreement-divider {
+  display: block;
+
+  width: 100%;
+  height: 1px;
+
+  margin: 10px 0;
+
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* =========================
+   약관 한 줄
+========================= */
+
+.google-agreement-area
+.agreement-row {
+  width: 100%;
+  min-height: 38px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.google-agreement-area
+.agreement-label {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 0;
+
+  color: rgba(255, 255, 255, 0.74);
+
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.15px;
+
+  cursor: pointer;
+}
+
+.google-agreement-area
+.agreement-text {
+  min-width: 0;
+
+  line-height: 1.45;
+
+  overflow-wrap: anywhere;
+}
+
+.google-agreement-area
+.agreement-text em {
+  color: rgba(255, 255, 255, 0.4);
+
+  font-style: normal;
+}
+
+
+/* =========================
+   체크박스
+========================= */
+
+.google-agreement-area
+input[type="checkbox"] {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+  pointer-events: none;
+}
+
+.google-agreement-area
+.custom-checkbox {
+  position: relative;
+
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
+  background: #303030;
+
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.google-agreement-area
+input[type="checkbox"]:checked
++ .custom-checkbox {
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.google-agreement-area
+input[type="checkbox"]:checked
++ .custom-checkbox::after {
+  content: "";
+
+  position: absolute;
+  top: 4px;
+  left: 7px;
+
+  width: 4px;
+  height: 8px;
+
+  border-right: 2px solid #070707;
+  border-bottom: 2px solid #070707;
+
+  transform: rotate(45deg);
+}
+
+
+/* =========================
+   보기 버튼
+========================= */
+
+.google-agreement-area
+.agreement-view-button {
+  width: auto;
+  height: auto;
+
+  flex-shrink: 0;
+
+  margin: 0;
+  padding: 5px;
+
+  color: rgba(255, 255, 255, 0.42);
+  background: transparent;
+
+  border: none;
+  border-radius: 0;
+  outline: none;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  box-shadow: none;
+
+  cursor: pointer;
+
+  transition: color 0.15s ease;
+}
+
+.google-agreement-area
+.agreement-view-button:hover {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.google-agreement-area
+.agreement-view-button:focus-visible {
+  color: var(--gymfit-green);
+
+  outline: 2px solid var(--gymfit-green);
+  outline-offset: 2px;
+}
+
+
+/* =========================
+   작은 화면
+========================= */
+
+@media (max-width: 370px) {
+  .google-agreement-area {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .google-agreement-area
+  .agreement-label {
+    font-size: 12px;
+  }
+}

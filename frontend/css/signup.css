@@ -1,0 +1,671 @@
+:root {
+  --gymfit-green: #A8FF35;
+
+  --white: #ffffff;
+  --black: #000000;
+
+  --gray-300: #b3b3b3;
+  --gray-400: #929292;
+  --gray-500: #707070;
+
+  --field-bg: #292929;
+  --field-border: rgba(255, 255, 255, 0.11);
+
+  --danger: #ff7070;
+  --success: #A8FF35;
+}
+
+body {
+  overflow-y: auto;
+  background: var(--black);
+}
+
+.signup-page {
+  width: 100%;
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+
+  background: var(--black);
+}
+
+.signup-container {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+
+  padding:
+    max(28px, env(safe-area-inset-top))
+    28px
+    max(32px, env(safe-area-inset-bottom));
+}
+
+/* =========================
+   상단
+========================= */
+
+.signup-header {
+  width: 100%;
+  height: 50px;
+
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+}
+
+.back-button {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+
+  padding: 0;
+
+  color: #ffffff;
+  background: transparent;
+
+  border: none;
+  outline: none;
+
+  cursor: pointer;
+}
+
+.back-button svg {
+  width: 28px;
+  height: 28px;
+}
+
+.header-spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.step-progress {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.step-item {
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #777777;
+  background: #000000;
+
+  border: 2px solid #404040;
+  border-radius: 50%;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.step-item.active {
+  color: #000000;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.step-line {
+  position: relative;
+
+  width: 84px;
+  height: 3px;
+
+  background: #404040;
+}
+
+.step-line-active {
+  width: 50%;
+  height: 100%;
+
+  background: var(--gymfit-green);
+}
+
+/* =========================
+   제목
+========================= */
+
+.signup-title-area {
+  margin-top: 72px;
+  margin-bottom: 36px;
+}
+
+.signup-title-area h1 {
+  margin: 0;
+
+  color: var(--white);
+
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+
+.signup-title-area p {
+  margin: 8px 0 0;
+
+  color: rgba(255, 255, 255, 0.86);
+
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.3px;
+}
+
+/* =========================
+   폼
+========================= */
+
+.signup-form {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group {
+  position: relative;
+
+  width: 100%;
+  height: 62px;
+
+  margin-bottom: 14px;
+}
+
+.input-group input {
+  width: 100%;
+  height: 100%;
+
+  padding: 0 58px 0 64px;
+
+  color: var(--white);
+  background: var(--field-bg);
+
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+  outline: none;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.input-group input:focus {
+  border-color: rgba(168, 255, 53, 0.72);
+
+  box-shadow:
+    0 0 0 3px rgba(168, 255, 53, 0.08);
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  z-index: 2;
+
+  width: 25px;
+  height: 25px;
+
+  color: rgba(255, 255, 255, 0.54);
+
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.input-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* =========================
+   이메일 인증
+========================= */
+
+.input-with-button input {
+  padding-right: 142px;
+}
+
+.inline-button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+
+  min-width: 116px;
+  height: 46px;
+
+  padding: 0 17px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #070707;
+  background: var(--gymfit-green);
+
+  border: none;
+  outline: none;
+  border-radius: 16px;
+
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+
+  transform: translateY(-50%);
+  cursor: pointer;
+
+  transition:
+    transform 0.12s ease,
+    filter 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.inline-button:hover {
+  filter: brightness(1.02);
+}
+
+.inline-button:active {
+  transform: translateY(-50%) scale(0.98);
+}
+
+.inline-button:disabled {
+  cursor: not-allowed;
+}
+
+/* 인증 타이머 */
+.inline-button.timer-mode {
+  color: var(--gymfit-green);
+  background: rgba(15, 24, 5, 0.96);
+
+  border: 1px solid var(--gymfit-green);
+
+  cursor: default;
+}
+
+.inline-button.timer-mode:hover {
+  filter: none;
+}
+
+/* 인증 완료 */
+.inline-button.success-mode {
+  color: #071000;
+  background: var(--gymfit-green);
+
+  border: none;
+
+  cursor: default;
+}
+
+/* 인증번호 영역 */
+.verification-area[hidden] {
+  display: none;
+}
+
+.verification-group input {
+  padding-left: 24px;
+}
+
+/* =========================
+   비밀번호 표시
+========================= */
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: transparent;
+
+  border: none;
+  outline: none;
+  border-radius: 0;
+
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.password-toggle:hover,
+.password-toggle:focus,
+.password-toggle:focus-visible,
+.password-toggle:active {
+  background: transparent;
+
+  border: none;
+  outline: none;
+
+  box-shadow: none;
+}
+
+.password-toggle img {
+  width: 24px;
+  height: 24px;
+
+  object-fit: contain;
+  opacity: 0.7;
+}
+
+/* =========================
+   메시지
+========================= */
+
+.field-message {
+  margin: -6px 5px 8px;
+
+  color: var(--danger);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.field-message:empty {
+  display: none;
+}
+
+.field-message.success {
+  color: var(--success);
+}
+
+.form-error-message {
+  margin: -4px 5px 10px;
+
+  color: var(--danger);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.form-error-message:empty {
+  display: none;
+}
+
+/* =========================
+   약관
+========================= */
+
+.agreement-card {
+  width: 100%;
+
+  margin-top: 8px;
+  padding: 20px;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+}
+
+.agreement-all-item {
+  width: 100%;
+  min-height: 38px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: rgba(255, 255, 255, 0.94);
+
+  cursor: pointer;
+}
+
+.agreement-all-item strong {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.agreement-divider {
+  width: 100%;
+  height: 1px;
+
+  margin: 10px 0;
+
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.agreement-row {
+  width: 100%;
+  min-height: 38px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.agreement-label {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: rgba(255, 255, 255, 0.74);
+
+  cursor: pointer;
+}
+
+.agreement-text {
+  min-width: 0;
+
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.15px;
+
+  overflow-wrap: anywhere;
+}
+
+.agreement-text em {
+  color: rgba(255, 255, 255, 0.4);
+
+  font-style: normal;
+}
+
+.agreement-card input {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-checkbox {
+  position: relative;
+
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
+  background: #303030;
+
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+}
+
+.agreement-card input:checked + .custom-checkbox {
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.agreement-card input:checked
+  + .custom-checkbox::after {
+  content: "";
+
+  position: absolute;
+  top: 4px;
+  left: 7px;
+
+  width: 4px;
+  height: 8px;
+
+  border-right: 2px solid #070707;
+  border-bottom: 2px solid #070707;
+
+  transform: rotate(45deg);
+}
+
+/* 보기 버튼 */
+
+.agreement-view-button {
+  width: auto;
+  height: auto;
+
+  flex-shrink: 0;
+
+  margin: 0;
+  padding: 5px;
+
+  color: rgba(255, 255, 255, 0.42);
+  background: transparent;
+
+  border: none;
+  border-radius: 0;
+  outline: none;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+
+  cursor: pointer;
+
+  box-shadow: none;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  transition: color 0.15s ease;
+}
+
+.agreement-view-button:hover {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.agreement-view-button:focus-visible {
+  color: var(--gymfit-green);
+
+  outline: 2px solid var(--gymfit-green);
+  outline-offset: 2px;
+}
+
+/* =========================
+   다음 버튼
+========================= */
+
+.next-button {
+  width: 100%;
+  height: 62px;
+
+  margin-top: 28px;
+
+  color: #050505;
+  background: var(--gymfit-green);
+
+  border: none;
+  outline: none;
+  border-radius: 18px;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 24px rgba(168, 255, 53, 0.17);
+
+  transition:
+    transform 0.12s ease,
+    filter 0.2s ease;
+}
+
+.next-button:hover {
+  filter: brightness(1.02);
+}
+
+.next-button:active {
+  transform: scale(0.985);
+}
+
+.next-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================
+   작은 화면
+========================= */
+
+@media (max-width: 370px) {
+  .signup-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .step-item {
+    width: 30px;
+    height: 30px;
+
+    font-size: 13px;
+  }
+
+  .step-line {
+    width: 76px;
+  }
+
+  .signup-title-area h1 {
+    font-size: 31px;
+  }
+
+  .signup-title-area p {
+    font-size: 16px;
+  }
+
+  .inline-button {
+    min-width: 104px;
+
+    padding: 0 13px;
+
+    font-size: 13px;
+  }
+
+  .input-with-button input {
+    padding-right: 126px;
+  }
+
+  .agreement-card {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .agreement-text {
+    font-size: 12px;
+  }
+}

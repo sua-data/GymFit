@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="description"
+    content="GYMFIT 트레이너 회원가입 페이지"
+  >
+
+  <title>GYMFIT | 트레이너 회원가입</title>
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/signup_trainer.css"
+  >
+
+  <script
+    src="/static/js/signup_trainer.js?v=1"
+    defer
+  ></script>
+</head>
+
+<body>
+  <main class="signup-page">
+    <section class="signup-container">
+
+      <!-- 상단 -->
+      <header class="signup-header">
+        <button
+          type="button"
+          class="back-button"
+          id="backButton"
+          aria-label="계정 유형 선택으로 이동"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 12H5"></path>
+            <path d="M11 18L5 12L11 6"></path>
+          </svg>
+        </button>
+
+        <div
+          class="step-progress"
+          aria-label="트레이너 회원가입 1단계"
+        >
+          <div class="step-item active">
+            <span>1</span>
+          </div>
+
+          <div class="step-line">
+            <div class="step-line-active"></div>
+          </div>
+
+          <div class="step-item">
+            <span>2</span>
+          </div>
+        </div>
+
+        <div class="header-spacer"></div>
+      </header>
+
+      <!-- 제목 -->
+      <div class="signup-title-area">
+        <h1>회원가입</h1>
+        <p>트레이너 계정 정보를 입력해주세요.</p>
+      </div>
+
+      <!-- 회원가입 폼 -->
+      <form
+        class="signup-form"
+        id="trainerSignupForm"
+        novalidate
+      >
+
+        <!-- 이름 -->
+        <div class="input-group">
+          <span
+            class="input-icon"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="8" r="4"></circle>
+
+              <path
+                d="M4.5 20C5.2 15.9 8 14 12 14C16 14 18.8 15.9 19.5 20"
+              ></path>
+            </svg>
+          </span>
+
+          <input
+            type="text"
+            id="trainerName"
+            name="name"
+            placeholder="이름을 입력하세요."
+            autocomplete="name"
+            aria-label="이름"
+          >
+        </div>
+
+        <!-- 이메일 -->
+        <div class="input-group input-with-button">
+          <span
+            class="input-icon"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect
+                x="3"
+                y="5"
+                width="18"
+                height="14"
+                rx="2"
+              ></rect>
+
+              <path d="M3 7L12 13L21 7"></path>
+            </svg>
+          </span>
+
+          <input
+            type="email"
+            id="trainerEmail"
+            name="email"
+            placeholder="이메일을 입력하세요."
+            autocomplete="email"
+            aria-label="이메일"
+          >
+
+          <button
+            type="button"
+            class="inline-button"
+            id="emailAuthButton"
+          >
+            이메일 인증
+          </button>
+        </div>
+
+        <!-- 이메일 메시지 -->
+        <p
+          class="field-message"
+          id="emailMessage"
+          aria-live="polite"
+        ></p>
+
+        <!-- 인증번호 -->
+        <div
+          class="verification-area"
+          id="verificationArea"
+          hidden
+        >
+          <div class="input-group input-with-button verification-group">
+            <input
+              type="text"
+              id="verificationCode"
+              name="verificationCode"
+              placeholder="인증번호를 입력하세요."
+              inputmode="numeric"
+              maxlength="6"
+              aria-label="인증번호"
+            >
+
+            <button
+              type="button"
+              class="inline-button"
+              id="verificationButton"
+            >
+              확인
+            </button>
+          </div>
+
+          <p
+            class="field-message"
+            id="verificationMessage"
+            aria-live="polite"
+          ></p>
+        </div>
+
+        <!-- 비밀번호 -->
+        <div class="input-group">
+          <span
+            class="input-icon"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect
+                x="5"
+                y="10"
+                width="14"
+                height="11"
+                rx="2"
+              ></rect>
+
+              <path d="M8 10V7A4 4 0 0 1 16 7V10"></path>
+            </svg>
+          </span>
+
+          <input
+            type="password"
+            id="trainerPassword"
+            name="password"
+            placeholder="비밀번호를 입력하세요."
+            autocomplete="new-password"
+            aria-label="비밀번호"
+          >
+
+          <button
+            type="button"
+            class="password-toggle"
+            id="passwordToggle"
+            aria-label="비밀번호 표시"
+          >
+            <img
+              id="passwordIcon"
+              src="/static/assets/icons/eye-off.svg"
+              alt=""
+            >
+          </button>
+        </div>
+
+        <!-- 비밀번호 확인 -->
+        <div class="input-group">
+          <span
+            class="input-icon"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect
+                x="5"
+                y="10"
+                width="14"
+                height="11"
+                rx="2"
+              ></rect>
+
+              <path d="M8 10V7A4 4 0 0 1 16 7V10"></path>
+            </svg>
+          </span>
+
+          <input
+            type="password"
+            id="trainerPasswordConfirm"
+            name="passwordConfirm"
+            placeholder="비밀번호를 다시 입력하세요."
+            autocomplete="new-password"
+            aria-label="비밀번호 확인"
+          >
+
+          <button
+            type="button"
+            class="password-toggle"
+            id="passwordConfirmToggle"
+            aria-label="비밀번호 확인 표시"
+          >
+            <img
+              id="passwordConfirmIcon"
+              src="/static/assets/icons/eye-off.svg"
+              alt=""
+            >
+          </button>
+        </div>
+
+        <!-- 전체 오류 -->
+        <p
+          class="form-error-message"
+          id="formErrorMessage"
+          aria-live="polite"
+        ></p>
+
+        <!-- 약관 -->
+        <section class="agreement-card">
+
+          <!-- 전체 동의 -->
+          <label class="agreement-all-item">
+            <input
+              type="checkbox"
+              id="agreeAll"
+            >
+
+            <span class="custom-checkbox"></span>
+
+            <strong>전체 동의</strong>
+          </label>
+
+          <div class="agreement-divider"></div>
+
+          <!-- 이용약관 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                class="required-term"
+                id="agreeTerms"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                이용약관 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-terms="service"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 개인정보 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                class="required-term"
+                id="agreePrivacy"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                개인정보 수집 및 이용 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-terms="privacy"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 트레이너 운영정책 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                class="required-term"
+                id="agreeTrainerPolicy"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                트레이너 운영정책 동의
+                <em>(필수)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-terms="trainer"
+            >
+              보기
+            </button>
+          </div>
+
+          <!-- 마케팅 -->
+          <div class="agreement-row">
+            <label class="agreement-label">
+              <input
+                type="checkbox"
+                id="agreeMarketing"
+              >
+
+              <span class="custom-checkbox"></span>
+
+              <span class="agreement-text">
+                마케팅 정보 수신 동의
+                <em>(선택)</em>
+              </span>
+            </label>
+
+            <button
+              type="button"
+              class="agreement-view-button"
+              data-terms="marketing"
+            >
+              보기
+            </button>
+          </div>
+        </section>
+
+        <!-- 다음 -->
+        <button
+          type="submit"
+          class="next-button"
+          id="nextButton"
+        >
+          다음
+        </button>
+
+      </form>
+    </section>
+  </main>
+</body>
+</html>

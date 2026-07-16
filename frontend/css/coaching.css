@@ -1,0 +1,581 @@
+:root {
+  --gymfit-green: #a8ff35;
+  --black: #000000;
+  --white: #ffffff;
+
+  --card-bg: #202020;
+  --card-dark: #151515;
+
+  --text-secondary:
+    rgba(255, 255, 255, 0.72);
+
+  --text-muted:
+    rgba(255, 255, 255, 0.42);
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+html,
+body {
+  margin: 0;
+
+  color: var(--white);
+  background: var(--black);
+
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+
+button,
+select {
+  font: inherit;
+}
+
+
+button {
+  cursor: pointer;
+}
+
+
+.coaching-page {
+  min-height: 100dvh;
+
+  padding-bottom:
+    calc(
+      94px
+      + env(safe-area-inset-bottom)
+    );
+
+  background:
+    radial-gradient(
+      circle at 50% 0,
+      rgba(168, 255, 53, 0.06),
+      transparent 26%
+    ),
+    #000000;
+}
+
+
+.coaching-container {
+  width: 100%;
+  max-width: 430px;
+
+  margin: 0 auto;
+
+  padding:
+    max(22px, env(safe-area-inset-top))
+    20px
+    30px;
+}
+
+
+/* =========================
+   운동 선택
+========================= */
+
+.exercise-tabs {
+  margin-top: 24px;
+  padding: 5px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 5px;
+
+  background: #171717;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 17px;
+}
+
+
+.exercise-tab {
+  min-width: 0;
+  height: 49px;
+
+  padding: 0 6px;
+
+  overflow: hidden;
+
+  color: var(--text-muted);
+  background: transparent;
+
+  border: none;
+  border-radius: 13px;
+
+  font-size: 12px;
+  font-weight: 750;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+
+.exercise-tab.active {
+  color: #050505;
+  background: var(--gymfit-green);
+}
+
+
+/* =========================
+   목표 설정
+========================= */
+
+.target-card {
+  margin-top: 12px;
+  padding: 14px;
+
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 10px;
+
+  background: var(--card-bg);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 17px;
+}
+
+
+.target-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+
+.target-card span {
+  color: var(--text-muted);
+
+  font-size: 11px;
+}
+
+
+.target-card select {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 12px;
+
+  color: var(--white);
+  background: #131313;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  outline: none;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================
+   카메라
+========================= */
+
+.camera-card {
+  position: relative;
+
+  width: 100%;
+  aspect-ratio: 3 / 4;
+
+  margin-top: 14px;
+
+  overflow: hidden;
+
+  background: #111111;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+}
+
+
+.camera-card video,
+.camera-card canvas {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+.camera-card video {
+  transform: scaleX(-1);
+}
+
+
+.camera-card canvas {
+  z-index: 2;
+
+  pointer-events: none;
+}
+
+
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  gap: 8px;
+
+  color: var(--text-secondary);
+  background:
+    linear-gradient(
+      145deg,
+      #1d1d1d,
+      #111111
+    );
+
+  text-align: center;
+}
+
+
+.camera-placeholder strong {
+  font-size: 16px;
+}
+
+
+.camera-placeholder span {
+  color: var(--text-muted);
+
+  font-size: 12px;
+}
+
+
+.live-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 5;
+
+  padding: 8px 11px;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: var(--white);
+  background:
+    rgba(0, 0, 0, 0.68);
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+
+.live-badge span {
+  width: 8px;
+  height: 8px;
+
+  background: var(--gymfit-green);
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 10px
+    rgba(168, 255, 53, 0.7);
+}
+
+
+.exercise-status {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+
+  min-width: 105px;
+
+  padding: 10px 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  background:
+    rgba(0, 0, 0, 0.72);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+
+  backdrop-filter: blur(7px);
+}
+
+
+.exercise-status span {
+  color: var(--text-muted);
+
+  font-size: 10px;
+}
+
+
+.exercise-status strong {
+  color: var(--gymfit-green);
+
+  font-size: 15px;
+}
+
+
+/* =========================
+   실시간 수치
+========================= */
+
+.coaching-stats {
+  margin-top: 14px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+}
+
+
+.stat-card {
+  min-height: 104px;
+
+  padding: 15px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  background:
+    linear-gradient(
+      145deg,
+      #242424,
+      #181818
+    );
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 17px;
+}
+
+
+.stat-card span {
+  color: var(--text-muted);
+
+  font-size: 11px;
+}
+
+
+.stat-card strong {
+  font-size: 24px;
+  font-weight: 850;
+}
+
+
+.stat-card strong b {
+  color: var(--white);
+}
+
+
+.stat-card strong small {
+  color: var(--text-muted);
+
+  font-size: 14px;
+}
+
+
+.score-card {
+  border-color:
+    rgba(168, 255, 53, 0.5);
+}
+
+
+.score-card strong,
+.score-card strong b {
+  color: var(--gymfit-green);
+}
+
+
+.status-value {
+  color: var(--gymfit-green);
+}
+
+
+/* =========================
+   피드백
+========================= */
+
+.feedback-card {
+  margin-top: 14px;
+  padding: 17px;
+
+  display: grid;
+  grid-template-columns:
+    48px minmax(0, 1fr);
+
+  gap: 13px;
+  align-items: center;
+
+  background: var(--card-bg);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+}
+
+
+.feedback-check {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #050505;
+  background: var(--gymfit-green);
+
+  border-radius: 50%;
+
+  font-size: 25px;
+  font-weight: 900;
+}
+
+
+.feedback-card strong {
+  color: var(--gymfit-green);
+
+  font-size: 14px;
+}
+
+
+.feedback-card p {
+  margin: 6px 0 0;
+
+  color: var(--text-muted);
+
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+
+/* =========================
+   버튼
+========================= */
+
+.coaching-actions {
+  margin-top: 14px;
+
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 10px;
+}
+
+
+.primary-button,
+.secondary-button {
+  min-height: 54px;
+
+  border-radius: 15px;
+
+  font-size: 13px;
+  font-weight: 850;
+}
+
+
+.primary-button {
+  color: #050505;
+  background: var(--gymfit-green);
+
+  border: none;
+}
+
+
+.secondary-button {
+  color: var(--white);
+  background: #171717;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.2);
+}
+
+
+.secondary-button:disabled {
+  color: var(--text-muted);
+
+  cursor: not-allowed;
+}
+
+
+/* =========================
+   테스트 패널
+========================= */
+
+.test-panel {
+  margin-top: 14px;
+  padding: 14px;
+
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 8px;
+
+  background:
+    rgba(255, 255, 255, 0.03);
+
+  border:
+    1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+}
+
+
+.test-panel p {
+  grid-column: 1 / -1;
+
+  margin: 0 0 3px;
+
+  color: var(--text-muted);
+
+  font-size: 10px;
+}
+
+
+.test-panel button {
+  min-height: 40px;
+
+  color: var(--white);
+  background: #202020;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+
+  font-size: 11px;
+}
+
+
+.test-panel button:disabled {
+  opacity: 0.35;
+}

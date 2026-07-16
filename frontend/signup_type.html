@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <title>GYMFIT | 계정 유형 선택</title>
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/signup_type.css"
+  >
+
+  <script
+    src="/static/js/signup_type.js"
+    defer
+  ></script>
+</head>
+
+<body>
+  <main class="signup-type-page">
+    <section class="signup-type-container">
+
+      <!-- 뒤로가기 -->
+      <header class="signup-type-header">
+        <button
+          type="button"
+          class="back-button"
+          id="backButton"
+          aria-label="이전 페이지로 이동"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 12H5"></path>
+            <path d="M11 18L5 12L11 6"></path>
+          </svg>
+        </button>
+      </header>
+
+      <!-- 제목 -->
+      <div class="title-area">
+        <h1 id="pageTitle">
+          회원가입
+        </h1>
+
+        <p id="pageDescription">
+          계정 유형을 선택해주세요.
+        </p>
+      </div>
+
+      <!-- 계정 유형 -->
+      <div
+        class="account-type-list"
+        role="radiogroup"
+        aria-label="계정 유형"
+      >
+
+        <!-- 일반 회원 -->
+        <button
+          type="button"
+          class="account-card"
+          data-type="MEMBER"
+        >
+          <span class="icon-wrapper">
+            <span
+              class="account-icon member-icon"
+              aria-hidden="true"
+            ></span>
+          </span>
+
+          <span class="card-text">
+            <strong>일반 회원</strong>
+
+            <span>
+              나만의 운동 루틴과<br>
+              자세 코칭을 이용합니다.
+            </span>
+          </span>
+
+          <span
+            class="card-arrow"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 18L15 12L9 6"></path>
+            </svg>
+          </span>
+        </button>
+
+        <!-- 트레이너 -->
+        <button
+          type="button"
+          class="account-card"
+          data-type="TRAINER"
+        >
+          <span class="icon-wrapper">
+            <span
+              class="account-icon trainer-icon"
+              aria-hidden="true"
+            ></span>
+          </span>
+
+          <span class="card-text">
+            <strong>트레이너</strong>
+
+            <span>
+              회원에게 운동 루틴과<br>
+              피드백을 제공합니다.
+            </span>
+          </span>
+
+          <span
+            class="card-arrow"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 18L15 12L9 6"></path>
+            </svg>
+          </span>
+        </button>
+
+      </div>
+
+      <!-- 일반 회원가입에서만 표시 -->
+      <div
+        class="bottom-area"
+        id="loginGuide"
+      >
+        <div class="divider">
+          <span></span>
+          <p>또는</p>
+          <span></span>
+        </div>
+
+        <p class="login-text">
+          이미 계정이 있으신가요?
+        </p>
+
+        <a
+          href="/login"
+          class="login-link"
+        >
+          로그인 하기
+        </a>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>

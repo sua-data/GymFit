@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="description"
+    content="GYMFIT 사용자 대시보드"
+  >
+
+  <title>GYMFIT | 홈</title>
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/common_layout.css?v=1"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/static/css/dashboard.css?v=7"
+  >
+
+  <script
+    src="/static/js/common_layout.js?v=1"
+    defer
+  ></script>
+
+  <script
+    src="/static/js/dashboard.js?v=7"
+    defer
+  ></script>
+</head>
+
+<body
+  data-page="home"
+  data-header-title="GYMFIT"
+>
+  <main class="dashboard-page">
+    <div class="dashboard-container">
+
+      <!-- 상단 -->
+      <div id="topHeaderContainer"></div>
+
+
+      <!-- 인사말 -->
+      <section class="welcome-section">
+        <h1>
+          <span class="welcome-text">
+            안녕하세요,
+            <span id="userName">-</span>님!
+          </span>
+
+          <img
+            class="welcome-icon"
+            src="/static/assets/icons/hand_shake.svg"
+            alt=""
+          >
+        </h1>
+
+        <p>
+          오늘도 건강한 하루 보내세요.
+        </p>
+      </section>
+
+
+      <!-- 오늘의 요약 -->
+      <section class="dashboard-section">
+        <div class="section-heading">
+          <h2>오늘의 요약</h2>
+        </div>
+
+        <div class="summary-grid">
+
+          <!-- 칼로리 -->
+          <article class="summary-card">
+            <span
+              class="summary-icon summary-fire"
+              aria-hidden="true"
+            ></span>
+
+            <span class="summary-label">
+              칼로리
+            </span>
+
+            <strong id="caloriesValue">
+              0
+            </strong>
+
+            <small>kcal</small>
+          </article>
+
+
+          <!-- 운동 시간 -->
+          <article class="summary-card">
+            <span class="summary-icon summary-time">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                ></circle>
+
+                <path d="M12 7V12L15 14"></path>
+              </svg>
+            </span>
+
+            <span class="summary-label">
+              운동 시간
+            </span>
+
+            <strong id="workoutMinutesValue">
+              0
+            </strong>
+
+            <small>분</small>
+          </article>
+
+
+          <!-- 완료 세트 -->
+          <article class="summary-card">
+            <span
+              class="summary-icon summary-gym"
+              aria-hidden="true"
+            ></span>
+
+            <span class="summary-label">
+              완료 세트
+            </span>
+
+            <strong id="completedSetsValue">
+              0
+            </strong>
+
+            <small>세트</small>
+          </article>
+
+
+          <!-- 연속 기록 -->
+          <article class="summary-card">
+            <span class="summary-icon summary-trophy">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M8 4H16V9C16 12 14.2 14 12 14C9.8 14 8 12 8 9V4Z"></path>
+                <path d="M8 6H5V8C5 10 6.3 11 8 11"></path>
+                <path d="M16 6H19V8C19 10 17.7 11 16 11"></path>
+                <path d="M12 14V18"></path>
+                <path d="M8 21H16"></path>
+                <path d="M9 18H15"></path>
+              </svg>
+            </span>
+
+            <span class="summary-label">
+              연속 기록
+            </span>
+
+            <strong id="streakValue">
+              0
+            </strong>
+
+            <small>일</small>
+          </article>
+
+        </div>
+      </section>
+
+
+      <!-- 오늘의 베스트 자세 -->
+      <section class="posture-card">
+        <div class="posture-heading">
+          <div>
+            <p class="posture-eyebrow">
+              TODAY BEST POSTURE
+            </p>
+
+            <h2>
+              오늘의 베스트 자세
+            </h2>
+          </div>
+
+          <select
+            id="bestExerciseSelect"
+            class="exercise-select"
+            aria-label="운동 종목 선택"
+            disabled
+          >
+          </select>
+        </div>
+
+
+        <!-- 베스트 자세 사진 -->
+        <figure
+          class="best-frame"
+          id="bestFrame"
+          tabindex="0"
+          role="button"
+          aria-label="베스트 자세 이미지 크게 보기"
+        >
+          <div
+            class="best-frame-placeholder"
+            id="bestFramePlaceholder"
+          >
+            분석 기록이 없습니다.
+          </div>
+
+          <img
+            id="bestFrameImage"
+            alt="베스트 자세 이미지"
+            hidden
+          >
+
+          <span
+            class="best-badge"
+            id="bestBadge"
+          >
+            BEST
+          </span>
+
+          <span
+            class="frame-score"
+            id="frameScore"
+          >
+            <b id="frameScoreValue">0</b>점
+          </span>
+
+          <figcaption id="bestFrameCaption">
+            운동 기록을 불러오는 중입니다.
+          </figcaption>
+        </figure>
+
+
+        <!-- 분석 정보 -->
+        <div class="posture-info">
+          <div class="exercise-name-row">
+            <span>운동 종목</span>
+
+            <strong id="exerciseName">
+              -
+            </strong>
+          </div>
+
+          <div class="posture-info-grid">
+            <div class="posture-info-item">
+              <span>반복 횟수</span>
+
+              <strong>
+                <b id="repCount">0</b>회
+              </strong>
+            </div>
+
+            <div class="posture-info-item">
+              <span>완료 세트</span>
+
+              <strong>
+                <b id="setCount">0</b>세트
+              </strong>
+            </div>
+          </div>
+
+          <div class="score-section">
+            <div class="score-text">
+              <span>자세 점수</span>
+
+              <strong>
+                <b id="postureScore">0</b>점
+              </strong>
+            </div>
+
+            <div
+              class="score-ring"
+              id="scoreRing"
+            >
+              <div class="score-ring-inner">
+                <strong id="scoreRingValue">
+                  0
+                </strong>
+
+                <small>점</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- 자세 피드백 -->
+        <div class="feedback-box">
+          <span class="feedback-icon">
+            <img
+              src="/static/assets/icons/check.svg"
+              alt=""
+            >
+          </span>
+
+          <div>
+            <strong id="feedbackTitle">
+              분석 기록을 불러오는 중입니다.
+            </strong>
+
+            <p id="feedbackText">
+              운동 완료 후 자세 분석 결과가 표시됩니다.
+            </p>
+          </div>
+        </div>
+
+
+        <a
+          href="/coaching"
+          class="coaching-button"
+        >
+          <img
+            src="/static/assets/icons/coaching.svg"
+            alt=""
+          >
+
+          <span>
+            실시간 자세 코칭 시작하기
+          </span>
+
+          <b aria-hidden="true">
+            ›
+          </b>
+        </a>
+      </section>
+
+
+      <!-- 운동 계획 / 이번 주 운동 -->
+      <div class="dashboard-card-grid">
+
+        <section class="small-dashboard-card">
+          <div class="small-card-heading">
+            <h2>
+              오늘의 운동 계획
+            </h2>
+
+            <img
+              src="/static/assets/icons/routine.svg"
+              alt=""
+            >
+          </div>
+
+          <ul
+            class="workout-plan-list"
+            id="workoutPlanList"
+          >
+            <li class="empty-message">
+              운동 계획을 불러오는 중입니다.
+            </li>
+          </ul>
+
+          <div
+            class="plan-total"
+            id="planTotal"
+          >
+            예상 시간 0분
+          </div>
+
+        </section>
+
+
+        <section class="small-dashboard-card">
+          <div class="small-card-heading">
+            <h2>
+              이번 주 운동
+            </h2>
+
+            <img
+              src="/static/assets/icons/chart.svg"
+              alt=""
+            >
+          </div>
+
+          <div class="weekly-summary">
+            <p>
+              운동
+              <strong id="weeklyWorkoutDays">
+                0
+              </strong>일
+            </p>
+
+            <span id="weeklyWorkoutMinutes">
+              총 0분
+            </span>
+
+            <span id="weeklyGoalText">
+              목표 0일 중 0일
+            </span>
+          </div>
+
+          <div
+            class="weekly-bars"
+            id="weeklyBars"
+          ></div>
+
+          <div class="weekly-progress">
+            <div class="weekly-progress-track">
+              <span id="weeklyProgressTrack"></span>
+            </div>
+
+            <strong id="weeklyProgressText">
+              0 / 0일
+            </strong>
+          </div>
+        </section>
+
+      </div>
+
+
+      <!-- 최근 운동 기록 -->
+      <section class="recent-card">
+        <div class="recent-heading">
+          <h2>
+            최근 운동 기록
+          </h2>
+
+          <a href="/records">
+            전체 보기
+            <span>›</span>
+          </a>
+        </div>
+
+        <div id="recentWorkoutList">
+          <div class="empty-message">
+            최근 운동 기록을 불러오는 중입니다.
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div
+      class="image-modal"
+      id="imageModal"
+      hidden
+    >
+      <div
+        class="image-modal-backdrop"
+        id="imageModalBackdrop"
+      ></div>
+
+      <div
+        class="image-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label="베스트 자세 이미지 크게 보기"
+      >
+        <button
+          type="button"
+          class="image-modal-close"
+          id="imageModalClose"
+          aria-label="닫기"
+        >
+          ×
+        </button>
+
+        <img
+          id="imageModalPhoto"
+          src=""
+          alt=""
+        >
+
+        <p id="imageModalCaption"></p>
+      </div>
+    </div>
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body>
+</html>
