@@ -45,6 +45,11 @@ from backend.models import (
     UserAgreement
 )
 from backend.services.gym_service import select_or_create_gym
+from backend.services.pt_service import (
+    get_pending_pt_request_count,
+    has_active_trainer,
+)
+from backend.services.notification_service import create_welcome_notification
 from backend.schemas import (
     GoogleCodeLoginRequest,
     GoogleCodeLoginResponse,
@@ -980,6 +985,7 @@ def signup_member(
             trainer_policy=False,
         )
 
+        create_welcome_notification(db, user.user_id, user.name)
         db.commit()
         db.refresh(user)
 
@@ -1187,6 +1193,7 @@ def signup_trainer(
             ),
         )
 
+        create_welcome_notification(db, user.user_id, user.name)
         db.commit()
         db.refresh(user)
 
@@ -1481,6 +1488,12 @@ def login(
             ),
             name=user.name,
             email=user.email,
+            has_active_trainer=has_active_trainer(
+                db, user.user_id, user.account_type
+            ),
+            pending_pt_request_count=get_pending_pt_request_count(
+                db, user.user_id, user.account_type
+            ),
         )
 
     except Exception as error:
@@ -1573,6 +1586,12 @@ def google_code_login(
                     name=user.name,
                     email=user.email,
                     signup_token=None,
+                    has_active_trainer=has_active_trainer(
+                        db, user.user_id, user.account_type
+                    ),
+                    pending_pt_request_count=get_pending_pt_request_count(
+                        db, user.user_id, user.account_type
+                    ),
                 )
             )
 
@@ -1769,6 +1788,7 @@ def google_signup_member(
             trainer_policy=False,
         )
 
+        create_welcome_notification(db, user.user_id, user.name)
         db.commit()
         db.refresh(user)
 
@@ -1980,6 +2000,7 @@ def google_signup_trainer(
             ),
         )
 
+        create_welcome_notification(db, user.user_id, user.name)
         db.commit()
         db.refresh(user)
 

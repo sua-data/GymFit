@@ -211,6 +211,18 @@ class User(Base):
         uselist=False,
     )
 
+    trained_member_relationships: Mapped[list["TrainerMember"]] = relationship(
+        foreign_keys="TrainerMember.trainer_id",
+        back_populates="trainer",
+        cascade="all, delete-orphan",
+    )
+
+    trainer_relationships: Mapped[list["TrainerMember"]] = relationship(
+        foreign_keys="TrainerMember.member_id",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
 
 # =========================================================
 # 일반 회원 상세 프로필

@@ -232,6 +232,10 @@ function saveLoginUser(data) {
     email: data.email,
     must_change_password:
       data.must_change_password ?? false,
+    has_active_trainer:
+      data.has_active_trainer === true,
+    pending_pt_request_count:
+      Math.max(0, Number(data.pending_pt_request_count) || 0),
   };
 
   sessionStorage.setItem(

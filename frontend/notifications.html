@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GYMFIT | 알림</title>
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/notifications.css?v=1">
+  <script src="/static/js/common_layout.js?v=6" defer></script>
+  <script src="/static/js/notifications.js?v=1" defer></script>
+</head>
+<body data-page="notifications" data-header-title="알림" data-header-subtitle="새로운 소식을 확인하세요">
+  <main class="notifications-page">
+    <div class="notifications-container">
+      <div id="topHeaderContainer"></div>
+      <div class="notifications-toolbar"><h1>알림</h1><button type="button" id="readAllButton">전체 읽음</button></div>
+      <section id="notificationsLoading" class="notification-state">알림을 불러오고 있습니다.</section>
+      <section id="notificationsError" class="notification-state error" hidden><p id="notificationsErrorMessage"></p><button type="button" id="notificationsRetryButton">다시 시도</button></section>
+      <section id="notificationsEmpty" class="notification-state" hidden>새로운 알림이 없습니다.</section>
+      <div id="notificationList" class="notification-list" hidden></div>
+    </div>
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body>
+</html>

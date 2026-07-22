@@ -346,6 +346,8 @@ class LoginResponse(BaseModel):
     name: str
     email: EmailStr
     must_change_password: bool = False
+    has_active_trainer: bool = False
+    pending_pt_request_count: int = 0
 
 
 # =========================================================
@@ -395,6 +397,8 @@ class GoogleCodeLoginResponse(BaseModel):
     email: EmailStr
 
     signup_token: str | None = None
+    has_active_trainer: bool = False
+    pending_pt_request_count: int = 0
 
 
 # =========================================================

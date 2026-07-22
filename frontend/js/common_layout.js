@@ -1,30 +1,33 @@
-const commonMenuItems = [
+const memberServiceMenuItems = [
   {
-    label: "내 헬스장",
-    path: "/my-gym"
+    label: "내 헬스장"
   },
   {
-    label: "보유 머신 관리",
-    path: "/my-gym/machines"
+    label: "머신 사용법"
+  }
+];
+
+const trainerServiceMenuItems = [
+  {
+    label: "내 헬스장"
   },
   {
-    label: "머신 사용법",
-    path: "/machines"
+    label: "보유 머신 관리"
+  },
+  {
+    label: "머신 사용법"
   }
 ];
 
 const ptMemberMenuItems = [
   {
-    label: "PT 숙제",
-    path: "/pt-homework"
+    label: "PT 숙제"
   },
   {
-    label: "트레이너 피드백",
-    path: "/trainer-feedback"
+    label: "트레이너 피드백"
   },
   {
-    label: "PT 일정",
-    path: "/pt-schedule"
+    label: "PT 일정"
   }
 ];
 
@@ -34,16 +37,13 @@ const trainerMenuItems = [
     path: "/trainer/members"
   },
   {
-    label: "PT 숙제 관리",
-    path: "/trainer/homework"
+    label: "PT 숙제 관리"
   },
   {
-    label: "회원 피드백",
-    path: "/trainer/feedback"
+    label: "회원 피드백"
   },
   {
-    label: "PT 일정 관리",
-    path: "/trainer/schedule"
+    label: "PT 일정 관리"
   }
 ];
 
@@ -123,14 +123,21 @@ function createMenuSection(
   );
 
   items.forEach((item) => {
-    const link =
-      document.createElement("a");
+    const menuItem = document.createElement(
+      item.path ? "a" : "button"
+    );
 
-    link.className =
+    menuItem.className =
       "side-menu-item";
 
-    link.href =
-      item.path;
+    if (item.path) {
+      menuItem.href = item.path;
+    } else {
+      menuItem.type = "button";
+      menuItem.addEventListener("click", () => {
+        window.alert("준비 중인 기능입니다.");
+      });
+    }
 
     const label =
       document.createElement("span");
@@ -141,15 +148,29 @@ function createMenuSection(
     const arrow =
       document.createElement("span");
 
-    arrow.textContent =
-      "›";
+    const badgeCount = Math.max(
+      0,
+      Number(item.badgeCount) || 0
+    );
 
-    link.append(
+    arrow.className = badgeCount > 0
+      ? "side-menu-count"
+      : item.path
+        ? ""
+        : "side-menu-coming";
+
+    arrow.textContent = badgeCount > 0
+      ? String(badgeCount)
+      : item.path
+        ? "›"
+        : "준비 중";
+
+    menuItem.append(
       label,
       arrow
     );
 
-    section.appendChild(link);
+    section.appendChild(menuItem);
   });
 
   return section;
@@ -196,9 +217,7 @@ function renderSideMenu() {
     user.account_type === "TRAINER";
 
   const hasActiveTrainer =
-    Boolean(
-      user.has_active_trainer
-    );
+    user.has_active_trainer === true;
 
   if (isTrainer) {
     userType.textContent =
@@ -214,11 +233,20 @@ function renderSideMenu() {
   menuList.appendChild(
     createMenuSection(
       "운동 관리",
-      commonMenuItems
+      isTrainer
+        ? trainerServiceMenuItems
+        : [
+            ...memberServiceMenuItems,
+            {
+              label: "PT 요청",
+              path: "/pt/requests",
+              badgeCount: user.pending_pt_request_count,
+            },
+          ]
     )
   );
 
-  if (hasActiveTrainer) {
+  if (hasActiveTrainer && !isTrainer) {
     menuList.appendChild(
       createMenuSection(
         "PT 관리",
@@ -350,6 +378,12 @@ function setupSideMenu() {
 }
 
 
+window.addEventListener(
+  "gymfitUserUpdated",
+  renderSideMenu
+);
+
+
 function setupBottomNavigation() {
   const currentPath =
     window.location.pathname;
@@ -449,6 +483,39 @@ function setupCommonHeader() {
   }
 }
 
+
+async function refreshNotificationBadge() {
+  const user = getLoginUser();
+  const badge = document.querySelector("#notificationBadge");
+  if (!badge || !user?.user_id) return;
+  try {
+    const response = await fetch("/api/notifications/unread-count", {
+      headers: { "X-User-Id": String(user.user_id) },
+    });
+    if (!response.ok) throw new Error("알림 개수를 불러오지 못했습니다.");
+    const data = await response.json();
+    const count = Math.max(0, Number(data.unread_count) || 0);
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.hidden = count === 0;
+  } catch (error) {
+    badge.hidden = true;
+    console.error("알림 배지 조회 실패:", error);
+  }
+}
+
+
+function setupNotificationButton() {
+  const button = document.querySelector("#notificationButton");
+  if (!button) return;
+  button.addEventListener("click", () => {
+    window.location.href = "/notifications";
+  });
+  refreshNotificationBadge();
+}
+
+
+window.addEventListener("gymfitNotificationsUpdated", refreshNotificationBadge);
+
 window.addEventListener(
   "DOMContentLoaded",
   async () => {
@@ -473,6 +540,7 @@ window.addEventListener(
       setupCommonHeader();
       setupSideMenu();
       setupBottomNavigation();
+      setupNotificationButton();
 
       window.dispatchEvent(
         new CustomEvent(

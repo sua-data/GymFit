@@ -74,7 +74,7 @@ function getDisplayName(user) {
 
 function getRoleLabel(user) {
   if (user?.account_type === "TRAINER") return "트레이너";
-  return getSessionUser()?.has_active_trainer ? "PT 회원" : "일반 회원";
+  return getSessionUser()?.has_active_trainer === true ? "PT 회원" : "일반 회원";
 }
 
 function formatDate(value) {
@@ -149,6 +149,8 @@ async function loadProfile() {
   profileContent.hidden = true;
   try {
     currentUser = await requestJson(`/api/users/${sessionUser.user_id}`);
+    updateSessionUser(currentUser);
+    window.dispatchEvent(new CustomEvent("gymfitUserUpdated", { detail: currentUser }));
     renderProfile();
     profileContent.hidden = false;
   } catch (error) {
@@ -203,6 +205,11 @@ function updateSessionUser(user) {
     exercise_level: user.exercise_level,
     goals: user.goals,
     weekly_workout_days: user.weekly_workout_days,
+    has_active_trainer: user.has_active_trainer === true,
+    pending_pt_request_count: Math.max(
+      0,
+      Number(user.pending_pt_request_count) || 0
+    ),
     gym_id: user.gym_id,
     gym_name: user.gym_name,
     gym_road_address: user.gym_road_address,

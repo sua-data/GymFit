@@ -1,0 +1,25 @@
+:root { --pt-green: #a8ff35; --pt-card: #171717; --pt-muted: rgba(255,255,255,.58); }
+body { background: #000; color: #fff; }
+.pt-page { min-height: 100dvh; padding-bottom: calc(98px + env(safe-area-inset-bottom)); }
+.pt-container { width: 100%; max-width: 430px; min-height: 100dvh; margin: 0 auto; padding: max(22px, env(safe-area-inset-top)) 20px 30px; }
+.pt-card { margin-top: 18px; padding: 20px; background: var(--pt-card); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; }
+.section-heading span { color: var(--pt-green); font-size: 10px; font-weight: 900; letter-spacing: 1px; }
+.section-heading h1, .section-heading h2 { margin: 5px 0 16px; font-size: 21px; }
+.search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.search-row input { min-width: 0; height: 52px; padding: 0 16px; color: #fff; background: #252525; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; font: inherit; }
+.search-row button, .pt-action { min-height: 44px; padding: 0 15px; color: #050505; background: var(--pt-green); border: 0; border-radius: 13px; font: inherit; font-weight: 850; }
+.helper { margin: 10px 2px; color: var(--pt-muted); font-size: 12px; }
+.pt-list { display: grid; gap: 10px; }
+.pt-item { padding: 14px; background: #222; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; }
+.pt-item strong { display: block; font-size: 15px; }
+.pt-item p { margin: 5px 0 0; color: var(--pt-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.pt-actions { display: flex; gap: 8px; margin-top: 12px; }
+.pt-action { flex: 1; }
+.pt-action.secondary { color: #fff; background: #343434; }
+.pt-action.danger { color: #ff8b8b; background: rgba(255,80,80,.1); border: 1px solid rgba(255,100,100,.25); }
+.pt-action:disabled { opacity: .5; cursor: not-allowed; }
+.status-badge { display: inline-flex; margin-top: 8px; padding: 4px 8px; color: var(--pt-green); background: rgba(168,255,53,.1); border-radius: 8px; font-size: 10px; font-weight: 850; }
+.empty { padding: 18px 8px; color: var(--pt-muted); text-align: center; font-size: 13px; }
+.pt-state { margin-top: 24px; padding: 24px; color: var(--pt-muted); background: var(--pt-card); border-radius: 18px; text-align: center; }
+.pt-state.error { color: #ff9797; }
+.pt-state button { margin-top: 12px; min-height: 42px; padding: 0 16px; color: #050505; background: var(--pt-green); border: 0; border-radius: 12px; font-weight: 850; }

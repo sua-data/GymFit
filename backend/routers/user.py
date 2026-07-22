@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.database import get_db
 from backend.models import Gym, MemberGoal, MemberProfile, User, UserGym
+from backend.services.pt_service import (
+    get_pending_pt_request_count,
+    has_active_trainer,
+)
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -103,6 +107,12 @@ def serialize_user(user: User, db: Session) -> dict:
         "gym_external_place_id": gym.external_place_id if gym else None,
         "trainer_approval_status": (
             trainer_profile.approval_status if trainer_profile else None
+        ),
+        "has_active_trainer": has_active_trainer(
+            db, user.user_id, user.account_type
+        ),
+        "pending_pt_request_count": get_pending_pt_request_count(
+            db, user.user_id, user.account_type
         ),
     }
 

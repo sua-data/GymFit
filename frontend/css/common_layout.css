@@ -41,6 +41,32 @@
   outline: 0;
 }
 
+.common-notification-button {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 2px solid #000;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.notification-badge[hidden] {
+  display: none;
+}
+
 .common-menu-button {
   flex-direction: column;
   gap: 6px;
@@ -375,11 +401,15 @@
     rgba(255, 255, 255, 0.88);
   background: transparent;
 
+  border: 0;
+
   border-radius: 13px;
 
   font-size: 14px;
   font-weight: 720;
   text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .side-menu-item:hover {
@@ -396,4 +426,26 @@
 
 body.side-menu-open {
   overflow: hidden;
+}
+
+.side-menu-item span.side-menu-coming {
+  padding: 4px 7px;
+  color: rgba(255, 255, 255, 0.44);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.side-menu-item span.side-menu-count {
+  min-width: 23px;
+  height: 23px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
 }

@@ -67,3 +67,18 @@ class Notification(Base):
         index=True,
         comment="알림 생성 일시",
     )
+
+    notification_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    target_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    reference_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
