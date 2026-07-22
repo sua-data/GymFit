@@ -34,6 +34,9 @@ from backend.routers.dashboard import (
 from backend.routers.workout import (
     router as workout_router
 )
+from backend.routers.user import (
+    router as user_router
+)
 
 # 모든 모델을 SQLAlchemy에 등록
 import backend.models
@@ -77,6 +80,7 @@ def startup_event():
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(workout_router)
+app.include_router(user_router)
 
 # frontend 폴더 전체를 /static 경로로 연결
 app.mount(
@@ -172,6 +176,16 @@ def records_page():
 def record_detail_page(workout_record_id: int):
     return FileResponse(
         FRONTEND_DIR / "records.html"
+    )
+
+
+@app.get(
+    "/mypage",
+    include_in_schema=False,
+)
+def mypage_page():
+    return FileResponse(
+        FRONTEND_DIR / "mypage.html"
     )
 
 @app.get("/health")

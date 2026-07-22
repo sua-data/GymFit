@@ -363,12 +363,22 @@ function setupSideMenu() {
   logoutButton?.addEventListener(
     "click",
     () => {
-      sessionStorage.removeItem(
-        "gymfitUser"
-      );
+      if (!window.confirm("로그아웃하시겠어요?")) {
+        return;
+      }
 
-      window.location.href =
-        "/login";
+      [
+        "gymfitUser",
+        "gymfitCoachingPlan",
+        "gymfitCoachingRestSeconds",
+        "gymfitFreeCoachingSets",
+        "gymfitCoachingVoiceEnabled"
+      ].forEach((key) => {
+        sessionStorage.removeItem(key);
+      });
+
+      window.speechSynthesis?.cancel();
+      window.location.replace("/login");
     }
   );
 }
