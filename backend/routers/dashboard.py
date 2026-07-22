@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import User
+from backend.models import MemberProfile, User
 from backend.models.exercise import Exercise
 from backend.models.notification import Notification
 from backend.models.workout_plan import WorkoutPlan
@@ -110,6 +110,14 @@ def get_dashboard(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="사용자를 찾을 수 없습니다.",
+        )
+
+    weekly_workout_days = None
+    if user.account_type == "MEMBER":
+        weekly_workout_days = db.scalar(
+            select(MemberProfile.weekly_workout_days).where(
+                MemberProfile.user_id == user_id
+            )
         )
 
     today = date.today()
@@ -460,7 +468,7 @@ def get_dashboard(
             }
         )
 
-    weekly_workout_days = sum(
+    completed_weekly_workout_days = sum(
         1
         for minutes
         in weekly_minutes_by_date.values()
@@ -470,9 +478,6 @@ def get_dashboard(
     weekly_total_minutes = sum(
         weekly_minutes_by_date.values()
     )
-
-    # 추후 사용자 설정 테이블로 분리 가능
-    weekly_goal_days = 3
 
     # 최근 운동 기록
     recent_rows = db.execute(
@@ -552,13 +557,11 @@ def get_dashboard(
         },
         "weekly_summary": {
             "workout_days": (
-                weekly_workout_days
+                completed_weekly_workout_days
             ),
+            "weekly_workout_days": weekly_workout_days,
             "total_minutes": (
                 weekly_total_minutes
-            ),
-            "goal_days": (
-                weekly_goal_days
             ),
             "days": weekly_days,
         },

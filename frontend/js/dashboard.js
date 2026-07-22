@@ -433,16 +433,26 @@ function renderWorkoutPlan(planData) {
 ========================= */
 
 function renderWeeklyData(data) {
+  const workoutDays =
+    Number(data?.workout_days) || 0;
+
+  const weeklyGoalDays =
+    Number.isInteger(Number(data?.weekly_workout_days))
+    && Number(data?.weekly_workout_days) >= 1
+    && Number(data?.weekly_workout_days) <= 7
+      ? Number(data.weekly_workout_days)
+      : null;
+
   weeklyWorkoutDays.textContent =
-    data?.workout_days ?? 0;
+    workoutDays;
 
   weeklyWorkoutMinutes.textContent =
     `총 ${data?.total_minutes ?? 0}분`;
 
   weeklyGoalText.textContent =
-    `목표 ${data?.goal_days ?? 0}일 중 ${
-      data?.workout_days ?? 0
-    }일`;
+    weeklyGoalDays === null
+      ? "주간 목표 미설정"
+      : `목표 주 ${weeklyGoalDays}회 · 이번 주 ${workoutDays}일`;
 
   weeklyBars.innerHTML = "";
 
@@ -476,17 +486,11 @@ function renderWeeklyData(data) {
     weeklyBars.appendChild(item);
   });
 
-  const goalDays =
-    Number(data?.goal_days) || 0;
-
-  const workoutDays =
-    Number(data?.workout_days) || 0;
-
   const progressPercent =
-    goalDays > 0
+    weeklyGoalDays !== null
       ? Math.min(
           100,
-          workoutDays / goalDays * 100
+          workoutDays / weeklyGoalDays * 100
         )
       : 0;
 
@@ -494,7 +498,9 @@ function renderWeeklyData(data) {
     `${progressPercent}%`;
 
   weeklyProgressText.textContent =
-    `${workoutDays} / ${goalDays}일`;
+    weeklyGoalDays === null
+      ? "목표 미설정"
+      : `${workoutDays} / ${weeklyGoalDays}일`;
 }
 
 
