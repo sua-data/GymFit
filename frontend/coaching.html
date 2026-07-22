@@ -24,7 +24,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=7"
+    href="/static/css/coaching.css?v=9"
   >
 
   <script
@@ -43,7 +43,7 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=8"
+    src="/static/js/coaching.js?v=11"
     defer
   ></script>
 </head>
@@ -217,6 +217,39 @@
           LIVE
         </div>
 
+        <button
+          type="button"
+          class="voice-toggle-button"
+          id="voiceToggleButton"
+          aria-pressed="true"
+        >
+          음성 ON
+        </button>
+
+        <div class="workout-camera-overlay" aria-live="polite">
+          <div class="workout-overlay-top">
+            <strong>
+              <b id="overlayCurrentSet">1</b>
+              /
+              <span id="overlayTargetSets">3</span>세트
+            </strong>
+            <strong>
+              <b id="overlayCurrentReps">0</b>
+              /
+              <span id="overlayTargetReps">10</span>회
+            </strong>
+          </div>
+
+          <div class="workout-overlay-center">
+            <strong id="overlayRepCount">0</strong>
+            <span id="overlayMovementState">준비</span>
+          </div>
+
+          <p class="workout-overlay-feedback" id="overlayFeedbackText">
+            카메라에 전신이 보이도록 위치를 조정하세요.
+          </p>
+        </div>
+
         <div class="exercise-status">
           <span>현재 동작</span>
 
@@ -303,11 +336,60 @@
 
         <button
           type="button"
+          class="pause-button"
+          id="pauseButton"
+          hidden
+        >
+          일시정지
+        </button>
+
+        <button
+          type="button"
           class="secondary-button"
           id="finishButton"
           disabled
         >
           종료 및 기록 저장
+        </button>
+      </section>
+
+      <section class="coaching-result" id="coachingResult" hidden>
+        <div class="coaching-result-heading">
+          <span>WORKOUT COMPLETE</span>
+          <h2>운동 결과</h2>
+          <p id="resultExerciseName">스쿼트 코칭을 완료했습니다.</p>
+        </div>
+
+        <div class="coaching-result-grid">
+          <article>
+            <span>반복 횟수</span>
+            <strong><b id="resultRepetitions">0</b>회</strong>
+          </article>
+          <article>
+            <span>완료 세트</span>
+            <strong><b id="resultSets">0</b>세트</strong>
+          </article>
+          <article>
+            <span>평균 자세 점수</span>
+            <strong><b id="resultPostureScore">0</b>점</strong>
+          </article>
+          <article>
+            <span>운동 시간</span>
+            <strong><b id="resultWorkoutMinutes">0</b>분</strong>
+          </article>
+          <article class="result-calories">
+            <span>예상 소모 칼로리</span>
+            <strong><b id="resultCalories">0</b>kcal</strong>
+          </article>
+        </div>
+
+        <div class="coaching-result-feedback">
+          <strong id="resultFeedbackTitle">운동을 완료했습니다.</strong>
+          <p id="resultFeedbackText"></p>
+        </div>
+
+        <button type="button" id="resultDashboardButton">
+          대시보드로 이동
         </button>
       </section>
     </div>

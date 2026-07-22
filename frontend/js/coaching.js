@@ -121,6 +121,44 @@ const freeSetAddButton =
   document.querySelector("#freeSetAddButton");
 const setProgressCard =
   document.querySelector("#setProgressCard");
+const pauseButton =
+  document.querySelector("#pauseButton");
+const voiceToggleButton =
+  document.querySelector("#voiceToggleButton");
+const overlayCurrentSet =
+  document.querySelector("#overlayCurrentSet");
+const overlayTargetSets =
+  document.querySelector("#overlayTargetSets");
+const overlayCurrentReps =
+  document.querySelector("#overlayCurrentReps");
+const overlayTargetReps =
+  document.querySelector("#overlayTargetReps");
+const overlayRepCount =
+  document.querySelector("#overlayRepCount");
+const overlayMovementState =
+  document.querySelector("#overlayMovementState");
+const overlayFeedbackText =
+  document.querySelector("#overlayFeedbackText");
+const coachingResult =
+  document.querySelector("#coachingResult");
+const resultExerciseName =
+  document.querySelector("#resultExerciseName");
+const resultRepetitions =
+  document.querySelector("#resultRepetitions");
+const resultSets =
+  document.querySelector("#resultSets");
+const resultPostureScore =
+  document.querySelector("#resultPostureScore");
+const resultWorkoutMinutes =
+  document.querySelector("#resultWorkoutMinutes");
+const resultCalories =
+  document.querySelector("#resultCalories");
+const resultFeedbackTitle =
+  document.querySelector("#resultFeedbackTitle");
+const resultFeedbackText =
+  document.querySelector("#resultFeedbackText");
+const resultDashboardButton =
+  document.querySelector("#resultDashboardButton");
 
 
 let selectedExerciseCode =
@@ -144,6 +182,7 @@ let isWorkoutFinished = false;
 let isSavingWorkout = false;
 let workoutRecordSaved = false;
 let savedWorkoutResult = null;
+let isResultDisplayed = false;
 let restIntervalId = null;
 let restSecondsRemaining = 0;
 let restDurationSeconds = 60;
@@ -153,6 +192,10 @@ let coachingEstimatedMinutes = 0;
 let freeCoachingRows = [];
 let todayCoachingPlans = [];
 let coachingModeRequestId = 0;
+let isWorkoutPaused = false;
+let isVoiceEnabled = true;
+let lastSpokenFeedback = "";
+let lastFeedbackSpokenAt = 0;
 
 let postureScores = [];
 
@@ -179,6 +222,9 @@ const COACHING_REST_STORAGE_KEY =
   "gymfitCoachingRestSeconds";
 const FREE_COACHING_SETS_STORAGE_KEY =
   "gymfitFreeCoachingSets";
+const COACHING_VOICE_STORAGE_KEY =
+  "gymfitCoachingVoiceEnabled";
+const FEEDBACK_SPEECH_COOLDOWN_MS = 3000;
 
 
 /* =========================
@@ -285,6 +331,105 @@ function restoreFreeCoachingSets() {
     sessionStorage.removeItem(FREE_COACHING_SETS_STORAGE_KEY);
     freeCoachingRows = createDefaultFreeCoachingSets();
   }
+}
+
+function stopSpeech() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+function updateVoiceButton() {
+  voiceToggleButton.textContent = isVoiceEnabled
+    ? "음성 ON"
+    : "음성 OFF";
+  voiceToggleButton.setAttribute(
+    "aria-pressed",
+    String(isVoiceEnabled)
+  );
+}
+
+function restoreVoiceSetting() {
+  isVoiceEnabled = sessionStorage.getItem(
+    COACHING_VOICE_STORAGE_KEY
+  ) !== "false";
+  updateVoiceButton();
+}
+
+function speakText(text) {
+  if (
+    !isVoiceEnabled
+    || !text
+    || !("speechSynthesis" in window)
+    || !("SpeechSynthesisUtterance" in window)
+  ) {
+    return;
+  }
+
+  stopSpeech();
+  const utterance = new SpeechSynthesisUtterance(String(text));
+  utterance.lang = "ko-KR";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakPostureFeedback(text) {
+  const normalizedText = String(text || "").trim();
+  const now = Date.now();
+  if (
+    !normalizedText
+    || (
+      normalizedText === lastSpokenFeedback
+      && now - lastFeedbackSpokenAt < FEEDBACK_SPEECH_COOLDOWN_MS
+    )
+    || now - lastFeedbackSpokenAt < FEEDBACK_SPEECH_COOLDOWN_MS
+  ) {
+    return;
+  }
+
+  lastSpokenFeedback = normalizedText;
+  lastFeedbackSpokenAt = now;
+  speakText(normalizedText);
+}
+
+function updateWorkoutOverlay() {
+  const currentSet = getCurrentCoachingSet();
+  const currentTarget = Number(currentSet?.repetition_count || targetReps);
+  const visibleSetNumber = Math.min(
+    currentSetIndex + 1,
+    coachingSets.length || 1
+  );
+
+  overlayCurrentSet.textContent = String(visibleSetNumber);
+  overlayTargetSets.textContent = String(coachingSets.length || targetSets);
+  overlayCurrentReps.textContent = String(currentReps);
+  overlayTargetReps.textContent = String(currentTarget);
+  overlayRepCount.textContent = String(currentReps);
+}
+
+function setOverlayMovement(text) {
+  overlayMovementState.textContent = text || "준비";
+}
+
+function setOverlayFeedback(text) {
+  overlayFeedbackText.textContent = text || "자세를 확인하고 있습니다.";
+}
+
+function getMovementCue(status) {
+  if (!status?.stage) {
+    return "준비";
+  }
+
+  if (selectedExerciseCode === "SHOULDER_PRESS") {
+    return status.stage === "UP"
+      ? "내려오세요"
+      : "올려주세요";
+  }
+
+  return status.stage === "DOWN"
+    ? "올라오세요"
+    : "내려가세요";
 }
 
 function readFreeCoachingRowsFromInputs() {
@@ -577,6 +722,7 @@ function updateDetailedProgressDisplay() {
   targetSetCount.textContent = coachingSets.length || targetSets;
   totalCompletedRepCount.textContent = totalCompletedReps;
   totalTargetRepCount.textContent = totalTargetReps;
+  updateWorkoutOverlay();
 }
 
 function clearRestTimer() {
@@ -750,6 +896,7 @@ async function startCamera() {
 
 function stopCamera() {
   stopPoseAnalysis();
+  stopSpeech();
 
   if (!cameraStream) {
     return;
@@ -835,6 +982,7 @@ function registerRepetition(
     || isGoalCompleted
     || isCurrentSetCompleted
     || isResting
+    || isWorkoutPaused
     || isWorkoutFinished
   ) {
     return;
@@ -856,6 +1004,7 @@ function registerRepetition(
 
   movementState.textContent =
     `${currentSetIndex + 1}세트 ${currentReps}회`;
+  setOverlayMovement("좋아요");
 
   updateCounterDisplay();
   updatePostureFeedback(score);
@@ -870,6 +1019,8 @@ function registerRepetition(
 
     movementState.textContent =
       `${currentSets}세트 완료`;
+    setOverlayMovement(`${currentSets}세트 완료`);
+    speakText(`${currentReps}, ${currentSets}세트 완료`);
 
     if (currentSetIndex >= coachingSets.length - 1) {
       finishWorkoutAutomatically();
@@ -879,6 +1030,8 @@ function registerRepetition(
     startRestPeriod();
     return;
   }
+
+  speakText(String(currentReps));
 }
 
 
@@ -886,6 +1039,7 @@ function startRestPeriod() {
   clearRestTimer();
   stopPoseAnalysis();
   isResting = true;
+  pauseButton.disabled = true;
   restSecondsRemaining = restDurationSeconds;
 
   if (restDurationSeconds === 0) {
@@ -896,6 +1050,7 @@ function startRestPeriod() {
 
   restCard.hidden = false;
   restTitle.textContent = `${currentSetIndex + 1}세트 완료`;
+  setOverlayFeedback(`${currentSetIndex + 1}세트 완료`);
 
   const nextSet = coachingSets[currentSetIndex + 1];
   nextSetSummary.textContent =
@@ -935,6 +1090,7 @@ async function startNextSet() {
   currentReps = 0;
   isCurrentSetCompleted = false;
   isResting = false;
+  pauseButton.disabled = false;
   restCard.hidden = true;
 
   try {
@@ -944,9 +1100,11 @@ async function startNextSet() {
   }
 
   movementState.textContent = `${currentSetIndex + 1}세트 준비`;
+  setOverlayMovement("준비");
   feedbackTitle.textContent = "다음 세트를 시작합니다.";
   feedbackText.textContent =
-    "서 있는 시작 자세를 잡은 뒤 스쿼트를 진행하세요.";
+    `${selectedExerciseName} 시작 자세를 준비해 주세요.`;
+  setOverlayFeedback(feedbackText.textContent);
   updateCounterDisplay();
   startPoseAnalysis();
 }
@@ -1014,6 +1172,10 @@ function getPostureScoreFromStatus(
 function applyPoseStatus(
   status
 ) {
+  if (isWorkoutPaused) {
+    return;
+  }
+
   const serverCount =
     Number(status.count ?? 0);
 
@@ -1047,8 +1209,12 @@ function applyPoseStatus(
   }
 
   if (status.pose_valid) {
-    movementState.textContent =
-      `${selectedExerciseName} ${status.stage_text || "동작 중"}`;
+    if (repetitionDifference === 0) {
+      const movementCue = getMovementCue(status);
+      movementState.textContent =
+        `${selectedExerciseName} ${movementCue}`;
+      setOverlayMovement(movementCue);
+    }
 
     postureScoreValue.textContent =
       score;
@@ -1063,6 +1229,11 @@ function applyPoseStatus(
     feedbackTitle.textContent =
       status.feedback
       || "자세를 분석하고 있습니다.";
+    setOverlayFeedback(feedbackTitle.textContent);
+
+    if (repetitionDifference === 0) {
+      speakPostureFeedback(feedbackTitle.textContent);
+    }
 
     const angleTexts = [];
 
@@ -1113,18 +1284,25 @@ function applyPoseStatus(
   feedbackTitle.textContent =
     status.status_text
     || "자세를 인식할 수 없습니다.";
+  setOverlayMovement("준비");
 
   feedbackText.textContent =
     status.person_valid
       ? getExerciseAnalyzer(selectedExerciseCode)?.cameraGuide
         || "필요한 관절이 보이도록 위치를 조정하세요."
       : "카메라에 몸이 나오도록 이동하세요.";
+  setOverlayFeedback(feedbackText.textContent);
+
+  if (repetitionDifference === 0) {
+    speakPostureFeedback(feedbackText.textContent);
+  }
 }
 
 
 async function sendFrameForAnalysis() {
   if (
     !isWorkoutActive
+    || isWorkoutPaused
     || analysisInProgress
     || !cameraVideo.videoWidth
     || !cameraVideo.videoHeight
@@ -1337,6 +1515,8 @@ async function startWorkout() {
     isSavingWorkout = false;
     workoutRecordSaved = false;
     savedWorkoutResult = null;
+    isResultDisplayed = false;
+    isWorkoutPaused = false;
     restCard.hidden = true;
 
     postureScores = [];
@@ -1352,10 +1532,16 @@ async function startWorkout() {
     isWorkoutActive = true;
     isGoalCompleted = false;
 
+    document.body.classList.add("coaching-active");
+    document.body.classList.remove("coaching-paused");
+    pauseButton.hidden = false;
+    pauseButton.textContent = "일시정지";
+
     startPoseAnalysis();
 
     movementState.textContent =
       "1세트 준비";
+    setOverlayMovement("준비");
 
     postureStatus.textContent =
       "ACTIVE";
@@ -1365,6 +1551,9 @@ async function startWorkout() {
 
     feedbackText.textContent =
       "카메라에 전신이 보이도록 유지하세요.";
+    setOverlayFeedback(feedbackText.textContent);
+    updateWorkoutOverlay();
+    speakText(`${selectedExerciseName} 코칭을 시작합니다`);
 
     startButton.disabled = true;
     finishButton.disabled = false;
@@ -1612,7 +1801,7 @@ async function completeLinkedWorkoutPlan() {
 
   const userId = getLoginUserId();
   if (!userId) {
-    return;
+    throw new Error("로그인 정보가 없어 연결된 루틴을 완료하지 못했습니다.");
   }
 
   const response = await fetch(
@@ -1646,6 +1835,37 @@ async function completeLinkedWorkoutPlan() {
    운동 종료
 ========================= */
 
+function showWorkoutResult(planCompletionError = null) {
+  if (isResultDisplayed) {
+    return;
+  }
+  isResultDisplayed = true;
+
+  const averageScore = getAveragePostureScore();
+  const bestScore = getBestPostureScore();
+  const savedFeedback = getSavedFeedbackMessage(bestScore);
+
+  resultExerciseName.textContent =
+    `${selectedExerciseName} 코칭을 완료했습니다.`;
+  resultRepetitions.textContent = String(getTotalRepetitions());
+  resultSets.textContent = String(currentSets);
+  resultPostureScore.textContent = String(averageScore);
+  resultWorkoutMinutes.textContent = String(getWorkoutMinutes());
+  resultCalories.textContent = String(savedWorkoutResult?.calories ?? 0);
+  resultFeedbackTitle.textContent = planCompletionError
+    ? "운동 기록 저장 완료 · 루틴 완료 처리 실패"
+    : savedFeedback.title;
+  resultFeedbackText.textContent = planCompletionError
+    ? `${savedFeedback.text} 운동 기록은 저장되었지만 연결된 루틴 완료 처리는 실패했습니다.`
+    : savedFeedback.text;
+
+  document.body.classList.remove("coaching-active", "coaching-paused");
+  document.body.classList.add("coaching-result-mode");
+  pauseButton.hidden = true;
+  coachingResult.hidden = false;
+  coachingResult.scrollIntoView({ block: "start" });
+}
+
 async function finishWorkout() {
   if (
     !isWorkoutActive
@@ -1668,23 +1888,6 @@ async function finishWorkout() {
       savedWorkoutResult = await saveWorkoutRecord();
       workoutRecordSaved = true;
     }
-
-    await completeLinkedWorkoutPlan();
-
-    isWorkoutActive = false;
-
-    stopCamera();
-    clearRestTimer();
-    clearCoachingPlan();
-
-    alert(
-      savedWorkoutResult?.message
-      || "운동 기록이 저장되었습니다."
-    );
-
-    window.location.href =
-      "/dashboard";
-
   } catch (error) {
     console.error(
       "운동 저장 실패:",
@@ -1699,7 +1902,27 @@ async function finishWorkout() {
     isSavingWorkout = false;
     finishButton.disabled = false;
     movementState.textContent = "저장 실패";
+    return;
   }
+
+  let planCompletionError = null;
+  if (coachingWorkoutPlanId) {
+    try {
+      await completeLinkedWorkoutPlan();
+    } catch (error) {
+      planCompletionError = error;
+      console.error(
+        "운동 기록은 저장되었지만 계획 완료 처리에 실패했습니다:",
+        error
+      );
+    }
+  }
+
+  isWorkoutActive = false;
+  stopCamera();
+  clearRestTimer();
+  clearCoachingPlan();
+  showWorkoutResult(planCompletionError);
 }
 
 
@@ -1719,9 +1942,11 @@ async function finishWorkoutAutomatically() {
 
   stopPoseAnalysis();
   stopCamera();
+  speakText("운동 완료");
 
   movementState.textContent =
     "운동 완료";
+  setOverlayMovement("운동 완료");
 
   postureStatus.textContent =
     "COMPLETE";
@@ -1731,6 +1956,7 @@ async function finishWorkoutAutomatically() {
 
   feedbackText.textContent =
     "운동 기록과 연결된 루틴을 저장하고 있습니다.";
+  setOverlayFeedback(feedbackText.textContent);
 
   startButton.disabled = true;
   finishButton.disabled = true;
@@ -1743,6 +1969,62 @@ async function finishWorkoutAutomatically() {
 /* =========================
    운동 선택
 ========================= */
+
+async function toggleWorkoutPause() {
+  if (!isWorkoutActive || isResting || isWorkoutFinished) {
+    return;
+  }
+
+  if (!isWorkoutPaused) {
+    isWorkoutPaused = true;
+    stopPoseAnalysis();
+    document.body.classList.add("coaching-paused");
+    pauseButton.textContent = "운동 재개";
+    movementState.textContent = "일시정지";
+    setOverlayMovement("일시정지");
+    setOverlayFeedback("준비되면 운동 재개 버튼을 눌러주세요.");
+    speakText("일시정지");
+    return;
+  }
+
+  pauseButton.disabled = true;
+  try {
+    await resetCurrentExerciseAnalyzer();
+    isWorkoutPaused = false;
+    document.body.classList.remove("coaching-paused");
+    pauseButton.textContent = "일시정지";
+    movementState.textContent = `${currentSetIndex + 1}세트 준비`;
+    setOverlayMovement("준비");
+    setOverlayFeedback(`${selectedExerciseName} 코칭을 재개합니다.`);
+    speakText("운동을 재개합니다");
+    startPoseAnalysis();
+  } catch (error) {
+    console.error("코칭 재개 실패:", error);
+    alert(error.message || "코칭을 재개하지 못했습니다.");
+  } finally {
+    pauseButton.disabled = false;
+  }
+}
+
+voiceToggleButton.addEventListener("click", () => {
+  isVoiceEnabled = !isVoiceEnabled;
+  sessionStorage.setItem(
+    COACHING_VOICE_STORAGE_KEY,
+    String(isVoiceEnabled)
+  );
+  updateVoiceButton();
+  if (isVoiceEnabled) {
+    speakText("음성 안내를 시작합니다");
+  } else {
+    stopSpeech();
+  }
+});
+
+pauseButton.addEventListener("click", toggleWorkoutPause);
+
+resultDashboardButton.addEventListener("click", () => {
+  window.location.href = "/dashboard";
+});
 
 exerciseTabs.forEach(
   (tab) => {
@@ -1898,6 +2180,7 @@ window.addEventListener(
 async function initializeCoachingTargets() {
   restoreFreeCoachingSets();
   restoreRestDuration();
+  restoreVoiceSetting();
   const savedPlan = loadCoachingPlan();
   const params = new URLSearchParams(window.location.search);
   const requestedExerciseCode = String(

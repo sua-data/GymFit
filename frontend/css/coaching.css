@@ -632,6 +632,14 @@ button {
   cursor: not-allowed;
 }
 
+.coaching-actions .primary-button {
+  grid-column: 1 / -1;
+}
+
+.coaching-actions .secondary-button:disabled {
+  display: none;
+}
+
 
 /* =========================
    테스트 패널
@@ -871,4 +879,397 @@ button {
   border-radius: 11px;
   font-size: 12px;
   font-weight: 850;
+}
+
+/* =========================
+   운동 중 전체 화면 코칭
+========================= */
+
+.voice-toggle-button,
+.workout-camera-overlay,
+.pause-button {
+  display: none;
+}
+
+body.coaching-active {
+  overflow: hidden;
+}
+
+body.coaching-active .coaching-page {
+  min-height: 100dvh;
+  padding: 0;
+}
+
+body.coaching-active .coaching-container {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+}
+
+body.coaching-active #topHeaderContainer,
+body.coaching-active #bottomNavigationContainer,
+body.coaching-active #sideMenuContainer,
+body.coaching-active .exercise-tabs,
+body.coaching-active .coaching-mode-loading,
+body.coaching-active .coaching-settings-card,
+body.coaching-active .set-progress-card,
+body.coaching-active .coaching-stats,
+body.coaching-active .feedback-card,
+body.coaching-active .primary-button {
+  display: none !important;
+}
+
+body.coaching-active .camera-card {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+body.coaching-active .camera-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.72) 0%,
+      rgba(0, 0, 0, 0.08) 27%,
+      rgba(0, 0, 0, 0.08) 65%,
+      rgba(0, 0, 0, 0.82) 100%
+    );
+}
+
+body.coaching-active .camera-card video,
+body.coaching-active .camera-card canvas {
+  object-fit: cover;
+}
+
+body.coaching-active .live-badge {
+  top: max(18px, env(safe-area-inset-top));
+  left: 18px;
+}
+
+body.coaching-active .exercise-status {
+  display: none;
+}
+
+body.coaching-active .voice-toggle-button {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: 18px;
+  z-index: 7;
+  min-width: 86px;
+  height: 40px;
+  display: block;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 850;
+  backdrop-filter: blur(8px);
+}
+
+body.coaching-active .voice-toggle-button[aria-pressed="true"] {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+body.coaching-active .workout-camera-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  padding:
+    calc(max(76px, env(safe-area-inset-top) + 62px))
+    clamp(18px, 5vw, 54px)
+    calc(max(132px, env(safe-area-inset-bottom) + 116px));
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.workout-overlay-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.workout-overlay-top strong {
+  padding: 9px 14px;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  font-size: clamp(18px, 4.8vw, 28px);
+  text-shadow: 0 2px 10px #000;
+  backdrop-filter: blur(8px);
+}
+
+.workout-overlay-top b {
+  color: var(--gymfit-green);
+}
+
+.workout-overlay-center {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-shadow: 0 4px 22px #000, 0 2px 5px #000;
+}
+
+.workout-overlay-center strong {
+  color: var(--gymfit-green);
+  font-size: clamp(90px, 27vw, 150px);
+  font-weight: 950;
+  line-height: 0.9;
+}
+
+.workout-overlay-center span {
+  margin-top: 18px;
+  color: var(--white);
+  font-size: clamp(30px, 8vw, 48px);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.workout-overlay-feedback {
+  min-height: 62px;
+  margin: 0;
+  padding: 13px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  font-size: clamp(22px, 6vw, 34px);
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 2px 8px #000;
+  backdrop-filter: blur(8px);
+}
+
+body.coaching-active .coaching-actions {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 110;
+  margin: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+body.coaching-active .pause-button {
+  min-height: 68px;
+  display: block;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 20px;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+body.coaching-active .coaching-actions .pause-button,
+body.coaching-active .coaching-actions .secondary-button {
+  grid-column: auto;
+}
+
+body.coaching-active .secondary-button {
+  min-height: 68px;
+  color: var(--white);
+  background: rgba(10, 10, 10, 0.86);
+  border-color: rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  font-size: 20px;
+}
+
+body.coaching-active .rest-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 120;
+  width: min(calc(100vw - 32px), 430px);
+  margin: 0;
+  padding: 26px;
+  transform: translate(-50%, -50%);
+  background: rgba(8, 8, 8, 0.94);
+  border-radius: 24px;
+  text-align: center;
+}
+
+body.coaching-active .rest-card strong {
+  font-size: 28px;
+}
+
+body.coaching-active .rest-card p,
+body.coaching-active .rest-card span {
+  font-size: 18px;
+}
+
+body.coaching-active .rest-card p b {
+  font-size: 48px;
+}
+
+body.coaching-active .rest-card button {
+  height: 58px;
+  font-size: 17px;
+}
+
+body.coaching-paused .camera-card video {
+  filter: brightness(0.42);
+}
+
+@media (max-height: 700px) {
+  body.coaching-active .workout-camera-overlay {
+    padding-top: 68px;
+    padding-bottom: 106px;
+  }
+
+  .workout-overlay-center strong {
+    font-size: clamp(76px, 22vw, 110px);
+  }
+
+  .workout-overlay-center span {
+    margin-top: 10px;
+  }
+
+  .workout-overlay-feedback {
+    min-height: 52px;
+    padding: 10px 14px;
+  }
+}
+
+/* 준비·진행 화면에서는 기존 상태 카드 대신 전용 UI를 사용합니다. */
+.coaching-stats,
+.feedback-card {
+  display: none;
+}
+
+.coaching-result {
+  margin-top: 24px;
+  padding: 22px;
+  background:
+    linear-gradient(145deg, rgba(168, 255, 53, 0.08), transparent 42%),
+    var(--card-bg);
+  border: 1px solid rgba(168, 255, 53, 0.28);
+  border-radius: 24px;
+}
+
+.coaching-result[hidden] {
+  display: none;
+}
+
+.coaching-result-heading span {
+  color: var(--gymfit-green);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.coaching-result-heading h2 {
+  margin: 7px 0 5px;
+  font-size: 28px;
+}
+
+.coaching-result-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.coaching-result-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coaching-result-grid article {
+  min-height: 98px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+}
+
+.coaching-result-grid article > span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.coaching-result-grid strong {
+  font-size: 17px;
+}
+
+.coaching-result-grid strong b {
+  margin-right: 3px;
+  color: var(--gymfit-green);
+  font-size: 28px;
+}
+
+.coaching-result-grid .result-calories {
+  grid-column: 1 / -1;
+}
+
+.coaching-result-feedback {
+  margin-top: 12px;
+  padding: 16px;
+  background: #151515;
+  border-radius: 16px;
+}
+
+.coaching-result-feedback strong {
+  color: var(--gymfit-green);
+  font-size: 15px;
+}
+
+.coaching-result-feedback p {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.coaching-result > button {
+  width: 100%;
+  min-height: 58px;
+  margin-top: 16px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 17px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+body.coaching-result-mode {
+  overflow: auto;
+}
+
+body.coaching-result-mode .exercise-tabs,
+body.coaching-result-mode .coaching-mode-loading,
+body.coaching-result-mode .coaching-settings-card,
+body.coaching-result-mode .set-progress-card,
+body.coaching-result-mode .rest-card,
+body.coaching-result-mode .camera-card,
+body.coaching-result-mode .coaching-actions {
+  display: none !important;
 }
