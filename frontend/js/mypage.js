@@ -103,34 +103,13 @@ function comingSoon() { showToast("준비 중인 기능입니다."); }
 
 function renderMenus() {
   const commonMenuList = document.querySelector("#commonMenuList");
-  const roleMenuSection = document.querySelector("#roleMenuSection");
-  const roleMenuList = document.querySelector("#roleMenuList");
-  const roleMenuTitle = document.querySelector("#roleMenuTitle");
   commonMenuList.replaceChildren(
     createMenuItem("프로필 수정", openEditSheet),
-    createMenuItem("내 헬스장", comingSoon, true),
-    createMenuItem("보유 머신 관리", comingSoon, true),
     createMenuItem("알림 설정", comingSoon, true),
-    createMenuItem("앱 정보", comingSoon, true),
+    createMenuItem("비밀번호 변경", comingSoon, true),
     createMenuItem("로그아웃", openLogoutDialog, false, true),
+    createMenuItem("회원 탈퇴", comingSoon, true, true),
   );
-
-  const isTrainer = currentUser.account_type === "TRAINER";
-  const hasTrainer = Boolean(getSessionUser()?.has_active_trainer);
-  roleMenuSection.hidden = !isTrainer && !hasTrainer;
-  if (isTrainer) {
-    roleMenuTitle.textContent = "트레이너 메뉴";
-    roleMenuList.replaceChildren(
-      createMenuItem("담당 회원 관리", comingSoon, true),
-      createMenuItem("회원별 운동 계획·PT 숙제 관리", comingSoon, true),
-    );
-  } else if (hasTrainer) {
-    roleMenuTitle.textContent = "PT 회원 메뉴";
-    roleMenuList.replaceChildren(
-      createMenuItem("PT 숙제", comingSoon, true),
-      createMenuItem("담당 트레이너·PT 정보", comingSoon, true),
-    );
-  }
 }
 
 function renderProfile() {

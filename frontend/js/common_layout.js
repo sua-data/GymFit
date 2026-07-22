@@ -10,14 +10,6 @@ const commonMenuItems = [
   {
     label: "머신 사용법",
     path: "/machines"
-  },
-  {
-    label: "알림",
-    path: "/notifications"
-  },
-  {
-    label: "설정",
-    path: "/settings"
   }
 ];
 
@@ -267,11 +259,6 @@ function setupSideMenu() {
       "#sideMenu"
     );
 
-  const logoutButton =
-    document.querySelector(
-      "#logoutButton"
-    );
-
   if (
     !openButton
     || !closeButton
@@ -360,27 +347,6 @@ function setupSideMenu() {
     }
   );
 
-  logoutButton?.addEventListener(
-    "click",
-    () => {
-      if (!window.confirm("로그아웃하시겠어요?")) {
-        return;
-      }
-
-      [
-        "gymfitUser",
-        "gymfitCoachingPlan",
-        "gymfitCoachingRestSeconds",
-        "gymfitFreeCoachingSets",
-        "gymfitCoachingVoiceEnabled"
-      ].forEach((key) => {
-        sessionStorage.removeItem(key);
-      });
-
-      window.speechSynthesis?.cancel();
-      window.location.replace("/login");
-    }
-  );
 }
 
 
