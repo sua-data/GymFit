@@ -18,10 +18,6 @@ const birthDateInput = document.querySelector(
   "#birthDate"
 );
 
-const dateText = document.querySelector(
-  "#dateText"
-);
-
 const heightInput = document.querySelector(
   "#height"
 );
@@ -96,7 +92,15 @@ let selectedGender = null;
 let selectedGoal = null;
 let selectedLevel = null;
 let selectedWeeklyDays = null;
-const birthDateController = window.setupBirthDateInput();
+const birthDateController = typeof window.setupBirthDateInput === "function"
+  ? window.setupBirthDateInput({
+      textInputId: "birthDate",
+      pickerId: "birthDatePicker",
+      hiddenInputId: "birthDateValue",
+      errorId: "birthDateError",
+      calendarButtonId: "birthCalendarButton",
+    })
+  : null;
 
 
 /* =========================
@@ -198,40 +202,6 @@ selectButtons.forEach(
 /* =========================
    생년월일
 ========================= */
-
-function formatBirthDate(value) {
-  if (!value) {
-    return "생년월일을 선택하세요.";
-  }
-
-  const [
-    year,
-    month,
-    day,
-  ] = value.split("-");
-
-  return `${year}.${month}.${day}`;
-}
-
-
-birthDateInput.addEventListener(
-  "change",
-  () => {
-    const value =
-      birthDateInput.value;
-
-    dateText.textContent =
-      formatBirthDate(value);
-
-    dateText.classList.toggle(
-      "has-value",
-      Boolean(value)
-    );
-
-    clearMessage();
-  }
-);
-
 
 /* =========================
    메시지

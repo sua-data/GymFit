@@ -23,11 +23,6 @@ const birthDateInput =
     "#birthDate"
   );
 
-const dateText =
-  document.querySelector(
-    "#dateText"
-  );
-
 const gymNameInput =
   document.querySelector(
     "#gymName"
@@ -139,7 +134,15 @@ const isGoogleSignup =
 let selectedGender = null;
 let selectedSpecialties = [];
 let certifications = [];
-const birthDateController = window.setupBirthDateInput();
+const birthDateController = typeof window.setupBirthDateInput === "function"
+  ? window.setupBirthDateInput({
+      textInputId: "birthDate",
+      pickerId: "birthDatePicker",
+      hiddenInputId: "birthDateValue",
+      errorId: "birthDateError",
+      calendarButtonId: "birthCalendarButton",
+    })
+  : null;
 const gymSearchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
 
@@ -240,40 +243,6 @@ genderButtons.forEach(
 /* =========================
    생년월일
 ========================= */
-
-function formatBirthDate(value) {
-  if (!value) {
-    return "생년월일을 선택하세요.";
-  }
-
-  const [
-    year,
-    month,
-    day,
-  ] = value.split("-");
-
-  return `${year}.${month}.${day}`;
-}
-
-
-birthDateInput.addEventListener(
-  "change",
-  () => {
-    const value =
-      birthDateInput.value;
-
-    dateText.textContent =
-      formatBirthDate(value);
-
-    dateText.classList.toggle(
-      "has-value",
-      Boolean(value)
-    );
-
-    clearMessage();
-  }
-);
-
 
 /* =========================
    전문 분야 선택
@@ -1175,7 +1144,7 @@ trainerProfileForm.addEventListener(
 
     if (!selectedGym) {
       showMessage(
-        "검색 결과에서 활동 헬스장을 선택해 주세요."
+        "활동 헬스장을 선택해 주세요."
       );
 
       return;

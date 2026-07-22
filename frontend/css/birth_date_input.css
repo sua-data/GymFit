@@ -1,0 +1,11 @@
+.birth-section { margin-bottom: 28px; }
+.date-input-wrapper { position: relative; width: 100%; height: 60px; overflow: hidden; background: var(--field-bg, #292929); border: 1px solid var(--field-border, rgba(255,255,255,.12)); border-radius: 18px; transition: border-color .2s ease, box-shadow .2s ease; }
+.date-input-wrapper:focus-within { border-color: #a8ff35; box-shadow: 0 0 0 3px rgba(168,255,53,.1); }
+.date-input-wrapper .date-input-display { position: relative; inset: auto; z-index: 2; width: 100%; height: 100%; padding: 0 72px 0 22px; color: #fff; background: transparent; border: 0; outline: 0; opacity: 1; cursor: text; pointer-events: auto; font-size: 15px; font-weight: 500; }
+.date-input-wrapper .date-input-display::placeholder { color: rgba(255,255,255,.4); opacity: 1; }
+.date-input-wrapper .date-input-picker { position: absolute; top: 8px; right: 10px; bottom: auto; left: auto; width: 48px; height: 44px; opacity: 0; pointer-events: none; }
+.date-input-wrapper .date-input-value { display: none; }
+.date-input-calendar-button { position: absolute; top: 8px; right: 10px; z-index: 4; width: 48px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 0; border-radius: 10px; cursor: pointer; }
+.date-input-calendar-button img { display: block; width: 27px; height: 27px; object-fit: contain; opacity: .58; pointer-events: none; }
+.date-input-calendar-button:focus-visible { outline: 2px solid #a8ff35; outline-offset: -2px; }
+.date-input-error { min-height: 18px; margin: 8px 2px 0; color: var(--danger, #ff7070); font-size: 12px; line-height: 1.5; }

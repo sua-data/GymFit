@@ -1,45 +1,90 @@
 (function () {
+  const controllers = new WeakMap();
+
+  function digitsOnly(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 8);
+  }
+
+  function formatDigits(digits) {
+    const parts = [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)];
+    return parts.filter(Boolean).join(".");
+  }
+
   function parseDigits(digits) {
-    if (digits.length !== 8) return null;
+    if (digits.length !== 8) return { value: "", error: "생년월일 8자리를 모두 입력해 주세요." };
     const year = Number(digits.slice(0, 4));
     const month = Number(digits.slice(4, 6));
     const day = Number(digits.slice(6, 8));
-    const value = new Date(year, month - 1, day);
+    if (year < 1900) return { value: "", error: "생년월일은 1900년 이후로 입력해 주세요." };
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return { value: "", error: "실제로 존재하는 날짜를 입력해 주세요." };
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (year < 1900 || value.getFullYear() !== year || value.getMonth() !== month - 1 || value.getDate() !== day || value > today) return null;
-    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
-
-  function formatDigits(value) {
-    const digits = value.replace(/\D/g, "").slice(0, 8);
-    return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)].filter(Boolean).join(".");
-  }
-
-  window.setupBirthDateInput = function setupBirthDateInput() {
-    const textInput = document.querySelector("#birthDate");
-    const picker = document.querySelector("#birthDatePicker");
-    if (!textInput || !picker) return null;
-    let apiValue = "";
-    textInput.addEventListener("input", () => {
-      textInput.value = formatDigits(textInput.value);
-      apiValue = parseDigits(textInput.value.replace(/\D/g, "")) || "";
-      if (apiValue) picker.value = apiValue;
-    });
-    picker.addEventListener("change", () => {
-      const digits = picker.value.replace(/\D/g, "");
-      apiValue = parseDigits(digits) || "";
-      textInput.value = apiValue ? formatDigits(digits) : "";
-      textInput.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    if (date > today) return { value: "", error: "미래 날짜는 입력할 수 없습니다." };
     return {
-      getValue() { return apiValue; },
+      value: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      error: "",
+    };
+  }
+
+  window.setupBirthDateInput = function setupBirthDateInput(options = {}) {
+    const textInput = document.getElementById(options.textInputId || "birthDate");
+    const picker = document.getElementById(options.pickerId || "birthDatePicker");
+    const hiddenInput = document.getElementById(options.hiddenInputId || "birthDateValue");
+    const errorElement = document.getElementById(options.errorId || "birthDateError");
+    const calendarButton = document.getElementById(options.calendarButtonId || "birthCalendarButton");
+    if (!textInput || !picker || !hiddenInput) return null;
+    if (controllers.has(textInput)) return controllers.get(textInput);
+
+    let composing = false;
+
+    function setError(message) {
+      if (!errorElement) return;
+      errorElement.textContent = message;
+      errorElement.hidden = !message;
+    }
+
+    function syncFromText({ showError = false } = {}) {
+      const digits = digitsOnly(textInput.value);
+      textInput.value = formatDigits(digits);
+      const parsed = parseDigits(digits);
+      hiddenInput.value = parsed.value;
+      picker.value = parsed.value;
+      if (showError && digits.length > 0) setError(parsed.error);
+      else setError("");
+      return parsed;
+    }
+
+    function handleInput() {
+      if (!composing) syncFromText();
+    }
+
+    textInput.addEventListener("compositionstart", () => { composing = true; });
+    textInput.addEventListener("compositionend", () => { composing = false; syncFromText(); });
+    textInput.addEventListener("input", handleInput);
+    textInput.addEventListener("blur", () => syncFromText({ showError: true }));
+    picker.addEventListener("change", () => {
+      const parsed = parseDigits(digitsOnly(picker.value));
+      hiddenInput.value = parsed.value;
+      textInput.value = parsed.value ? parsed.value.replaceAll("-", ".") : "";
+      setError(parsed.error);
+    });
+    calendarButton?.addEventListener("click", () => {
+      if (typeof picker.showPicker === "function") picker.showPicker();
+      else picker.click();
+    });
+
+    const controller = {
+      getValue() { return hiddenInput.value; },
       validate() {
-        const digits = textInput.value.replace(/\D/g, "");
-        if (digits.length !== 8) return "생년월일 8자리를 모두 입력해 주세요.";
-        if (!parseDigits(digits)) return "1900년 이후의 실제 생년월일을 입력해 주세요.";
-        return "";
+        const parsed = syncFromText({ showError: true });
+        return parsed.error;
       },
     };
+    controllers.set(textInput, controller);
+    syncFromText();
+    return controller;
   };
 })();

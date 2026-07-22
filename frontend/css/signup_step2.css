@@ -258,7 +258,7 @@ body {
   overflow: hidden;
 }
 
-.date-input-wrapper input {
+.date-input-wrapper .date-input-picker {
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -502,6 +502,10 @@ body {
 
 .level-section {
   margin-bottom: 0;
+}
+
+.weekly-section {
+  margin-top: 20px;
 }
 
 /* =========================
@@ -892,6 +896,4 @@ input[type="checkbox"]:checked
     font-size: 12px;
   }
 }
-.date-text { display: none; }
-.native-date-picker { position: absolute; right: 0; top: 0; width: 52px !important; opacity: .01; cursor: pointer; }
 .weekly-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
