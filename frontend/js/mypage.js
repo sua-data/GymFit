@@ -108,7 +108,6 @@ function renderMenus() {
   const roleMenuTitle = document.querySelector("#roleMenuTitle");
   commonMenuList.replaceChildren(
     createMenuItem("프로필 수정", openEditSheet),
-    createMenuItem("운동 목표·수준 변경", currentUser.account_type === "TRAINER" ? comingSoon : openEditSheet, currentUser.account_type === "TRAINER"),
     createMenuItem("내 헬스장", comingSoon, true),
     createMenuItem("보유 머신 관리", comingSoon, true),
     createMenuItem("알림 설정", comingSoon, true),
