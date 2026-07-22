@@ -139,6 +139,8 @@ const isGoogleSignup =
 let selectedGender = null;
 let selectedSpecialties = [];
 let certifications = [];
+const birthDateController = window.setupBirthDateInput();
+const gymSearchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
 
 /* =========================
@@ -873,17 +875,10 @@ function createProfileData({
     birth_date:
       skipProfile
         ? null
-        : birthDateInput.value,
+        : birthDateController?.getValue() || null,
 
-    gym_name:
-      skipProfile
-        ? null
-        : (
-          gymNameInput
-            .value
-            .trim()
-          || null
-        ),
+    gym_name: skipProfile ? null : gymSearchController.getValue()?.gym_name || null,
+    selected_gym: skipProfile ? null : gymSearchController.getValue(),
 
     career_years:
       skipProfile
@@ -1158,13 +1153,8 @@ trainerProfileForm.addEventListener(
 
     clearMessage();
 
-    const birthDate =
-      birthDateInput.value;
-
-    const gymName =
-      gymNameInput
-        .value
-        .trim();
+    const birthDate = birthDateController?.getValue() || "";
+    const selectedGym = gymSearchController.getValue();
 
     if (!selectedGender) {
       showMessage(
@@ -1176,17 +1166,16 @@ trainerProfileForm.addEventListener(
 
     if (!birthDate) {
       showMessage(
-        "생년월일을 선택해 주세요.",
+        birthDateController?.validate() || "생년월일을 입력해 주세요.",
         birthDateInput
       );
 
       return;
     }
 
-    if (!gymName) {
+    if (!selectedGym) {
       showMessage(
-        "활동 헬스장을 입력해 주세요.",
-        gymNameInput
+        "검색 결과에서 활동 헬스장을 선택해 주세요."
       );
 
       return;

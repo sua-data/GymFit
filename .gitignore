@@ -72,3 +72,4 @@ results/*
 *_backup_*.sql
 *.dump
 *.bak
+gymfit_before_*.sql

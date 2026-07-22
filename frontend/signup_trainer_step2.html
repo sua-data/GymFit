@@ -25,7 +25,9 @@
     href="/static/css/signup_trainer_step2.css"
   >
 
-  <script src="/static/js/signup_trainer_step2.js?v=2" defer></script>
+  <script src="/static/js/birth_date_input.js?v=1" defer></script>
+  <script src="/static/js/gym_search.js?v=1" defer></script>
+  <script src="/static/js/signup_trainer_step2.js?v=3" defer></script>
 </head>
 
 <body>
@@ -140,11 +142,16 @@
 
           <div class="date-input-wrapper">
             <input
-              type="date"
+              type="text"
               id="birthDate"
               name="birthDate"
+              inputmode="numeric"
+              maxlength="10"
+              placeholder="YYYY.MM.DD"
               aria-label="생년월일"
             >
+
+            <input type="date" id="birthDatePicker" class="native-date-picker" aria-label="달력에서 생년월일 선택">
 
             <span
               class="date-text"
@@ -187,7 +194,7 @@
             활동 헬스장
           </label>
 
-          <div class="input-wrapper">
+          <div class="input-wrapper" hidden>
             <input
               type="text"
               id="gymName"
@@ -195,6 +202,12 @@
               placeholder="활동 중인 헬스장을 입력하세요."
               autocomplete="organization"
             >
+          </div>
+          <div class="gym-search" data-gym-search>
+            <div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div>
+            <p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p>
+            <div class="gym-search-results" data-gym-results hidden></div>
+            <div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div>
           </div>
         </section>
 
@@ -477,6 +490,7 @@
           type="button"
           class="skip-button"
           id="skipButton"
+          hidden
         >
           나중에 설정하기
         </button>

@@ -13,7 +13,8 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/signup_step2.css">
 
-  <script src="/static/js/signup_step2.js?v=2" defer></script>
+  <script src="/static/js/birth_date_input.js?v=1" defer></script>
+  <script src="/static/js/signup_step2.js?v=3" defer></script>
 </head>
 
 <body>
@@ -124,11 +125,16 @@
 
           <div class="date-input-wrapper">
             <input
-            type="date"
+            type="text"
             id="birthDate"
             name="birthDate"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="YYYY.MM.DD"
             aria-label="생년월일"
             >
+
+            <input type="date" id="birthDatePicker" class="native-date-picker" aria-label="달력에서 생년월일 선택">
 
             <span
             class="date-text"
@@ -259,7 +265,7 @@
               ></span>
 
               <span class="goal-name">
-                건강 유지
+                건강 관리
               </span>
             </button>
           </div>
@@ -300,6 +306,19 @@
             >
               고급
             </button>
+          </div>
+        </section>
+
+        <section class="form-section weekly-section">
+          <h2>주간 운동 횟수</h2>
+          <div class="weekly-grid" role="radiogroup" aria-label="주간 운동 횟수">
+            <button type="button" class="select-button" data-group="weekly" data-value="1">주 1회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="2">주 2회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="3">주 3회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="4">주 4회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="5">주 5회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="6">주 6회</button>
+            <button type="button" class="select-button" data-group="weekly" data-value="7">매일</button>
           </div>
         </section>
 

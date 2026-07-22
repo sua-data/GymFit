@@ -961,3 +961,14 @@ input[type="checkbox"]:checked
     font-size: 12px;
   }
 }
+.date-text { display: none; }
+.native-date-picker { position: absolute; right: 0; top: 0; width: 52px !important; opacity: .01; cursor: pointer; }
+.gym-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.gym-search-row input { min-width: 0; height: 48px; padding: 0 14px; color: #fff; background: #171717; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; }
+.gym-search-row button, .selected-gym button { padding: 0 14px; color: #050505; background: #a8ff35; border: 0; border-radius: 12px; font-weight: 800; }
+.gym-search [data-gym-status] { color: rgba(255,255,255,.55); font-size: 12px; }
+.gym-search-results { display: grid; gap: 8px; max-height: 230px; overflow-y: auto; }
+.gym-result-item { display: grid; gap: 5px; padding: 13px; color: #fff; background: #171717; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; text-align: left; }
+.gym-result-item span, .selected-gym span { color: rgba(255,255,255,.55); font-size: 12px; }
+.selected-gym { display: grid; gap: 6px; margin-top: 10px; padding: 14px; background: rgba(168,255,53,.08); border: 1px solid rgba(168,255,53,.25); border-radius: 13px; }
+.selected-gym button { min-height: 38px; margin-top: 6px; }

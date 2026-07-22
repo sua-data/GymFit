@@ -37,6 +37,9 @@ from backend.routers.workout import (
 from backend.routers.user import (
     router as user_router
 )
+from backend.routers.gym import (
+    router as gym_router
+)
 
 # 모든 모델을 SQLAlchemy에 등록
 import backend.models
@@ -81,6 +84,7 @@ app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(workout_router)
 app.include_router(user_router)
+app.include_router(gym_router)
 
 # frontend 폴더 전체를 /static 경로로 연결
 app.mount(

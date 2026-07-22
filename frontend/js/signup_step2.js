@@ -95,6 +95,8 @@ const isGoogleSignup =
 let selectedGender = null;
 let selectedGoal = null;
 let selectedLevel = null;
+let selectedWeeklyDays = null;
+const birthDateController = window.setupBirthDateInput();
 
 
 /* =========================
@@ -180,6 +182,10 @@ selectButtons.forEach(
 
         if (group === "level") {
           selectedLevel = value;
+        }
+
+        if (group === "weekly") {
+          selectedWeeklyDays = Number(value);
         }
 
         clearMessage();
@@ -601,7 +607,7 @@ function createProfileData({
     birth_date:
       skipProfile
         ? null
-        : birthDateInput.value,
+        : birthDateController?.getValue() || null,
 
     height_cm:
       skipProfile
@@ -629,6 +635,9 @@ function createProfileData({
       skipProfile
         ? null
         : selectedLevel,
+
+    weekly_workout_days:
+      skipProfile ? null : selectedWeeklyDays,
 
     goals:
       skipProfile
@@ -799,8 +808,7 @@ profileForm.addEventListener(
 
     clearMessage();
 
-    const birthDate =
-      birthDateInput.value;
+    const birthDate = birthDateController?.getValue() || "";
 
     if (!selectedGender) {
       showMessage(
@@ -812,7 +820,7 @@ profileForm.addEventListener(
 
     if (!birthDate) {
       showMessage(
-        "생년월일을 선택해 주세요.",
+        birthDateController?.validate() || "생년월일을 입력해 주세요.",
         birthDateInput
       );
 
@@ -832,6 +840,11 @@ profileForm.addEventListener(
         "운동 수준을 선택해 주세요."
       );
 
+      return;
+    }
+
+    if (!selectedWeeklyDays) {
+      showMessage("주간 운동 횟수를 선택해 주세요.");
       return;
     }
 

@@ -12,6 +12,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    SmallInteger,
     String,
     UniqueConstraint,
     func,
@@ -277,6 +278,12 @@ class MemberProfile(Base):
 
     user: Mapped[User] = relationship(
         back_populates="member_profile"
+    )
+
+    weekly_workout_days: Mapped[int | None] = mapped_column(
+        SmallInteger,
+        nullable=True,
+        comment="주간 목표 운동 일수",
     )
 
 

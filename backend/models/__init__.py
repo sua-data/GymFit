@@ -15,6 +15,7 @@ from backend.models.notification import Notification
 from backend.models.workout_plan import WorkoutPlan
 from backend.models.workout_plan_set import WorkoutPlanSet
 from backend.models.workout_record import WorkoutRecord
+from backend.models.gym import Gym, UserGym
 
 
 __all__ = [
@@ -32,4 +33,6 @@ __all__ = [
     "WorkoutPlan",
     "WorkoutPlanSet",
     "WorkoutRecord",
+    "Gym",
+    "UserGym",
 ]

@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models import (
+    UserGym,
     MemberGoal,
     MemberProfile,
     TrainerCertification,
@@ -43,6 +44,7 @@ from backend.models import (
     User,
     UserAgreement
 )
+from backend.services.gym_service import select_or_create_gym
 from backend.schemas import (
     GoogleCodeLoginRequest,
     GoogleCodeLoginResponse,
@@ -224,6 +226,14 @@ def check_required_agreements(
         )
 
 
+MEMBER_GOAL_NAMES = {
+    "WEIGHT_LOSS": "체중 감량",
+    "MUSCLE_GAIN": "근력 증가",
+    "BODY_SHAPE": "체형 관리",
+    "HEALTH": "건강 관리",
+}
+
+
 def goal_code_from_name(
     goal_name: str,
 ) -> str:
@@ -248,6 +258,16 @@ def goal_code_from_name(
             "_",
         ),
     )
+
+
+def normalize_member_goal(goal_value: str) -> tuple[str, str]:
+    code = goal_value.strip().upper()
+    if code not in MEMBER_GOAL_NAMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="지원하지 않는 운동 목표입니다.",
+        )
+    return code, MEMBER_GOAL_NAMES[code]
 
 
 def specialty_code_from_name(
@@ -924,32 +944,24 @@ def signup_member(
                 exercise_level=(
                     request.exercise_level
                 ),
+                weekly_workout_days=(
+                    request.weekly_workout_days
+                ),
             )
         )
 
         db.add(member_profile)
 
-        for goal_name in request.goals:
-            cleaned_goal = (
-                goal_name.strip()
-            )
-
-            if not cleaned_goal:
-                continue
+        for goal_value in request.goals:
+            goal_code, goal_name = normalize_member_goal(goal_value)
 
             db.add(
                 MemberGoal(
                     user_id=(
                         user.user_id
                     ),
-                    goal_code=(
-                        goal_code_from_name(
-                            cleaned_goal
-                        )
-                    ),
-                    goal_name=(
-                        cleaned_goal
-                    ),
+                    goal_code=goal_code,
+                    goal_name=goal_name,
                 )
             )
 
@@ -1090,12 +1102,13 @@ def signup_trainer(
         db.add(user)
         db.flush()
 
+        selected_gym = select_or_create_gym(db, request.selected_gym)
+        db.add(UserGym(user_id=user.user_id, gym_id=selected_gym.gym_id))
+
         db.add(
             TrainerProfile(
                 user_id=user.user_id,
-                gym_name=(
-                    request.gym_name
-                ),
+                gym_name=selected_gym.gym_name,
                 career_years=(
                     request.career_years
                 ),
@@ -1722,30 +1735,22 @@ def google_signup_member(
                 exercise_level=(
                     request.exercise_level
                 ),
+                weekly_workout_days=(
+                    request.weekly_workout_days
+                ),
             )
         )
 
-        for goal_name in request.goals:
-            cleaned_goal = (
-                goal_name.strip()
-            )
-
-            if not cleaned_goal:
-                continue
+        for goal_value in request.goals:
+            goal_code, goal_name = normalize_member_goal(goal_value)
 
             db.add(
                 MemberGoal(
                     user_id=(
                         user.user_id
                     ),
-                    goal_code=(
-                        goal_code_from_name(
-                            cleaned_goal
-                        )
-                    ),
-                    goal_name=(
-                        cleaned_goal
-                    ),
+                    goal_code=goal_code,
+                    goal_name=goal_name,
                 )
             )
 
@@ -1890,12 +1895,13 @@ def google_signup_trainer(
         db.add(user)
         db.flush()
 
+        selected_gym = select_or_create_gym(db, request.selected_gym)
+        db.add(UserGym(user_id=user.user_id, gym_id=selected_gym.gym_id))
+
         db.add(
             TrainerProfile(
                 user_id=user.user_id,
-                gym_name=(
-                    request.gym_name
-                ),
+                gym_name=selected_gym.gym_name,
                 career_years=(
                     request.career_years
                 ),

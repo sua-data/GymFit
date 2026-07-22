@@ -24,6 +24,22 @@ button { cursor: pointer; }
 .profile-facts div { display: flex; justify-content: space-between; gap: 18px; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.07); }
 .profile-facts dt { color: var(--my-muted); font-size: 13px; }
 .profile-facts dd { margin: 0; max-width: 64%; text-align: right; font-size: 13px; font-weight: 800; }
+.gym-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.gym-current p { margin: 5px 0 0; color: var(--my-muted); font-size: 12px; }
+.gym-current button, .disconnect-gym-button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 11px; font-weight: 850; }
+.gym-current button { color: #050505; background: var(--my-green); }
+.gym-current button:disabled { opacity: .45; }
+.disconnect-gym-button { width: 100%; margin-top: 12px; color: #ff8585; background: #292929; }
+.gym-policy-message { color: #ffcc78; font-size: 12px; line-height: 1.5; }
+.gym-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 18px; }
+.gym-search-row input { min-width: 0; height: 48px; padding: 0 13px; color: #fff; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; }
+.gym-search-row button, .selected-gym button { padding: 0 14px; color: #050505; background: var(--my-green); border: 0; border-radius: 12px; font-weight: 850; }
+.gym-search [data-gym-status] { color: var(--my-muted); font-size: 12px; }
+.gym-search-results { display: grid; gap: 8px; max-height: 220px; overflow-y: auto; }
+.gym-result-item { display: grid; gap: 5px; padding: 13px; color: #fff; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; text-align: left; }
+.gym-result-item span, .selected-gym span { color: var(--my-muted); font-size: 12px; }
+.selected-gym { display: grid; gap: 6px; margin-top: 10px; padding: 14px; background: rgba(168,255,53,.08); border: 1px solid rgba(168,255,53,.25); border-radius: 13px; }
+.selected-gym button { min-height: 38px; margin-top: 6px; }
 .menu-list { margin-top: 14px; overflow: hidden; border-top: 1px solid rgba(255,255,255,.07); }
 .menu-item { width: 100%; min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 0; color: #fff; background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; font-weight: 750; }
 .menu-item .arrow { margin-left: auto; color: rgba(255,255,255,.3); font-size: 20px; }

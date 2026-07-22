@@ -892,3 +892,6 @@ input[type="checkbox"]:checked
     font-size: 12px;
   }
 }
+.date-text { display: none; }
+.native-date-picker { position: absolute; right: 0; top: 0; width: 52px !important; opacity: .01; cursor: pointer; }
+.weekly-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }

@@ -6,6 +6,7 @@ from pydantic import (
     Field,
     field_validator,
 )
+from backend.services.gym_service import GymSelection
 
 
 # =========================================================
@@ -103,6 +104,24 @@ def clean_text_list(
     return cleaned_values
 
 
+def validate_birth_date_value(value: date | None) -> date | None:
+    if value is None:
+        return None
+    if value < date(1900, 1, 1):
+        raise ValueError("생년월일은 1900년 1월 1일 이후여야 합니다.")
+    if value > date.today():
+        raise ValueError("미래 날짜는 생년월일로 사용할 수 없습니다.")
+    return value
+
+
+def normalize_member_goal_codes(values: list[str]) -> list[str]:
+    allowed = {"WEIGHT_LOSS", "MUSCLE_GAIN", "BODY_SHAPE", "HEALTH"}
+    normalized = list(dict.fromkeys(value.strip().upper() for value in values if value.strip()))
+    if any(value not in allowed for value in normalized):
+        raise ValueError("지원하지 않는 운동 목표입니다.")
+    return normalized
+
+
 # =========================================================
 # 일반 회원 회원가입
 # =========================================================
@@ -137,6 +156,8 @@ class MemberSignupRequest(BaseModel):
     )
 
     exercise_level: str | None = None
+
+    weekly_workout_days: int | None = Field(default=None, ge=1, le=7)
 
     goals: list[str] = Field(
         default_factory=list,
@@ -185,7 +206,12 @@ class MemberSignupRequest(BaseModel):
         cls,
         values: list[str],
     ) -> list[str]:
-        return clean_text_list(values)
+        return normalize_member_goal_codes(values)
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, value: date | None) -> date | None:
+        return validate_birth_date_value(value)
 
 
 # =========================================================
@@ -213,6 +239,8 @@ class TrainerSignupRequest(BaseModel):
         default=None,
         max_length=150,
     )
+
+    selected_gym: GymSelection
 
     career_years: int | None = Field(
         default=None,
@@ -275,6 +303,11 @@ class TrainerSignupRequest(BaseModel):
         cleaned_value = value.strip()
 
         return cleaned_value or None
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, value: date | None) -> date | None:
+        return validate_birth_date_value(value)
 
     @field_validator("specialties")
     @classmethod
@@ -391,6 +424,8 @@ class GoogleMemberSignupRequest(BaseModel):
 
     exercise_level: str | None = None
 
+    weekly_workout_days: int | None = Field(default=None, ge=1, le=7)
+
     goals: list[str] = Field(
         default_factory=list,
     )
@@ -438,7 +473,12 @@ class GoogleMemberSignupRequest(BaseModel):
         cls,
         values: list[str],
     ) -> list[str]:
-        return clean_text_list(values)
+        return normalize_member_goal_codes(values)
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, value: date | None) -> date | None:
+        return validate_birth_date_value(value)
 
 
 # =========================================================
@@ -458,6 +498,8 @@ class GoogleTrainerSignupRequest(BaseModel):
         default=None,
         max_length=150,
     )
+
+    selected_gym: GymSelection
 
     career_years: int | None = Field(
         default=None,
@@ -520,6 +562,11 @@ class GoogleTrainerSignupRequest(BaseModel):
         cleaned_value = value.strip()
 
         return cleaned_value or None
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, value: date | None) -> date | None:
+        return validate_birth_date_value(value)
 
     @field_validator("specialties")
     @classmethod
