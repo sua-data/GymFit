@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+  <title>GYMFIT | 운동 기록</title>
+
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=2">
+  <link rel="stylesheet" href="/static/css/records.css?v=1">
+
+  <script src="/static/js/common_layout.js?v=3" defer></script>
+  <script src="/static/js/records.js?v=1" defer></script>
+</head>
+
+<body
+  data-page="records"
+  data-header-title="운동 기록"
+  data-header-subtitle="나의 운동 변화와 자세 피드백"
+>
+  <main class="records-page">
+    <div class="records-container">
+      <div id="topHeaderContainer"></div>
+
+      <section class="records-summary">
+        <div>
+          <span>WORKOUT HISTORY</span>
+          <h1>나의 운동 기록</h1>
+        </div>
+        <strong><b id="recordTotalCount">0</b>개</strong>
+      </section>
+
+      <nav class="record-filters" aria-label="기록 기간 필터">
+        <button type="button" class="active" data-period="all">전체</button>
+        <button type="button" data-period="today">오늘</button>
+        <button type="button" data-period="7d">최근 7일</button>
+        <button type="button" data-period="30d">최근 30일</button>
+      </nav>
+
+      <section class="records-state" id="recordsLoading">
+        운동 기록을 불러오고 있습니다.
+      </section>
+
+      <section class="records-state" id="recordsEmpty" hidden>
+        <strong>아직 저장된 운동 기록이 없어요.</strong>
+        <p>코칭을 시작하고 첫 운동 기록을 만들어 보세요.</p>
+        <a href="/coaching">코칭 시작하기</a>
+      </section>
+
+      <section class="records-state error" id="recordsError" hidden>
+        <strong>운동 기록을 불러오지 못했습니다.</strong>
+        <p id="recordsErrorMessage">잠시 후 다시 시도해 주세요.</p>
+        <button type="button" id="recordsRetryButton">다시 시도</button>
+      </section>
+
+      <section class="records-list" id="recordsList" hidden></section>
+    </div>
+
+    <div class="record-detail-overlay" id="recordDetailOverlay" hidden>
+      <button
+        type="button"
+        class="record-detail-backdrop"
+        id="recordDetailBackdrop"
+        aria-label="상세 닫기"
+      ></button>
+
+      <section
+        class="record-detail-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recordDetailTitle"
+      >
+        <header>
+          <div>
+            <span>WORKOUT DETAIL</span>
+            <h2 id="recordDetailTitle">운동 기록</h2>
+          </div>
+          <button type="button" id="recordDetailClose" aria-label="상세 닫기">×</button>
+        </header>
+
+        <div class="detail-state" id="recordDetailLoading">
+          상세 기록을 불러오고 있습니다.
+        </div>
+
+        <div class="detail-state error" id="recordDetailError" hidden>
+          <strong>상세 기록을 불러오지 못했습니다.</strong>
+          <p id="recordDetailErrorMessage">잠시 후 다시 시도해 주세요.</p>
+        </div>
+
+        <div class="record-detail-content" id="recordDetailContent" hidden>
+          <div class="record-detail-date">
+            <span id="detailDate">-</span>
+            <strong id="detailTime">-</strong>
+          </div>
+
+          <div class="record-detail-score" id="detailScore">측정 없음</div>
+
+          <dl class="record-detail-metrics">
+            <div><dt>시작 시간</dt><dd id="detailStartedAt">-</dd></div>
+            <div><dt>종료 시간</dt><dd id="detailCompletedAt">-</dd></div>
+            <div><dt>완료 세트</dt><dd id="detailSets">0세트</dd></div>
+            <div><dt>전체 반복</dt><dd id="detailRepetitions">0회</dd></div>
+            <div><dt>운동 시간</dt><dd id="detailMinutes">0분</dd></div>
+            <div><dt>예상 칼로리</dt><dd id="detailCalories">0kcal</dd></div>
+          </dl>
+
+          <section class="record-detail-feedback">
+            <span>자세 피드백</span>
+            <strong id="detailFeedbackTitle">저장된 피드백이 없습니다.</strong>
+            <p id="detailFeedback">-</p>
+          </section>
+
+          <section class="record-detail-image">
+            <span>베스트 자세 이미지</span>
+            <img id="detailImage" alt="베스트 자세 이미지" hidden>
+            <div id="detailImageEmpty">저장된 자세 이미지가 없습니다.</div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body>
+</html>

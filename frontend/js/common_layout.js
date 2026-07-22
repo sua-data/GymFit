@@ -391,7 +391,11 @@ function setupBottomNavigation() {
       ).pathname;
 
     const isActive =
-      itemPath === currentPath;
+      itemPath === currentPath
+      || (
+        itemPath !== "/"
+        && currentPath.startsWith(`${itemPath}/`)
+      );
 
     item.classList.toggle(
       "active",

@@ -154,6 +154,26 @@ def routine_page():
         FRONTEND_DIR / "routine.html"
     )
 
+
+@app.get(
+    "/records",
+    include_in_schema=False,
+)
+def records_page():
+    return FileResponse(
+        FRONTEND_DIR / "records.html"
+    )
+
+
+@app.get(
+    "/records/{workout_record_id}",
+    include_in_schema=False,
+)
+def record_detail_page(workout_record_id: int):
+    return FileResponse(
+        FRONTEND_DIR / "records.html"
+    )
+
 @app.get("/health")
 def health_check():
     return {

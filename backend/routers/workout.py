@@ -10,6 +10,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     status
 )
 from pydantic import (
@@ -18,7 +19,7 @@ from pydantic import (
     field_validator,
     model_validator
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -153,6 +154,30 @@ class WorkoutRecordCreateResponse(BaseModel):
     workout_minutes: int
     average_posture_score: int
     best_posture_score: int
+
+
+class WorkoutRecordItem(BaseModel):
+    workout_record_id: int
+    exercise_name: str
+    exercise_code: str | None
+    started_at: datetime
+    completed_at: datetime | None
+    completed_sets: int
+    repetition_count: int
+    workout_minutes: int
+    calories: int
+    posture_score: float | None
+    best_posture_score: float | None
+    feedback_title: str | None
+    feedback: str | None
+    image_url: str | None
+
+
+class WorkoutRecordListResponse(BaseModel):
+    items: list[WorkoutRecordItem]
+    total: int
+    limit: int
+    offset: int
 
 
 class WorkoutPlanSetItem(BaseModel):
@@ -1350,6 +1375,145 @@ def delete_workout_plan(
         ),
         workout_plan_id=workout_plan_id,
     )
+
+
+def create_workout_record_item(
+    record: WorkoutRecord,
+    exercise: Exercise | None,
+) -> WorkoutRecordItem:
+    return WorkoutRecordItem(
+        workout_record_id=record.workout_record_id,
+        exercise_name=(
+            exercise.exercise_name
+            if exercise
+            else "운동 기록"
+        ),
+        exercise_code=(
+            exercise.exercise_code
+            if exercise
+            else None
+        ),
+        started_at=record.started_at,
+        completed_at=record.completed_at,
+        completed_sets=record.completed_sets,
+        repetition_count=record.repetition_count,
+        workout_minutes=record.workout_minutes,
+        calories=record.calories,
+        posture_score=(
+            float(record.average_posture_score)
+            if record.average_posture_score is not None
+            else None
+        ),
+        best_posture_score=(
+            float(record.best_posture_score)
+            if record.best_posture_score is not None
+            else None
+        ),
+        feedback_title=record.feedback_title,
+        feedback=record.feedback,
+        image_url=record.image_url,
+    )
+
+
+@router.get(
+    "/records",
+    response_model=WorkoutRecordListResponse,
+)
+def get_workout_records(
+    user_id: int = Query(gt=0),
+    period: str = Query(
+        default="all",
+        pattern="^(all|today|7d|30d)$",
+    ),
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    require_active_user(db, user_id)
+
+    conditions = [WorkoutRecord.user_id == user_id]
+    today = korea_now_naive().date()
+
+    if period != "all":
+        days = {
+            "today": 1,
+            "7d": 7,
+            "30d": 30,
+        }[period]
+        start_date = today - timedelta(days=days - 1)
+        start_at = datetime.combine(start_date, datetime.min.time())
+        end_at = datetime.combine(
+            today + timedelta(days=1),
+            datetime.min.time(),
+        )
+        conditions.extend([
+            WorkoutRecord.started_at >= start_at,
+            WorkoutRecord.started_at < end_at,
+        ])
+
+    total = db.scalar(
+        select(func.count())
+        .select_from(WorkoutRecord)
+        .where(*conditions)
+    ) or 0
+
+    rows = db.execute(
+        select(WorkoutRecord, Exercise)
+        .outerjoin(
+            Exercise,
+            WorkoutRecord.exercise_id == Exercise.exercise_id,
+        )
+        .where(*conditions)
+        .order_by(
+            WorkoutRecord.started_at.desc(),
+            WorkoutRecord.workout_record_id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return WorkoutRecordListResponse(
+        items=[
+            create_workout_record_item(record, exercise)
+            for record, exercise in rows
+        ],
+        total=int(total),
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/records/{workout_record_id}",
+    response_model=WorkoutRecordItem,
+)
+def get_workout_record_detail(
+    workout_record_id: int,
+    user_id: int = Query(gt=0),
+    db: Session = Depends(get_db),
+):
+    require_active_user(db, user_id)
+
+    row = db.execute(
+        select(WorkoutRecord, Exercise)
+        .outerjoin(
+            Exercise,
+            WorkoutRecord.exercise_id == Exercise.exercise_id,
+        )
+        .where(
+            WorkoutRecord.workout_record_id == workout_record_id,
+            WorkoutRecord.user_id == user_id,
+        )
+    ).first()
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="운동 기록을 찾을 수 없습니다.",
+        )
+
+    record, exercise = row
+    return create_workout_record_item(record, exercise)
 
 
 @router.post(
