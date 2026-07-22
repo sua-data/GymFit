@@ -6,10 +6,12 @@
   <title>GYMFIT | 마이 페이지</title>
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
-  <link rel="stylesheet" href="/static/css/mypage.css?v=1">
-  <script src="/static/js/common_layout.js?v=6" defer></script>
+  <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
+  <link rel="stylesheet" href="/static/css/mypage.css?v=6">
+  <script src="/static/js/common_layout.js?v=11" defer></script>
+  <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/gym_search.js?v=1" defer></script>
-  <script src="/static/js/mypage.js?v=2" defer></script>
+  <script src="/static/js/mypage.js?v=6" defer></script>
 </head>
 <body data-page="mypage" data-header-title="마이 페이지" data-header-subtitle="내 정보와 설정을 관리하세요">
   <main class="mypage-page">
@@ -39,13 +41,33 @@
             <span>MY FITNESS</span>
             <h2 id="profileInfoTitle">운동 프로필</h2>
           </div>
+          <div class="fitness-profile-empty" id="fitnessProfileEmpty" hidden>
+            <strong>아직 운동 프로필을 설정하지 않았어요.</strong>
+            <p>목표와 운동 수준을 설정하면 맞춤 루틴에 반영돼요.</p>
+          </div>
           <dl class="profile-facts">
-            <div><dt>운동 목표</dt><dd id="profileGoals">-</dd></div>
-            <div><dt>운동 수준</dt><dd id="profileLevel">-</dd></div>
+            <div id="profileGoalsRow"><dt>운동 목표</dt><dd id="profileGoals">-</dd></div>
+            <div id="profileLevelRow"><dt>운동 수준</dt><dd id="profileLevel">-</dd></div>
             <div><dt>회원 유형</dt><dd id="profileAccountType">-</dd></div>
             <div id="profileGymRow" hidden><dt>소속 헬스장</dt><dd id="profileGym">-</dd></div>
             <div><dt id="profileDateLabel">가입일</dt><dd id="profileDate">-</dd></div>
           </dl>
+          <button type="button" class="fitness-profile-action" id="fitnessProfileAction" hidden>운동 프로필 설정</button>
+        </section>
+
+        <section class="trainer-activity-card" id="trainerActivityCard" aria-labelledby="trainerActivityTitle" hidden>
+          <div class="section-heading"><span>TRAINER</span><h2 id="trainerActivityTitle">트레이너 활동</h2></div>
+          <dl class="trainer-activity-summary">
+            <div><dt>경력</dt><dd id="trainerCareerYears">-</dd></div>
+            <div><dt>담당 회원</dt><dd id="trainerMemberCount">-</dd></div>
+            <div><dt>진행 중 숙제</dt><dd id="trainerActiveAssignmentCount">-</dd></div>
+            <div><dt>확인할 완료 결과</dt><dd id="trainerCompletedAssignmentCount">-</dd></div>
+          </dl>
+          <nav class="trainer-activity-links" aria-label="트레이너 관리 메뉴">
+            <a class="mypage-action-row" href="/trainer/members"><span>담당 회원 관리</span><svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+            <a class="mypage-action-row" href="/trainer/assignments"><span>PT 숙제·피드백 관리</span><svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+          </nav>
+          <p class="trainer-activity-message" id="trainerActivityMessage" hidden></p>
         </section>
 
         <section class="mypage-menu" aria-labelledby="accountMenuTitle">
@@ -64,7 +86,7 @@
           <label>이메일<input id="profileEmailInput" type="email" disabled><small>로그인 계정 이메일은 변경할 수 없습니다.</small></label>
           <div id="memberEditFields">
             <fieldset><legend>운동 목표</legend><div class="choice-grid" id="profileGoalChoices"></div><p class="field-error" id="profileGoalError" hidden>운동 목표를 하나 이상 선택해 주세요.</p></fieldset>
-            <label>운동 수준<select id="profileLevelSelect" required><option value="BEGINNER">초급</option><option value="INTERMEDIATE">중급</option><option value="ADVANCED">고급</option></select></label>
+            <label>운동 수준<select id="profileLevelSelect" data-gymfit-select required><option value="BEGINNER">초급</option><option value="INTERMEDIATE">중급</option><option value="ADVANCED">고급</option></select></label>
           </div>
           <p class="form-message" id="profileFormMessage" hidden></p>
           <button type="submit" class="save-profile-button" id="profileSaveButton">저장하기</button>

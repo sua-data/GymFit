@@ -1,0 +1,161 @@
+:root {
+  --gymfit-select-accent: #a8ff35;
+  --gymfit-select-bg: #151515;
+  --gymfit-select-panel: #1b1b1b;
+  --gymfit-select-border: rgba(255, 255, 255, 0.12);
+}
+
+.gymfit-select,
+.gymfit-select-trigger,
+.gymfit-select-value,
+.gymfit-select-portal,
+.gymfit-select-option {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.gymfit-select-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.gymfit-select {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gymfit-select *,
+.gymfit-select *::before,
+.gymfit-select *::after {
+  box-sizing: border-box;
+}
+
+.gymfit-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  color: #fff;
+  text-align: left;
+  background: var(--gymfit-select-bg);
+  border: 1px solid var(--gymfit-select-border);
+  border-radius: 14px;
+  outline: none;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.gymfit-select-trigger:hover,
+.gymfit-select-trigger:focus-visible,
+.gymfit-select.is-open .gymfit-select-trigger {
+  border-color: var(--gymfit-select-accent);
+  box-shadow: 0 0 0 2px rgba(168, 255, 53, 0.12);
+}
+
+.gymfit-select-trigger:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.gymfit-select.is-invalid .gymfit-select-trigger {
+  border-color: #ff8585;
+}
+
+.gymfit-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gymfit-select.is-placeholder .gymfit-select-value {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.gymfit-select-chevron {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: rgba(255, 255, 255, 0.42);
+  stroke-width: 1.8;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.gymfit-select.is-open .gymfit-select-chevron {
+  color: var(--gymfit-select-accent);
+  transform: rotate(180deg);
+}
+
+.gymfit-select-portal {
+  position: fixed;
+  z-index: 4000;
+  box-sizing: border-box;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: #fff;
+  background: var(--gymfit-select-panel);
+  border: 1px solid var(--gymfit-select-border);
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+}
+
+.gymfit-select-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #fff;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.gymfit-select-option:hover,
+.gymfit-select-option.is-active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.gymfit-select-option[aria-selected="true"] {
+  color: var(--gymfit-select-accent);
+  background: rgba(168, 255, 53, 0.14);
+}
+
+.gymfit-select-option[aria-disabled="true"] {
+  opacity: 0.35;
+  pointer-events: none;
+}

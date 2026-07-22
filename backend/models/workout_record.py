@@ -41,17 +41,30 @@ class WorkoutRecord(Base):
         comment="회원 번호",
     )
 
-    exercise_id: Mapped[int] = mapped_column(
+    exercise_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey(
             "exercise.exercise_id",
             ondelete="RESTRICT",
             onupdate="CASCADE",
         ),
-        nullable=False,
+        nullable=True,
         index=True,
         comment="운동 종목 번호",
     )
+
+    user_exercise_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("user_exercise.user_exercise_id", ondelete="RESTRICT", onupdate="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    record_source: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="COACHING", server_default="COACHING"
+    )
+
+    manual_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -99,19 +112,15 @@ class WorkoutRecord(Base):
         comment="소모 칼로리",
     )
 
-    average_posture_score: Mapped[int] = mapped_column(
+    average_posture_score: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
-        server_default="0",
+        nullable=True,
         comment="운동 세션 평균 자세 점수",
     )
 
-    best_posture_score: Mapped[int] = mapped_column(
+    best_posture_score: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
-        default=0,
-        server_default="0",
+        nullable=True,
         comment="운동 세션 최고 자세 점수",
     )
 
@@ -141,3 +150,4 @@ class WorkoutRecord(Base):
     )
 
     exercise: Mapped[Exercise] = relationship()
+    user_exercise = relationship("UserExercise")

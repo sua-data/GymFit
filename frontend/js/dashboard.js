@@ -568,12 +568,9 @@ function renderRecentWorkouts(workouts) {
         </span>
 
         <span>
-          <strong>
-            ${Number(
-              workout.average_posture_score
-            ) || 0}
-          </strong>
-          점
+          ${workout.average_posture_score === null || workout.average_posture_score === undefined
+            ? "자세 점수 없음"
+            : `<strong>${Number(workout.average_posture_score)}</strong>점`}
         </span>
       </div>
 

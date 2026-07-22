@@ -7,8 +7,8 @@ const GOAL_LABELS = {
 const LEVEL_LABELS = { BEGINNER: "초급", INTERMEDIATE: "중급", ADVANCED: "고급" };
 
 function installExtendedProfileUI() {
-  document.querySelector("#profileLevel")?.closest("div")?.insertAdjacentHTML("afterend", '<div id="profileWeeklyRow"><dt>주간 운동 목표</dt><dd id="profileWeekly">미설정</dd></div>');
-  document.querySelector("#profileLevelSelect")?.closest("label")?.insertAdjacentHTML("afterend", '<label>주간 운동 횟수<select id="profileWeeklySelect" required><option value="">선택</option><option value="1">주 1회</option><option value="2">주 2회</option><option value="3">주 3회</option><option value="4">주 4회</option><option value="5">주 5회</option><option value="6">주 6회</option><option value="7">매일</option></select></label>');
+  document.querySelector("#profileLevel")?.closest("div")?.insertAdjacentHTML("afterend", '<div id="profileWeeklyRow"><dt>주간 운동 목표</dt><dd id="profileWeekly">-</dd></div>');
+  document.querySelector("#profileLevelSelect")?.closest("label")?.insertAdjacentHTML("afterend", '<label>주간 운동 횟수<select id="profileWeeklySelect" data-gymfit-select required><option value="">선택</option><option value="1">주 1회</option><option value="2">주 2회</option><option value="3">주 3회</option><option value="4">주 4회</option><option value="5">주 5회</option><option value="6">주 6회</option><option value="7">매일</option></select></label>');
   document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">변경</button></div><button type="button" class="disconnect-gym-button" id="disconnectGymButton" hidden>연결 해제</button><p class="gym-policy-message" id="gymPolicyMessage" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p></section>');
   document.querySelector("#profileEditOverlay")?.insertAdjacentHTML("afterend", '<div class="sheet-overlay" id="gymEditOverlay" hidden><button class="sheet-backdrop" id="gymEditBackdrop" type="button" aria-label="헬스장 변경 닫기"></button><section class="profile-sheet" role="dialog" aria-modal="true"><header><div><span>GYM SEARCH</span><h2>헬스장 변경</h2></div><button type="button" id="gymEditClose" aria-label="닫기">×</button></header><div class="gym-search" data-gym-search><div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div><p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p><div class="gym-search-results" data-gym-results hidden></div><div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div></div><p class="form-message" id="gymSaveMessage" hidden></p><button type="button" class="save-profile-button" id="gymSaveButton">선택한 헬스장 저장</button></section></div>');
 }
@@ -34,6 +34,7 @@ const logoutOverlay = document.querySelector("#logoutOverlay");
 const mypageToast = document.querySelector("#mypageToast");
 
 let currentUser = null;
+let trainerActivity = null;
 let isSaving = false;
 let toastTimer = null;
 const gymSearchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
@@ -73,8 +74,14 @@ function getDisplayName(user) {
 }
 
 function getRoleLabel(user) {
-  if (user?.account_type === "TRAINER") return "트레이너";
-  return getSessionUser()?.has_active_trainer === true ? "PT 회원" : "일반 회원";
+  if (typeof window.getUserRoleLabel === "function") {
+    return window.getUserRoleLabel(user);
+  }
+  const accountType = String(user?.account_type ?? user?.accountType ?? "").toUpperCase();
+  const hasActiveTrainer = user?.has_active_trainer === true || user?.hasActiveTrainer === true;
+  if (accountType === "TRAINER") return "트레이너";
+  if (accountType === "MEMBER" && hasActiveTrainer) return "PT 회원";
+  return "개인 운동자";
 }
 
 function formatDate(value) {
@@ -93,8 +100,18 @@ function showToast(message) {
 function createMenuItem(label, action, comingSoon = false, danger = false) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `menu-item${danger ? " danger" : ""}`;
-  button.innerHTML = `<span>${label}</span>${comingSoon ? '<span class="coming">준비 중</span>' : '<span class="arrow">›</span>'}`;
+  button.className = `menu-item mypage-action-row${danger ? " danger" : ""}`;
+  const labelElement = document.createElement("span");
+  labelElement.textContent = label;
+  button.append(labelElement);
+  if (comingSoon) {
+    const badge = document.createElement("span");
+    badge.className = "coming";
+    badge.textContent = "준비 중";
+    button.append(badge);
+  } else {
+    button.insertAdjacentHTML("beforeend", '<svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg>');
+  }
   button.addEventListener("click", action);
   return button;
 }
@@ -112,19 +129,63 @@ function renderMenus() {
   );
 }
 
-function renderProfile() {
+function getFitnessProfileState(user) {
+  const goals = (user?.goals || [])
+    .map((goal) => goal.goal_name || GOAL_LABELS[goal.goal_code])
+    .filter(Boolean);
+  return {
+    goals,
+    hasGoals: goals.length > 0,
+    hasLevel: Boolean(user?.exercise_level),
+    hasWeeklyGoal: Number(user?.weekly_workout_days) >= 1,
+  };
+}
+
+function setFitnessValue(element, value, isConfigured) {
+  element.textContent = isConfigured ? value : "설정하기";
+  element.classList.toggle("fitness-value-unset", !isConfigured);
+}
+
+function renderUnsetFitnessProfileState() {
+  document.querySelector("#fitnessProfileEmpty").hidden = false;
+  document.querySelector("#profileGoalsRow").hidden = true;
+  document.querySelector("#profileLevelRow").hidden = true;
+  document.querySelector("#profileWeeklyRow").hidden = true;
+  const action = document.querySelector("#fitnessProfileAction");
+  action.hidden = false;
+  action.textContent = "내 운동 프로필 설정";
+}
+
+function renderConfiguredFitnessProfile(user, state) {
+  document.querySelector("#fitnessProfileEmpty").hidden = true;
+  document.querySelector("#profileGoalsRow").hidden = false;
+  document.querySelector("#profileLevelRow").hidden = false;
+  document.querySelector("#profileWeeklyRow").hidden = false;
+  setFitnessValue(document.querySelector("#profileGoals"), state.goals.join(", "), state.hasGoals);
+  setFitnessValue(document.querySelector("#profileLevel"), LEVEL_LABELS[user.exercise_level], state.hasLevel);
+  const weeklyLabel = user.weekly_workout_days === 7 ? "매일" : `주 ${user.weekly_workout_days}회`;
+  setFitnessValue(document.querySelector("#profileWeekly"), weeklyLabel, state.hasWeeklyGoal);
+  const action = document.querySelector("#fitnessProfileAction");
+  action.hidden = false;
+  action.textContent = "운동 프로필 수정";
+}
+
+function renderFitnessProfile(user) {
+  currentUser = user;
   const name = getDisplayName(currentUser);
-  const goals = (currentUser.goals || []).map((goal) => goal.goal_name || GOAL_LABELS[goal.goal_code]).filter(Boolean);
+  const fitnessState = getFitnessProfileState(currentUser);
   document.querySelector("#profileAvatar").textContent = Array.from(name)[0]?.toUpperCase() || "G";
   document.querySelector("#profileName").textContent = name;
   document.querySelector("#profileEmail").textContent = currentUser.email || "이메일 정보 없음";
   document.querySelector("#profileRole").textContent = getRoleLabel(currentUser);
-  document.querySelector("#profileGoals").textContent = goals.length ? goals.join(", ") : "설정 없음";
-  document.querySelector("#profileLevel").textContent = LEVEL_LABELS[currentUser.exercise_level] || "설정 없음";
-  document.querySelector("#profileWeekly").textContent = currentUser.weekly_workout_days ? (currentUser.weekly_workout_days === 7 ? "매일" : `주 ${currentUser.weekly_workout_days}회`) : "미설정";
+  if (!fitnessState.hasGoals && !fitnessState.hasLevel && !fitnessState.hasWeeklyGoal) {
+    renderUnsetFitnessProfileState();
+  } else {
+    renderConfiguredFitnessProfile(currentUser, fitnessState);
+  }
   document.querySelector("#profileAccountType").textContent = getRoleLabel(currentUser);
   const gymRow = document.querySelector("#profileGymRow");
-  gymRow.hidden = currentUser.account_type !== "TRAINER";
+  gymRow.hidden = false;
   document.querySelector("#profileGym").textContent = currentUser.gym_name || "등록 없음";
   document.querySelector("#currentGymName").textContent = currentUser.gym_name || "소속 헬스장 없음";
   document.querySelector("#currentGymAddress").textContent = currentUser.gym_road_address || (currentUser.gym_name ? "기존 문자열 헬스장 정보" : "헬스장을 연결하면 이곳에 표시됩니다.");
@@ -135,7 +196,54 @@ function renderProfile() {
   const dateValue = currentUser.last_login_at || currentUser.created_at;
   document.querySelector("#profileDateLabel").textContent = currentUser.last_login_at ? "마지막 로그인" : "가입일";
   document.querySelector("#profileDate").textContent = formatDate(dateValue);
+  document.querySelectorAll(".profile-facts > div").forEach(row => row.classList.add("mypage-info-row"));
   renderMenus();
+}
+
+function renderTrainerActivity(user) {
+  const card = document.querySelector("#trainerActivityCard");
+  const isTrainer = String(user?.account_type || "").toUpperCase() === "TRAINER";
+  card.hidden = !isTrainer;
+  if (!isTrainer) return;
+  document.querySelector("#trainerCareerYears").textContent = user.trainer_career_years == null
+    ? "등록 없음"
+    : `${user.trainer_career_years}년`;
+  document.querySelector("#trainerMemberCount").textContent = trainerActivity?.memberCount ?? "-";
+  document.querySelector("#trainerActiveAssignmentCount").textContent = trainerActivity?.activeAssignmentCount ?? "-";
+  document.querySelector("#trainerCompletedAssignmentCount").textContent = trainerActivity?.completedAssignmentCount ?? "-";
+  const activityMessage = document.querySelector("#trainerActivityMessage");
+  activityMessage.hidden = !trainerActivity?.error;
+  activityMessage.textContent = trainerActivity?.error || "";
+}
+
+function renderProfile() {
+  renderFitnessProfile(currentUser);
+  renderTrainerActivity(currentUser);
+}
+
+async function loadTrainerActivity(user) {
+  if (String(user?.account_type || "").toUpperCase() !== "TRAINER") {
+    trainerActivity = null;
+    return;
+  }
+  const headers = { "X-User-Id": String(user.user_id) };
+  try {
+    const [memberData, assignedData, inProgressData, completedData] = await Promise.all([
+      requestJson("/api/pt/my-members", { headers }),
+      requestJson("/api/pt/assignments/trainer?status=ASSIGNED&limit=1", { headers }),
+      requestJson("/api/pt/assignments/trainer?status=IN_PROGRESS&limit=1", { headers }),
+      requestJson("/api/pt/assignments/trainer?status=COMPLETED&limit=1", { headers }),
+    ]);
+    trainerActivity = {
+      memberCount: memberData.items.length,
+      activeAssignmentCount: Number(assignedData.total) + Number(inProgressData.total),
+      completedAssignmentCount: Number(completedData.total),
+    };
+  } catch (error) {
+    trainerActivity = {
+      error: getErrorMessage(error, "트레이너 활동 요약을 불러오지 못했습니다."),
+    };
+  }
 }
 
 async function loadProfile() {
@@ -151,6 +259,7 @@ async function loadProfile() {
     currentUser = await requestJson(`/api/users/${sessionUser.user_id}`);
     updateSessionUser(currentUser);
     window.dispatchEvent(new CustomEvent("gymfitUserUpdated", { detail: currentUser }));
+    await loadTrainerActivity(currentUser);
     renderProfile();
     profileContent.hidden = false;
   } catch (error) {
@@ -177,7 +286,9 @@ function openEditSheet() {
   profileEmailInput.value = currentUser.email || "";
   profileLevelSelect.value = currentUser.exercise_level || "BEGINNER";
   profileWeeklySelect.value = currentUser.weekly_workout_days ? String(currentUser.weekly_workout_days) : "";
-  document.querySelector("#memberEditFields").hidden = currentUser.account_type === "TRAINER";
+  window.GymfitDropdown?.refresh(profileLevelSelect);
+  window.GymfitDropdown?.refresh(profileWeeklySelect);
+  document.querySelector("#memberEditFields").hidden = false;
   renderGoalChoices();
   profileGoalError.hidden = true;
   profileFormMessage.hidden = true;
@@ -188,6 +299,7 @@ function openEditSheet() {
 
 function closeEditSheet() {
   if (isSaving) return;
+  window.GymfitDropdown?.closeAll();
   profileEditOverlay.hidden = true;
   profileEditForm.reset();
   profileFormMessage.hidden = true;
@@ -195,6 +307,10 @@ function closeEditSheet() {
 }
 
 function updateSessionUser(user) {
+  if (typeof window.updateGymfitStoredUser === "function") {
+    window.updateGymfitStoredUser(user);
+    return;
+  }
   const previous = getSessionUser() || {};
   sessionStorage.setItem("gymfitUser", JSON.stringify({
     ...previous,
@@ -225,20 +341,20 @@ async function submitProfile(event) {
   if (!name) { profileNameInput.setCustomValidity("이름을 입력해 주세요."); profileNameInput.reportValidity(); return; }
   profileNameInput.setCustomValidity("");
   const selectedGoals = [...profileEditForm.querySelectorAll('input[name="goals"]:checked')].map((input) => input.value);
-  if (currentUser.account_type !== "TRAINER" && selectedGoals.length === 0) { profileGoalError.hidden = false; return; }
-  if (currentUser.account_type !== "TRAINER" && !profileWeeklySelect.value) {
+  if (selectedGoals.length === 0) { profileGoalError.hidden = false; return; }
+  if (!profileWeeklySelect.value) {
     profileWeeklySelect.setCustomValidity("주간 운동 횟수를 선택해 주세요.");
     profileWeeklySelect.reportValidity();
     return;
   }
   profileWeeklySelect.setCustomValidity("");
   profileGoalError.hidden = true;
-  const payload = { name };
-  if (currentUser.account_type !== "TRAINER") {
-    payload.exercise_level = profileLevelSelect.value;
-    payload.goals = selectedGoals;
-    payload.weekly_workout_days = Number(profileWeeklySelect.value);
-  }
+  const payload = {
+    name,
+    exercise_level: profileLevelSelect.value,
+    goals: selectedGoals,
+    weekly_workout_days: Number(profileWeeklySelect.value),
+  };
   isSaving = true;
   profileSaveButton.disabled = true;
   profileSaveButton.textContent = "저장 중...";
@@ -265,6 +381,7 @@ async function submitProfile(event) {
 }
 
 function closeEditSheetAfterSave() {
+  window.GymfitDropdown?.closeAll();
   profileEditOverlay.hidden = true;
   profileEditForm.reset();
   document.body.classList.remove("modal-open");
@@ -278,6 +395,7 @@ function openGymSheet() {
   document.body.classList.add("modal-open");
 }
 function closeGymSheet() {
+  window.GymfitDropdown?.closeAll();
   document.querySelector("#gymEditOverlay").hidden = true;
   document.body.classList.remove("modal-open");
 }
@@ -316,6 +434,7 @@ function logout() {
 
 profileRetryButton.addEventListener("click", loadProfile);
 document.querySelector("#profileEditShortcut").addEventListener("click", openEditSheet);
+document.querySelector("#fitnessProfileAction").addEventListener("click", openEditSheet);
 document.querySelector("#profileEditClose").addEventListener("click", closeEditSheet);
 document.querySelector("#profileEditBackdrop").addEventListener("click", closeEditSheet);
 profileEditForm.addEventListener("submit", submitProfile);

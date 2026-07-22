@@ -43,6 +43,7 @@ class UserExercise(Base):
         String(100),
         nullable=False,
     )
+    category: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

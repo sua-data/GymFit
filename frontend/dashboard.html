@@ -24,16 +24,18 @@
     rel="stylesheet"
     href="/static/css/common_layout.css?v=3"
   >
+  <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
 
   <link
     rel="stylesheet"
-    href="/static/css/dashboard.css?v=7"
+    href="/static/css/dashboard.css?v=8"
   >
 
   <script
-    src="/static/js/common_layout.js?v=6"
+    src="/static/js/common_layout.js?v=11"
     defer
   ></script>
+  <script src="/static/js/common_dropdown.js?v=2" defer></script>
 
   <script
     src="/static/js/coaching_plan.js?v=1"
@@ -41,7 +43,7 @@
   ></script>
 
   <script
-    src="/static/js/dashboard.js?v=8"
+    src="/static/js/dashboard.js?v=9"
     defer
   ></script>
 </head>
@@ -210,6 +212,7 @@
           <select
             id="bestExerciseSelect"
             class="exercise-select"
+            data-gymfit-select
             aria-label="운동 종목 선택"
             disabled
           >

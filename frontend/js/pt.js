@@ -74,9 +74,16 @@
   }
 
   async function refreshSessionUser() {
+    if (typeof window.refreshGymfitCurrentUser === "function") {
+      const refreshedUser = await window.refreshGymfitCurrentUser(true);
+      if (refreshedUser) sessionUser = refreshedUser;
+      return;
+    }
     const user = await requestJson(`/api/users/${sessionUser.user_id}`);
-    sessionStorage.setItem("gymfitUser", JSON.stringify({ ...sessionUser, ...user }));
-    sessionUser = { ...sessionUser, ...user };
+    sessionUser = typeof window.updateGymfitStoredUser === "function"
+      ? window.updateGymfitStoredUser(user)
+      : { ...sessionUser, ...user };
+    sessionStorage.setItem("gymfitUser", JSON.stringify(sessionUser));
     window.dispatchEvent(new CustomEvent("gymfitUserUpdated", { detail: sessionUser }));
   }
 

@@ -484,12 +484,14 @@ def get_dashboard(
         select(
             WorkoutRecord,
             Exercise,
+            UserExercise,
         )
-        .join(
+        .outerjoin(
             Exercise,
             WorkoutRecord.exercise_id
             == Exercise.exercise_id,
         )
+        .outerjoin(UserExercise, WorkoutRecord.user_exercise_id == UserExercise.user_exercise_id)
         .where(
             WorkoutRecord.user_id == user_id
         )
@@ -501,14 +503,14 @@ def get_dashboard(
 
     recent_workouts = []
 
-    for record, exercise in recent_rows:
+    for record, exercise, user_exercise in recent_rows:
         recent_workouts.append(
             {
                 "workout_id": (
                     record.workout_record_id
                 ),
                 "exercise_name": (
-                    exercise.exercise_name
+                    exercise.exercise_name if exercise else user_exercise.exercise_name if user_exercise else "운동 기록"
                 ),
                 "image_url": record.image_url,
                 "workout_date_text": (

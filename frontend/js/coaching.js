@@ -159,6 +159,8 @@ const resultFeedbackText =
   document.querySelector("#resultFeedbackText");
 const resultDashboardButton =
   document.querySelector("#resultDashboardButton");
+const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
+const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
 
 
 let selectedExerciseCode =
@@ -187,6 +189,8 @@ let restIntervalId = null;
 let restSecondsRemaining = 0;
 let restDurationSeconds = 60;
 let coachingWorkoutPlanId = null;
+let coachingAssignmentId = null;
+let coachingAssignment = null;
 let isPlanCoaching = false;
 let coachingEstimatedMinutes = 0;
 let freeCoachingRows = [];
@@ -198,6 +202,8 @@ let lastSpokenFeedback = "";
 let lastFeedbackSpokenAt = 0;
 
 let postureScores = [];
+let bestCapturedPostureScore = -1;
+let bestPostureImageDataUrl = null;
 
 let workoutStartedAt = null;
 let cameraStream = null;
@@ -999,6 +1005,15 @@ function registerRepetition(
 
   postureScores.push(score);
 
+  if (score > bestCapturedPostureScore && captureCanvas.width && captureCanvas.height) {
+    try {
+      bestPostureImageDataUrl = captureCanvas.toDataURL("image/jpeg", 0.82);
+      bestCapturedPostureScore = score;
+    } catch (error) {
+      console.warn("대표 자세 이미지 캡처 실패:", error);
+    }
+  }
+
   currentReps += 1;
   totalCompletedReps += 1;
 
@@ -1771,7 +1786,13 @@ async function saveWorkoutRecord() {
             workoutStartedAt
               ? workoutStartedAt
                   .toISOString()
-              : null
+              : null,
+
+          assignment_id:
+            coachingAssignmentId,
+
+          best_image_data_url:
+            bestPostureImageDataUrl
         })
       }
     );
@@ -2186,11 +2207,71 @@ async function initializeCoachingTargets() {
   const requestedExerciseCode = String(
     params.get("exercise_code") || ""
   ).toUpperCase();
+  const requestedAssignmentId = Number(params.get("assignment_id"));
+  const isPtAssignmentRequest = params.get("source") === "PT_ASSIGNMENT"
+    && Number.isInteger(requestedAssignmentId)
+    && requestedAssignmentId > 0;
 
   startButton.disabled = true;
   coachingSettingsCard.hidden = true;
   setProgressCard.hidden = true;
   coachingModeLoading.hidden = false;
+
+  if (isPtAssignmentRequest) {
+    try {
+      const userId = getLoginUserId();
+      if (!userId) {
+        throw new Error("로그인 정보가 없습니다.");
+      }
+      const response = await fetch(
+        `/api/pt/assignments/member/${requestedAssignmentId}`,
+        { headers: { "X-User-Id": String(userId) } }
+      );
+      const assignment = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(assignment?.detail || "PT 숙제를 확인하지 못했습니다.");
+      }
+      const code = String(assignment.exercise_code || "").toUpperCase();
+      const setCount = Number(assignment.target_sets);
+      const repetitions = Number(assignment.target_reps);
+      if (!isCoachingExerciseCode(code) || setCount < 1 || repetitions < 1
+          || !["ASSIGNED", "IN_PROGRESS"].includes(assignment.status)) {
+        throw new Error("실시간 코칭으로 수행할 수 없는 PT 숙제입니다.");
+      }
+      selectExerciseTab(code);
+      coachingAssignmentId = assignment.assignment_id;
+      coachingAssignment = assignment;
+      coachingWorkoutPlanId = null;
+      coachingSets = Array.from({ length: setCount }, (_, index) => ({
+        set_order: index + 1,
+        repetition_count: repetitions,
+        duration_seconds: null,
+        weight_kg: null,
+      }));
+      targetSets = setCount;
+      targetReps = repetitions;
+      totalTargetReps = setCount * repetitions;
+      isPlanCoaching = true;
+      freeCoachingSettings.hidden = true;
+      routineCoachingSets.hidden = false;
+      renderRoutineCoachingSets();
+      coachingSettingsEyebrow.textContent = "PT ASSIGNMENT";
+      coachingSettingsTitle.textContent = assignment.title;
+      coachingModeLabel.textContent = "PT 숙제";
+      coachingPlanMeta.textContent = `${assignment.trainer_name} 트레이너 · ${setCount}세트 × ${repetitions}회`;
+      ptAssignmentContext.hidden = false;
+      ptAssignmentSummary.textContent = `${assignment.title} · ${assignment.trainer_name} 트레이너`;
+      finishModeLoading();
+      updateTargetDisplay();
+      updateCounterDisplay();
+      return;
+    } catch (error) {
+      console.error("PT 숙제 코칭 초기화 실패:", error);
+      alert(error.message);
+      window.location.replace("/pt/assignments");
+      return;
+    }
+  }
 
   const validSavedPlan = getValidCoachingPlan(savedPlan);
   if (savedPlan && !validSavedPlan) {

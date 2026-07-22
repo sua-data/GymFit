@@ -21,10 +21,12 @@ const trainerServiceMenuItems = [
 
 const ptMemberMenuItems = [
   {
-    label: "PT 숙제"
+    label: "PT 숙제",
+    path: "/pt/assignments"
   },
   {
-    label: "트레이너 피드백"
+    label: "트레이너 피드백",
+    path: "/pt/feedback"
   },
   {
     label: "PT 일정"
@@ -37,15 +39,106 @@ const trainerMenuItems = [
     path: "/trainer/members"
   },
   {
-    label: "PT 숙제 관리"
-  },
-  {
-    label: "회원 피드백"
+    label: "PT 숙제 관리",
+    path: "/trainer/assignments"
   },
   {
     label: "PT 일정 관리"
   }
 ];
+
+
+function getUserRoleLabel(user) {
+  const accountType = String(
+    user?.account_type
+    ?? user?.accountType
+    ?? ""
+  ).toUpperCase();
+  const hasActiveTrainer =
+    user?.has_active_trainer === true
+    || user?.hasActiveTrainer === true;
+
+  if (accountType === "TRAINER") {
+    return "트레이너";
+  }
+  if (accountType === "MEMBER" && hasActiveTrainer) {
+    return "PT 회원";
+  }
+  return "개인 운동자";
+}
+
+window.getUserRoleLabel = getUserRoleLabel;
+
+
+function updateGymfitStoredUser(profile) {
+  const previousUser = getLoginUser() || {};
+  const hasServerTrainerState = Object.prototype.hasOwnProperty.call(
+    profile || {},
+    "has_active_trainer"
+  );
+  const nextUser = {
+    ...previousUser,
+    ...(profile || {}),
+  };
+
+  if (hasServerTrainerState) {
+    nextUser.has_active_trainer = profile.has_active_trainer === true;
+  } else if (!Object.prototype.hasOwnProperty.call(nextUser, "has_active_trainer")) {
+    nextUser.has_active_trainer = nextUser.hasActiveTrainer === true;
+  }
+
+  delete nextUser.hasActiveTrainer;
+  sessionStorage.setItem("gymfitUser", JSON.stringify(nextUser));
+  return nextUser;
+}
+
+
+let currentUserRefreshPromise = null;
+let currentUserRefreshCompleted = false;
+
+async function refreshGymfitCurrentUser(force = false) {
+  if (currentUserRefreshCompleted && !force) {
+    return getLoginUser();
+  }
+  if (currentUserRefreshPromise) {
+    return currentUserRefreshPromise;
+  }
+
+  const storedUser = getLoginUser();
+  const userId = Number(storedUser?.user_id ?? storedUser?.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return null;
+  }
+
+  currentUserRefreshPromise = (async () => {
+    const response = await fetch(`/api/users/${userId}`, {
+      headers: { "X-User-Id": String(userId) },
+    });
+    const profile = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        typeof profile?.detail === "string"
+          ? profile.detail
+          : "사용자 정보를 갱신하지 못했습니다."
+      );
+    }
+
+    const nextUser = updateGymfitStoredUser(profile);
+    currentUserRefreshCompleted = true;
+    window.dispatchEvent(new CustomEvent("gymfitUserUpdated", {
+      detail: nextUser,
+    }));
+    return nextUser;
+  })().finally(() => {
+    currentUserRefreshPromise = null;
+  });
+
+  return currentUserRefreshPromise;
+}
+
+
+window.updateGymfitStoredUser = updateGymfitStoredUser;
+window.refreshGymfitCurrentUser = refreshGymfitCurrentUser;
 
 
 function getLoginUser() {
@@ -213,22 +306,18 @@ function renderSideMenu() {
   userName.textContent =
     `${user.name || "사용자"}님`;
 
-  const isTrainer =
-    user.account_type === "TRAINER";
+  const accountType = String(
+    user.account_type
+    ?? user.accountType
+    ?? ""
+  ).toUpperCase();
+  const isTrainer = accountType === "TRAINER";
 
   const hasActiveTrainer =
-    user.has_active_trainer === true;
+    user.has_active_trainer === true
+    || user.hasActiveTrainer === true;
 
-  if (isTrainer) {
-    userType.textContent =
-      "트레이너";
-  } else if (hasActiveTrainer) {
-    userType.textContent =
-      "PT 회원";
-  } else {
-    userType.textContent =
-      "개인 운동자";
-  }
+  userType.textContent = getUserRoleLabel(user);
 
   menuList.appendChild(
     createMenuSection(
@@ -296,7 +385,12 @@ function setupSideMenu() {
     return;
   }
 
-  function openSideMenu() {
+  async function openSideMenu() {
+    try {
+      await refreshGymfitCurrentUser();
+    } catch (error) {
+      console.error("메뉴 사용자 정보 동기화 실패:", error);
+    }
     renderSideMenu();
 
     overlay.hidden = false;
@@ -541,6 +635,12 @@ window.addEventListener(
       setupSideMenu();
       setupBottomNavigation();
       setupNotificationButton();
+
+      try {
+        await refreshGymfitCurrentUser();
+      } catch (error) {
+        console.error("사용자 프로필 동기화 실패:", error);
+      }
 
       window.dispatchEvent(
         new CustomEvent(

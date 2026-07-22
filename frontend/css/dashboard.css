@@ -378,6 +378,17 @@ select {
   background: #181818;
 }
 
+.posture-heading .gymfit-select {
+  width: 120px;
+  flex: 0 0 120px;
+}
+
+.posture-heading .gymfit-select-trigger {
+  min-height: 48px;
+  padding-inline: 13px;
+  font-size: 12px;
+}
+
 .best-badge[hidden],
 .frame-score[hidden] {
   display: none;

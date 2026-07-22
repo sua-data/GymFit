@@ -108,6 +108,9 @@ def serialize_user(user: User, db: Session) -> dict:
         "trainer_approval_status": (
             trainer_profile.approval_status if trainer_profile else None
         ),
+        "trainer_career_years": (
+            trainer_profile.career_years if trainer_profile else None
+        ),
         "has_active_trainer": has_active_trainer(
             db, user.user_id, user.account_type
         ),
@@ -130,39 +133,30 @@ def update_user_profile(
 ) -> dict:
     user = get_active_user(db, user_id)
 
-    if user.account_type == "TRAINER":
-        if (
-            payload.exercise_level is not None
-            or payload.goals is not None
-            or payload.weekly_workout_days is not None
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="트레이너 계정은 운동 목표와 수준을 변경할 수 없습니다.",
-            )
-
     try:
         user.name = payload.name
 
-        if user.account_type != "TRAINER":
-            if user.member_profile is None:
-                user.member_profile = MemberProfile(user_id=user.user_id)
-            if payload.exercise_level is not None:
-                user.member_profile.exercise_level = payload.exercise_level
-            if payload.weekly_workout_days is not None:
-                user.member_profile.weekly_workout_days = payload.weekly_workout_days
-            if payload.goals is not None:
-                db.execute(
-                    delete(MemberGoal).where(MemberGoal.user_id == user.user_id)
+        if user.member_profile is None and (
+            payload.exercise_level is not None
+            or payload.weekly_workout_days is not None
+        ):
+            user.member_profile = MemberProfile(user_id=user.user_id)
+        if payload.exercise_level is not None:
+            user.member_profile.exercise_level = payload.exercise_level
+        if payload.weekly_workout_days is not None:
+            user.member_profile.weekly_workout_days = payload.weekly_workout_days
+        if payload.goals is not None:
+            db.execute(
+                delete(MemberGoal).where(MemberGoal.user_id == user.user_id)
+            )
+            db.add_all([
+                MemberGoal(
+                    user_id=user.user_id,
+                    goal_code=code,
+                    goal_name=GOAL_NAMES[code],
                 )
-                db.add_all([
-                    MemberGoal(
-                        user_id=user.user_id,
-                        goal_code=code,
-                        goal_name=GOAL_NAMES[code],
-                    )
-                    for code in payload.goals
-                ])
+                for code in payload.goals
+            ])
 
         db.commit()
         db.expire(user)

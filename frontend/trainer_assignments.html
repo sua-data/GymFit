@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>GYMFIT | PT 숙제 관리</title>
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
+  <link rel="stylesheet" href="/static/css/pt_assignments.css?v=7">
+  <script src="/static/js/common_layout.js?v=11" defer></script>
+  <script src="/static/js/common_dropdown.js?v=2" defer></script>
+  <script src="/static/js/trainer_assignments.js?v=4" defer></script>
+  <script src="/static/js/trainer_assignment_results.js?v=3" defer></script>
+</head>
+<body data-page="pt" data-header-title="PT 숙제 관리" data-header-subtitle="회원별 운동 숙제와 수행 결과를 관리하세요.">
+  <main class="assignment-page trainer-assignment-page">
+    <div class="assignment-container">
+      <div id="topHeaderContainer"></div>
+
+      <section class="trainer-member-section" aria-labelledby="memberSectionTitle">
+        <div class="trainer-section-heading">
+          <div>
+            <span class="trainer-section-eyebrow">MY MEMBERS</span>
+            <h2 id="memberSectionTitle">회원 선택</h2>
+          </div>
+        </div>
+        <div id="assignmentMemberCards" class="trainer-member-rail" role="listbox" aria-label="담당 회원"></div>
+        <select id="assignmentMember" class="assignment-native-select" required aria-label="선택한 회원">
+          <option value="">회원 선택</option>
+        </select>
+      </section>
+
+      <section id="selectedMemberSummary" class="trainer-member-summary" hidden>
+        <div>
+          <span class="trainer-section-eyebrow">SELECTED MEMBER</span>
+          <h2 id="selectedMemberName"></h2>
+          <p id="selectedMemberEmail"></p>
+        </div>
+        <dl class="trainer-member-stats">
+          <div><dt>진행 중</dt><dd id="selectedMemberActiveCount">0</dd></div>
+          <div><dt>완료</dt><dd id="selectedMemberCompletedCount">0</dd></div>
+          <div><dt>기한 초과</dt><dd id="selectedMemberOverdueCount">0</dd></div>
+        </dl>
+      </section>
+
+      <nav class="assignment-filter trainer-status-tabs" id="assignmentFilters" aria-label="숙제 상태 필터">
+        <button class="active" type="button" data-status="">전체 <span>0</span></button>
+        <button type="button" data-status="ACTIVE">진행 중 <span>0</span></button>
+        <button type="button" data-status="COMPLETED">완료 <span>0</span></button>
+        <button type="button" data-status="CANCELLED">취소 <span>0</span></button>
+      </nav>
+
+      <section id="assignmentState" class="assignment-state">숙제를 불러오고 있습니다.</section>
+      <section id="assignmentList" class="assignment-list trainer-assignment-list" aria-live="polite" hidden></section>
+    </div>
+
+    <button id="openAssignmentForm" class="trainer-assignment-create-button" type="button" disabled>+ 숙제 등록</button>
+
+    <div id="assignmentFormOverlay" class="assignment-sheet-overlay" hidden>
+      <button id="assignmentFormBackdrop" class="assignment-sheet-backdrop" type="button" aria-label="숙제 등록 닫기"></button>
+      <section class="assignment-sheet" role="dialog" aria-modal="true" aria-labelledby="assignmentFormTitle">
+        <form id="assignmentForm" class="assignment-form">
+          <div class="assignment-sheet-heading">
+            <div><span class="trainer-section-eyebrow">PT ASSIGNMENT</span><h2 id="assignmentFormTitle">새 숙제</h2></div>
+            <button id="assignmentFormClose" class="assignment-sheet-close" type="button" aria-label="닫기">×</button>
+          </div>
+          <p class="assignment-selected-member">회원 <strong id="assignmentFormMemberName"></strong></p>
+          <section class="exercise-picker">
+            <span class="exercise-picker-label">운동</span>
+            <input id="exerciseSearch" type="search" placeholder="운동명 검색" autocomplete="off">
+            <div id="exerciseCategoryFilters" class="exercise-category-filters"></div>
+            <div id="exerciseCardList" class="exercise-card-list"><p>회원을 먼저 선택해 주세요.</p></div>
+            <select id="assignmentExercise" class="assignment-native-select" required disabled aria-label="선택한 운동"><option value="">운동 선택</option></select>
+            <button id="openCustomExercise" type="button" class="secondary">+ 직접 입력 운동</button>
+            <div id="customExerciseFields" class="custom-exercise-fields" hidden>
+              <input id="customExerciseName" maxlength="100" placeholder="운동명">
+              <select id="customExerciseCategory" data-gymfit-select><option value="">부위 선택</option><option>하체</option><option>가슴</option><option>등</option><option>어깨</option><option>팔</option><option>코어</option><option>유산소</option></select>
+              <button id="saveCustomExercise" type="button">운동 저장</button>
+            </div>
+          </section>
+          <div class="assignment-targets">
+            <label><span>세트</span><input id="targetSets" type="number" min="1" max="100" inputmode="numeric" placeholder="세트"></label>
+            <label><span>횟수</span><input id="targetReps" type="number" min="1" max="10000" inputmode="numeric" placeholder="횟수"></label>
+            <label><span>시간</span><input id="targetMinutes" type="number" min="1" max="1440" inputmode="numeric" placeholder="분"></label>
+          </div>
+          <div class="assignment-date-grid">
+            <label><span>배정일</span><input id="assignmentDate" type="date" required></label>
+            <label><span>마감일</span><input id="assignmentDueDate" type="date" required></label>
+          </div>
+          <label><span>트레이너 메모</span><textarea id="assignmentDescription" maxlength="5000" placeholder="숙제 설명을 입력하세요. (선택)"></textarea></label>
+          <p id="assignmentFormMessage" class="assignment-form-message"></p>
+          <button id="assignmentSave" type="submit">숙제 등록</button>
+          <button id="assignmentCancelEdit" type="button" class="secondary" hidden>수정 취소</button>
+        </form>
+      </section>
+    </div>
+
+    <div id="assignmentResultOverlay" class="assignment-sheet-overlay" hidden>
+      <button id="assignmentResultBackdrop" class="assignment-sheet-backdrop" type="button" aria-label="결과 닫기"></button>
+      <section id="assignmentResultPanel" class="assignment-sheet assignment-result-sheet" role="dialog" aria-modal="true" aria-labelledby="assignmentResultTitle">
+        <div class="assignment-sheet-heading">
+          <h2 id="assignmentResultTitle">운동 결과와 피드백</h2>
+          <button type="button" id="assignmentResultClose" class="assignment-sheet-close" aria-label="닫기">×</button>
+        </div>
+        <div id="assignmentResultContent"></div>
+      </section>
+    </div>
+
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body>
+</html>

@@ -4,7 +4,11 @@ from datetime import (
     timedelta,
     timezone
 )
+import base64
+import binascii
 from decimal import Decimal
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi import (
     APIRouter,
@@ -19,7 +23,7 @@ from pydantic import (
     field_validator,
     model_validator
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -30,8 +34,12 @@ from backend.models import (
     UserExercise,
     WorkoutPlan,
     WorkoutPlanSet,
-    WorkoutRecord
+    WorkoutRecord,
+    PtAssignment,
+    TrainerMember,
 )
+from backend.services.notification_service import create_notification
+from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 
 router = APIRouter(
     prefix="/api/workouts",
@@ -42,18 +50,35 @@ KST = timezone(
     timedelta(hours=9)
 )
 
-AI_COACHING_EXERCISE_CODES = {
-    "SQUAT",
-    "PUSHUP",
-    "SHOULDER_PRESS",
-}
-
 def korea_now_naive() -> datetime:
     return datetime.now(
         KST
     ).replace(
         tzinfo=None
     )
+
+
+CAPTURE_DIR = Path(__file__).resolve().parents[2] / "frontend" / "captures"
+
+
+def save_representative_capture(data_url: str | None, user_id: int) -> tuple[str | None, Path | None]:
+    if not data_url:
+        return None, None
+    try:
+        header, encoded = data_url.split(",", 1)
+        extension = {"data:image/jpeg;base64": "jpg", "data:image/png;base64": "png"}.get(header)
+        if extension is None:
+            return None, None
+        raw = base64.b64decode(encoded, validate=True)
+        if not raw or len(raw) > 5_000_000:
+            return None, None
+        CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
+        filename = f"workout_{user_id}_{uuid4().hex}.{extension}"
+        path = CAPTURE_DIR / filename
+        path.write_bytes(raw)
+        return f"/static/captures/{filename}", path
+    except (ValueError, binascii.Error, OSError):
+        return None, None
 class WorkoutRecordCreate(BaseModel):
     user_id: int = Field(
         gt=0
@@ -113,6 +138,10 @@ class WorkoutRecordCreate(BaseModel):
 
     started_at: datetime | None = None
 
+    assignment_id: int | None = Field(default=None, gt=0)
+
+    best_image_data_url: str | None = Field(default=None, max_length=8_000_000)
+
     @field_validator(
         "exercise_code"
     )
@@ -154,6 +183,9 @@ class WorkoutRecordCreateResponse(BaseModel):
     workout_minutes: int
     average_posture_score: int
     best_posture_score: int
+    image_url: str | None
+    assignment_id: int | None
+    assignment_completed: bool
 
 
 class WorkoutRecordItem(BaseModel):
@@ -247,6 +279,9 @@ class ExerciseListItem(BaseModel):
     user_exercise_id: int | None
     exercise_code: str | None
     exercise_name: str
+    category: str | None = None
+    coaching_supported: bool
+    coaching_code: str | None = None
     ai_coaching_supported: bool
 
 
@@ -429,6 +464,9 @@ def create_exercise_item(
         user_exercise_id=user_exercise.user_exercise_id,
         exercise_code=None,
         exercise_name=user_exercise.exercise_name,
+        category=user_exercise.category or "회원 운동",
+        coaching_supported=False,
+        coaching_code=None,
         ai_coaching_supported=False,
     )
 
@@ -600,26 +638,34 @@ def create_plan_item(
 )
 def get_active_exercises(
     user_id: int,
+    search: str | None = Query(default=None, max_length=100),
+    category: str | None = Query(default=None, max_length=30),
+    coaching_supported: bool | None = None,
     db: Session = Depends(get_db),
 ):
     require_active_user(db, user_id)
-    exercises = db.scalars(
-        select(Exercise)
-        .where(
-            Exercise.is_active.is_(True)
-        )
-        .order_by(
-            Exercise.exercise_name.asc(),
-            Exercise.exercise_id.asc(),
-        )
-    ).all()
+    filters = [Exercise.is_active.is_(True)]
+    normalized_search = search.strip() if search else ""
+    if normalized_search:
+        filters.append(or_(Exercise.exercise_name.ilike(f"%{normalized_search}%"), Exercise.exercise_code.ilike(f"%{normalized_search}%")))
+    if category:
+        filters.append(Exercise.category == category.strip())
+    if coaching_supported is True:
+        filters.append(Exercise.exercise_code.in_(AI_COACHING_EXERCISE_CODES))
+    elif coaching_supported is False:
+        filters.append(~Exercise.exercise_code.in_(AI_COACHING_EXERCISE_CODES))
+    exercises = db.scalars(select(Exercise).where(*filters).order_by(Exercise.category.asc(), Exercise.exercise_name.asc(), Exercise.exercise_id.asc())).all()
 
+    user_filters = [UserExercise.user_id == user_id, UserExercise.is_active.is_(True)]
+    if normalized_search:
+        user_filters.append(UserExercise.exercise_name.ilike(f"%{normalized_search}%"))
+    if category and category.strip() != "회원 운동":
+        user_filters.append(UserExercise.category == category.strip())
+    if coaching_supported is True:
+        user_filters.append(UserExercise.user_exercise_id == -1)
     user_exercises = db.scalars(
         select(UserExercise)
-        .where(
-            UserExercise.user_id == user_id,
-            UserExercise.is_active.is_(True),
-        )
+        .where(*user_filters)
         .order_by(
             UserExercise.exercise_name.asc(),
             UserExercise.user_exercise_id.asc(),
@@ -639,6 +685,9 @@ def get_active_exercises(
                 exercise_name=(
                     exercise.exercise_name
                 ),
+                category=exercise.category,
+                coaching_supported=exercise.exercise_code in AI_COACHING_EXERCISE_CODES,
+                coaching_code=exercise.exercise_code if exercise.exercise_code in AI_COACHING_EXERCISE_CODES else None,
                 ai_coaching_supported=(
                     exercise.exercise_code
                     in AI_COACHING_EXERCISE_CODES
@@ -653,6 +702,9 @@ def get_active_exercises(
             user_exercise_id=user_exercise.user_exercise_id,
             exercise_code=None,
             exercise_name=user_exercise.exercise_name,
+            category=user_exercise.category or "회원 운동",
+            coaching_supported=False,
+            coaching_code=None,
             ai_coaching_supported=False,
         )
         for user_exercise in user_exercises
@@ -1380,13 +1432,14 @@ def delete_workout_plan(
 def create_workout_record_item(
     record: WorkoutRecord,
     exercise: Exercise | None,
+    user_exercise: UserExercise | None = None,
 ) -> WorkoutRecordItem:
     return WorkoutRecordItem(
         workout_record_id=record.workout_record_id,
         exercise_name=(
             exercise.exercise_name
             if exercise
-            else "운동 기록"
+            else user_exercise.exercise_name if user_exercise else "운동 기록"
         ),
         exercise_code=(
             exercise.exercise_code
@@ -1458,11 +1511,12 @@ def get_workout_records(
     ) or 0
 
     rows = db.execute(
-        select(WorkoutRecord, Exercise)
+        select(WorkoutRecord, Exercise, UserExercise)
         .outerjoin(
             Exercise,
             WorkoutRecord.exercise_id == Exercise.exercise_id,
         )
+        .outerjoin(UserExercise, WorkoutRecord.user_exercise_id == UserExercise.user_exercise_id)
         .where(*conditions)
         .order_by(
             WorkoutRecord.started_at.desc(),
@@ -1474,8 +1528,8 @@ def get_workout_records(
 
     return WorkoutRecordListResponse(
         items=[
-            create_workout_record_item(record, exercise)
-            for record, exercise in rows
+            create_workout_record_item(record, exercise, user_exercise)
+            for record, exercise, user_exercise in rows
         ],
         total=int(total),
         limit=limit,
@@ -1495,11 +1549,12 @@ def get_workout_record_detail(
     require_active_user(db, user_id)
 
     row = db.execute(
-        select(WorkoutRecord, Exercise)
+        select(WorkoutRecord, Exercise, UserExercise)
         .outerjoin(
             Exercise,
             WorkoutRecord.exercise_id == Exercise.exercise_id,
         )
+        .outerjoin(UserExercise, WorkoutRecord.user_exercise_id == UserExercise.user_exercise_id)
         .where(
             WorkoutRecord.workout_record_id == workout_record_id,
             WorkoutRecord.user_id == user_id,
@@ -1512,8 +1567,8 @@ def get_workout_record_detail(
             detail="운동 기록을 찾을 수 없습니다.",
         )
 
-    record, exercise = row
-    return create_workout_record_item(record, exercise)
+    record, exercise, user_exercise = row
+    return create_workout_record_item(record, exercise, user_exercise)
 
 
 @router.post(
@@ -1617,6 +1672,42 @@ def create_workout_record(
             request.calories
         )
 
+    assignment = None
+    if request.assignment_id is not None:
+        assignment = db.scalar(
+            select(PtAssignment).where(
+                PtAssignment.assignment_id == request.assignment_id
+            ).with_for_update()
+        )
+        if assignment is None or assignment.member_id != request.user_id:
+            db.rollback()
+            raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+        if assignment.status not in {"ASSIGNED", "IN_PROGRESS"}:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="이미 완료되었거나 취소된 PT 숙제입니다.")
+        if assignment.workout_record_id is not None:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="이미 운동 기록이 연결된 PT 숙제입니다.")
+        if assignment.user_exercise_id is not None or assignment.exercise_id != exercise.exercise_id:
+            db.rollback()
+            raise HTTPException(status_code=400, detail="PT 숙제와 운동 기록의 운동이 일치하지 않습니다.")
+        active_relationship = db.scalar(
+            select(TrainerMember).where(
+                TrainerMember.trainer_member_id == assignment.trainer_member_id,
+                TrainerMember.trainer_id == assignment.trainer_id,
+                TrainerMember.member_id == assignment.member_id,
+                TrainerMember.status == "ACTIVE",
+            ).with_for_update()
+        )
+        if active_relationship is None:
+            db.rollback()
+            raise HTTPException(status_code=403, detail="활성 PT 연결 관계가 필요합니다.")
+
+    capture_url, capture_path = save_representative_capture(
+        request.best_image_data_url,
+        request.user_id,
+    )
+
     try:
         workout_record = WorkoutRecord(
             user_id=request.user_id,
@@ -1645,11 +1736,25 @@ def create_workout_record(
                 request.feedback_title
             ),
             feedback=request.feedback,
-            image_url=request.image_url,
+            image_url=capture_url or request.image_url,
         )
 
         db.add(workout_record)
         db.flush()
+
+        if assignment is not None:
+            assignment.workout_record_id = workout_record.workout_record_id
+            assignment.status = "COMPLETED"
+            assignment.completed_at = completed_at
+            create_notification(
+                db,
+                user_id=assignment.trainer_id,
+                title="PT 숙제를 완료했습니다",
+                message=f"{user.name}님이 {assignment.title} 숙제를 완료했습니다.",
+                notification_type="PT_ASSIGNMENT_COMPLETED",
+                target_url="/trainer/assignments",
+                reference_id=assignment.assignment_id,
+            )
 
         db.commit()
         db.refresh(workout_record)
@@ -1684,6 +1789,9 @@ def create_workout_record(
             best_posture_score=(
                 workout_record.best_posture_score
             ),
+            image_url=workout_record.image_url,
+            assignment_id=assignment.assignment_id if assignment else None,
+            assignment_completed=assignment is not None,
         )
 
     except HTTPException:
@@ -1692,6 +1800,11 @@ def create_workout_record(
 
     except Exception as error:
         db.rollback()
+        if capture_path is not None:
+            try:
+                capture_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         print(
             "운동 기록 저장 실패:",

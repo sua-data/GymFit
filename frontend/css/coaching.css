@@ -1273,3 +1273,4 @@ body.coaching-result-mode .camera-card,
 body.coaching-result-mode .coaching-actions {
   display: none !important;
 }
+.pt-assignment-context{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;border:1px solid rgba(168,255,53,.3);border-radius:12px;background:rgba(168,255,53,.08);font-size:12px}.pt-assignment-context strong{color:#a8ff35}.pt-assignment-context span{color:rgba(255,255,255,.78)}

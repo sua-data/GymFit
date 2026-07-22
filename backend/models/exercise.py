@@ -71,3 +71,8 @@ class Exercise(Base):
         onupdate=func.now(),
         comment="수정 일시",
     )
+
+    category: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )

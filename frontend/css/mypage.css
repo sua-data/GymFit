@@ -21,9 +21,22 @@ button { cursor: pointer; }
 .section-heading span { color: var(--my-green); font-size: 9px; font-weight: 900; letter-spacing: 1.2px; }
 .section-heading h2 { margin: 5px 0 0; font-size: 18px; }
 .profile-facts { margin: 16px 0 0; }
-.profile-facts div { display: flex; justify-content: space-between; gap: 18px; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.07); }
+.profile-facts div, .mypage-info-row { display: flex; justify-content: space-between; gap: 18px; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.07); cursor: default; }
 .profile-facts dt { color: var(--my-muted); font-size: 13px; }
 .profile-facts dd { margin: 0; max-width: 64%; text-align: right; font-size: 13px; font-weight: 800; }
+.fitness-profile-empty { margin-top: 16px; padding: 18px 16px; background: rgba(168,255,53,.06); border: 1px solid rgba(168,255,53,.16); border-radius: 14px; }
+.fitness-profile-empty strong { display: block; color: #fff; font-size: 14px; line-height: 1.5; }
+.fitness-profile-empty p { margin: 7px 0 0; color: var(--my-muted); font-size: 12px; line-height: 1.6; }
+.profile-facts dd.fitness-value-unset { color: var(--my-green); }
+.fitness-profile-action { width: 100%; min-height: 46px; margin-top: 14px; color: #050505; background: var(--my-green); border: 0; border-radius: 13px; font-weight: 900; }
+.trainer-activity-card { margin-top: 16px; padding: 20px; background: var(--my-card); border: 1px solid rgba(255,255,255,.07); border-radius: 20px; }
+.trainer-activity-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 0; }
+.trainer-activity-summary div { padding: 13px; background: #222; border-radius: 12px; }
+.trainer-activity-summary dt { color: var(--my-muted); font-size: 11px; }
+.trainer-activity-summary dd { margin: 6px 0 0; color: #fff; font-size: 16px; font-weight: 900; }
+.trainer-activity-links { margin-top: 14px; overflow: hidden; border-top: 1px solid rgba(255,255,255,.07); }
+.trainer-activity-links a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; color: #fff; border-bottom: 1px solid rgba(255,255,255,.07); text-decoration: none; font-size: 13px; font-weight: 750; }
+.trainer-activity-message { margin: 12px 0 0; color: #ffb078; font-size: 12px; line-height: 1.5; }
 .gym-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .gym-current p { margin: 5px 0 0; color: var(--my-muted); font-size: 12px; }
 .gym-current button, .disconnect-gym-button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 11px; font-weight: 850; }
@@ -42,28 +55,35 @@ button { cursor: pointer; }
 .selected-gym button { min-height: 38px; margin-top: 6px; }
 .menu-list { margin-top: 14px; overflow: hidden; border-top: 1px solid rgba(255,255,255,.07); }
 .menu-item { width: 100%; min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 0; color: #fff; background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; font-weight: 750; }
-.menu-item .arrow { margin-left: auto; color: rgba(255,255,255,.3); font-size: 20px; }
+.mypage-action-row { cursor: pointer; }
+.mypage-chevron { width: 16px; height: 16px; flex: 0 0 16px; margin-left: auto; color: rgba(255,255,255,.34); stroke-width: 1.8; transition: color 160ms ease, transform 160ms ease; }
+.mypage-action-row:hover .mypage-chevron, .mypage-action-row:focus-visible .mypage-chevron { color: var(--my-green); transform: translateX(2px); }
 .menu-item .coming { margin-left: auto; padding: 4px 7px; color: var(--my-muted); background: #292929; border-radius: 7px; font-size: 9px; }
 .menu-item.danger { color: #ff8585; }
 .sheet-overlay, .confirm-overlay { position: fixed; inset: 0; z-index: 200; }
 .sheet-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(0,0,0,.72); }
-.profile-sheet { position: absolute; right: 0; bottom: 0; left: 0; width: min(100%, 430px); max-height: 88dvh; margin: auto; padding: 22px 20px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; background: #151515; border: 1px solid rgba(255,255,255,.1); border-radius: 24px 24px 0 0; }
+.profile-sheet { position: absolute; right: 0; bottom: 0; left: 0; box-sizing: border-box; width: min(100%, 430px); min-width: 0; max-width: 100%; max-height: 88dvh; margin: auto; padding: 22px 20px calc(24px + env(safe-area-inset-bottom)); overflow-x: clip; overflow-y: auto; background: #151515; border: 1px solid rgba(255,255,255,.1); border-radius: 24px 24px 0 0; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; }
+.profile-sheet *, .profile-sheet *::before, .profile-sheet *::after { box-sizing: border-box; }
+.profile-sheet input, .profile-sheet textarea, .profile-sheet select, .profile-sheet button { font-family: inherit; letter-spacing: inherit; }
+.profile-sheet form, .profile-sheet form > label, .profile-sheet fieldset, #memberEditFields, .choice-grid, .gym-search, .gym-search-row { width: 100%; min-width: 0; max-width: 100%; }
 .profile-sheet header { display: flex; align-items: center; justify-content: space-between; }
 .profile-sheet header span { color: var(--my-green); font-size: 9px; font-weight: 900; letter-spacing: 1px; }
 .profile-sheet h2 { margin: 4px 0 0; font-size: 22px; }
 .profile-sheet header button { width: 40px; height: 40px; color: #fff; background: #292929; border: 0; border-radius: 50%; font-size: 25px; }
-.profile-sheet form > label, .profile-sheet fieldset { display: block; margin-top: 18px; padding: 0; border: 0; color: rgba(255,255,255,.75); font-size: 12px; font-weight: 800; }
-.profile-sheet input, .profile-sheet select { width: 100%; height: 48px; margin-top: 8px; padding: 0 13px; color: #fff; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; outline: none; }
+.profile-sheet form > label, .profile-sheet fieldset { display: block; margin-top: 18px; padding: 0; border: 0; color: rgba(255,255,255,.62); font-size: 13px; font-weight: 700; line-height: 1.4; letter-spacing: normal; }
+.profile-sheet input, .profile-sheet textarea, .profile-sheet select, .profile-sheet .gymfit-select, .profile-sheet .gymfit-select-trigger { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
+.profile-sheet input, .profile-sheet select { height: 48px; margin-top: 8px; padding: 0 13px; color: #fff; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; outline: none; font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: normal; }
+.profile-sheet .gymfit-select { margin-top: 8px; }
 .profile-sheet input:focus, .profile-sheet select:focus { border-color: var(--my-green); }
 .profile-sheet input:disabled { color: var(--my-muted); }
-.profile-sheet small { display: block; margin-top: 6px; color: var(--my-muted); font-weight: 500; }
-.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+.profile-sheet small { display: block; margin-top: 6px; color: var(--my-muted); font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: normal; }
+.choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
 .goal-choice input { position: absolute; opacity: 0; pointer-events: none; }
-.goal-choice span { min-height: 42px; display: grid; place-items: center; padding: 6px; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; }
+.goal-choice span { min-height: 42px; display: grid; place-items: center; padding: 6px; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; letter-spacing: normal; }
 .goal-choice input:checked + span { color: #050505; background: var(--my-green); border-color: var(--my-green); }
 .field-error, .form-message { margin: 8px 0 0; color: #ff8585; font-size: 12px; }
 .form-message.success { color: var(--my-green); }
-.save-profile-button { width: 100%; min-height: 52px; margin-top: 22px; color: #050505; background: var(--my-green); border: 0; border-radius: 15px; font-weight: 950; }
+.save-profile-button { width: 100%; min-height: 52px; margin-top: 22px; color: #050505; background: var(--my-green); border: 0; border-radius: 15px; font-family: inherit; font-size: 16px; font-weight: 800; line-height: 1.2; letter-spacing: normal; }
 .save-profile-button:disabled { opacity: .5; cursor: wait; }
 .confirm-overlay { display: grid; place-items: center; padding: 22px; background: rgba(0,0,0,.78); }
 .confirm-dialog { width: min(100%, 350px); padding: 24px; background: #181818; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; text-align: center; }
