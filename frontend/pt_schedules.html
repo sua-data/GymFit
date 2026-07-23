@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PT 일정 | GYMFIT</title>
+  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
+  <link rel="stylesheet" href="/static/css/pt_schedules.css?v=2">
+  <script src="/static/js/common_layout.js?v=11" defer></script>
+  <script src="/static/js/common_dropdown.js?v=2" defer></script>
+  <script src="/static/js/pt_schedules.js?v=1" defer></script>
+</head>
+<body data-page="pt-schedules" data-header-title="PT 일정" data-header-subtitle="트레이너와 약속한 일정을 확인하세요">
+  <main class="schedule-page">
+    <div class="schedule-container">
+      <div id="topHeaderContainer"></div>
+      <div class="schedule-main">
+      <section class="next-schedule-card" aria-labelledby="nextScheduleTitle">
+        <span class="schedule-eyebrow">NEXT PT</span><h2 id="nextScheduleTitle">다음 PT 일정</h2>
+        <div id="nextSchedule" class="schedule-state">일정을 불러오고 있습니다.</div>
+      </section>
+      <nav class="schedule-tabs" id="scheduleTabs" aria-label="일정 구분">
+        <button type="button" class="active" data-filter="upcoming">예정</button>
+        <button type="button" data-filter="past">지난 일정</button>
+        <button type="button" data-filter="cancelled">취소</button>
+      </nav>
+      <section><div id="scheduleState" class="schedule-state">일정을 불러오고 있습니다.</div><div id="scheduleList" class="schedule-list" hidden></div></section>
+      </div>
+    </div>
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body></html>

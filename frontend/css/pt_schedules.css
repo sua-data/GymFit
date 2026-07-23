@@ -1,0 +1,43 @@
+:root { --schedule-accent: #a8ff35; --schedule-card: #181818; --schedule-muted: rgba(255,255,255,.54); }
+body { background:#000; }
+.schedule-page { width:100%; min-height:100dvh; padding-bottom:calc(92px + env(safe-area-inset-bottom)); background:radial-gradient(circle at 50% 0,rgba(168,255,53,.05),transparent 28%),#000; }
+.schedule-container { width:100%; max-width:430px; margin:0 auto; padding:max(22px,env(safe-area-inset-top)) 22px 34px; }
+.schedule-main { display:grid; gap:18px; padding-top:12px; }
+.next-schedule-card,.schedule-toolbar { padding:20px; background:linear-gradient(145deg,#202020,#141414); border:1px solid rgba(255,255,255,.08); border-radius:20px; }
+.schedule-eyebrow,.schedule-sheet header span { color:var(--schedule-accent); font-size:11px; font-weight:900; letter-spacing:1.4px; }
+.next-schedule-card h2 { margin:6px 0 16px; font-size:22px; }
+.next-schedule-content strong { display:block; color:var(--schedule-accent); font-size:21px; }
+.next-schedule-content p,.schedule-card p { margin-top:7px; color:var(--schedule-muted); font-size:13px; line-height:1.55; white-space:pre-wrap; }
+.schedule-tabs { display:flex; gap:8px; overflow:auto; scrollbar-width:none; }
+.schedule-tabs::-webkit-scrollbar { display:none; }
+.schedule-tabs button { flex:0 0 auto; min-height:38px; padding:0 13px; color:rgba(255,255,255,.72); white-space:nowrap; background:#242424; border:1px solid rgba(255,255,255,.07); border-radius:11px; font-family:inherit; font-size:13px; font-weight:700; }
+.schedule-tabs button.active { color:#050505; background:var(--schedule-accent); border-color:var(--schedule-accent); }
+.schedule-list { display:grid; gap:12px; }
+.schedule-state { padding:24px 10px; color:var(--schedule-muted); text-align:center; font-size:14px; }
+.schedule-card { padding:17px; background:var(--schedule-card); border:1px solid rgba(255,255,255,.08); border-radius:17px; scroll-margin-top:20px; }
+.schedule-card.cancelled { opacity:.62; }
+.schedule-card-heading { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.schedule-card h3 { font-size:17px; line-height:1.4; }
+.schedule-badge { flex:none; padding:5px 8px; color:#050505; background:var(--schedule-accent); border-radius:999px; font-size:10px; font-weight:900; }
+.schedule-card.cancelled .schedule-badge,.schedule-card.past .schedule-badge { color:#ddd; background:#383838; }
+.schedule-actions { display:flex; gap:8px; margin-top:14px; }
+.schedule-actions button { flex:1; min-height:40px; background:#2b2b2b; border-radius:11px; font-weight:800; }
+.schedule-actions .danger { color:#ff9b9b; }
+.schedule-toolbar { display:grid; gap:10px; }
+.schedule-toolbar label,.schedule-sheet label { color:rgba(255,255,255,.7); font-size:12px; font-weight:800; }
+.schedule-toolbar .gymfit-select { margin-top:7px; }
+.schedule-sheet input,.schedule-sheet textarea { width:100%; min-height:47px; margin-top:7px; padding:11px 13px; color:#fff; background:#292929; border:1px solid rgba(255,255,255,.1); border-radius:12px; outline:none; }
+.schedule-sheet textarea { resize:vertical; }
+.schedule-primary { min-height:48px; padding:0 18px; color:#050505; background:var(--schedule-accent); border-radius:13px; font-weight:900; }
+.schedule-primary:disabled { opacity:.35; }
+.schedule-sheet-overlay { position:fixed; inset:0; z-index:100; }
+.schedule-sheet-overlay[hidden] { display:none; }
+.schedule-sheet-backdrop { position:absolute; inset:0; width:100%; background:rgba(0,0,0,.72); }
+.schedule-sheet { position:absolute; right:0; bottom:0; left:0; width:100%; max-width:430px; max-height:88vh; margin:0 auto; padding:10px 20px calc(22px + env(safe-area-inset-bottom)); overflow:auto; background:#171717; border:1px solid rgba(255,255,255,.1); border-radius:24px 24px 0 0; }
+.schedule-sheet-handle { width:42px; height:4px; margin:0 auto 17px; background:#555; border-radius:9px; }
+.schedule-sheet header { display:flex; justify-content:space-between; align-items:center; }
+.schedule-sheet h2 { margin-top:4px; font-size:21px; }
+.schedule-sheet header button { width:40px; height:40px; background:#292929; border-radius:50%; font-size:26px; }
+.schedule-sheet form { display:grid; gap:14px; margin-top:20px; }
+.schedule-form-message { min-height:18px; color:#ff9898; font-size:12px; }
+body.schedule-sheet-open { overflow:hidden; }

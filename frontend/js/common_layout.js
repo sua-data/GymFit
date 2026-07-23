@@ -29,7 +29,8 @@ const ptMemberMenuItems = [
     path: "/pt/feedback"
   },
   {
-    label: "PT 일정"
+    label: "PT 일정",
+    path: "/pt/schedules"
   }
 ];
 
@@ -43,7 +44,8 @@ const trainerMenuItems = [
     path: "/trainer/assignments"
   },
   {
-    label: "PT 일정 관리"
+    label: "PT 일정 관리",
+    path: "/trainer/schedules"
   }
 ];
 

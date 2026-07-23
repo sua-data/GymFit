@@ -82,6 +82,12 @@ const weeklyProgressText =
 const recentWorkoutList =
   document.querySelector("#recentWorkoutList");
 
+const nextPtSchedule =
+  document.querySelector("#nextPtSchedule");
+
+const nextPtScheduleLink =
+  document.querySelector("#nextPtScheduleLink");
+
 const imageModal =
   document.querySelector("#imageModal");
 
@@ -683,6 +689,36 @@ function renderDashboard(data) {
   renderRecentWorkouts(
     data.recent_workouts
   );
+
+  renderNextPtSchedule(data);
+}
+
+
+function renderNextPtSchedule(data) {
+  if (!nextPtSchedule || !nextPtScheduleLink) return;
+  const item = data.next_pt_schedule;
+  nextPtScheduleLink.href = item?.target_url || (data.account_type === "TRAINER" ? "/trainer/schedules" : "/pt/schedules");
+  nextPtSchedule.replaceChildren();
+  if (!item) {
+    nextPtSchedule.className = "empty-message";
+    nextPtSchedule.textContent = "예정된 PT 일정이 없습니다.";
+    return;
+  }
+  nextPtSchedule.className = "next-pt-dashboard-content";
+  const date = new Date(item.start_at);
+  const end = new Date(item.end_at);
+  const formatter = new Intl.DateTimeFormat("ko-KR", { month:"long", day:"numeric", weekday:"short", hour:"2-digit", minute:"2-digit", hour12:false });
+  const timeFormatter = new Intl.DateTimeFormat("ko-KR", { hour:"2-digit", minute:"2-digit", hour12:false });
+  const title = document.createElement("strong");
+  title.textContent = formatter.format(date);
+  const person = document.createElement("p");
+  person.textContent = `${item.person_name} ${item.person_label} · ${timeFormatter.format(date)} ~ ${timeFormatter.format(end)}`;
+  nextPtSchedule.append(title, person);
+  if (item.location || item.memo) {
+    const detail = document.createElement("p");
+    detail.textContent = [item.location, item.memo].filter(Boolean).join(" · ");
+    nextPtSchedule.append(detail);
+  }
 }
 
 

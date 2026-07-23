@@ -4,6 +4,7 @@ from datetime import (
     time,
     timedelta,
 )
+from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
@@ -25,6 +26,7 @@ from backend.models.notification import Notification
 from backend.models.workout_plan import WorkoutPlan
 from backend.models.workout_record import WorkoutRecord
 from backend.models.user_exercise import UserExercise
+from backend.models.pt_schedule import PtSchedule
 
 
 router = APIRouter(
@@ -530,6 +532,41 @@ def get_dashboard(
             }
         )
 
+    next_schedule = None
+    schedule_owner = (
+        PtSchedule.trainer_id
+        if user.account_type == "TRAINER"
+        else PtSchedule.member_id
+    )
+    schedule_person_id = (
+        PtSchedule.member_id
+        if user.account_type == "TRAINER"
+        else PtSchedule.trainer_id
+    )
+    schedule_row = db.execute(
+        select(PtSchedule, User)
+        .join(User, User.user_id == schedule_person_id)
+        .where(
+            schedule_owner == user_id,
+            PtSchedule.status == "SCHEDULED",
+            PtSchedule.start_at >= datetime.now(ZoneInfo("Asia/Seoul")).replace(tzinfo=None),
+        )
+        .order_by(PtSchedule.start_at.asc())
+        .limit(1)
+    ).first()
+    if schedule_row:
+        schedule, person = schedule_row
+        next_schedule = {
+            "schedule_id": schedule.schedule_id,
+            "start_at": schedule.start_at.isoformat(),
+            "end_at": schedule.end_at.isoformat(),
+            "location": schedule.location,
+            "memo": schedule.memo,
+            "person_name": person.name,
+            "person_label": "회원" if user.account_type == "TRAINER" else "트레이너",
+            "target_url": "/trainer/schedules" if user.account_type == "TRAINER" else "/pt/schedules",
+        }
+
     return {
         "user": {
             "user_id": user.user_id,
@@ -570,4 +607,6 @@ def get_dashboard(
         "recent_workouts": (
             recent_workouts
         ),
+        "account_type": user.account_type,
+        "next_pt_schedule": next_schedule,
     }

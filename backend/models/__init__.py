@@ -19,6 +19,7 @@ from backend.models.gym import Gym, UserGym
 from backend.models.trainer_member import TrainerMember
 from backend.models.pt_assignment import PtAssignment
 from backend.models.pt_feedback import PtFeedback
+from backend.models.pt_schedule import PtSchedule
 
 
 __all__ = [
@@ -41,4 +42,5 @@ __all__ = [
     "TrainerMember",
     "PtAssignment",
     "PtFeedback",
+    "PtSchedule",
 ]
