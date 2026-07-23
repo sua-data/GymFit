@@ -87,11 +87,6 @@ const requiredTerms = document.querySelectorAll(
   ".required-term"
 );
 
-const termsViewButtons =
-  document.querySelectorAll(
-    ".agreement-view-button"
-  );
-
 const nextButton = document.querySelector(
   "#nextButton"
 );
@@ -627,28 +622,6 @@ agreeAll.addEventListener("change", () => {
       agreeMarketing.checked;
 
     clearFormError();
-  });
-});
-
-
-/* =========================
-   약관 보기
-========================= */
-
-termsViewButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const termsType = button.dataset.terms;
-
-    const termsTitle = {
-      service: "이용약관",
-      privacy: "개인정보 수집 및 이용",
-      trainer: "트레이너 운영정책",
-      marketing: "마케팅 정보 수신",
-    };
-
-    alert(
-      `${termsTitle[termsType]} 내용은 추후 연결할 예정입니다.`
-    );
   });
 });
 

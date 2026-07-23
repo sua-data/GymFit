@@ -7,9 +7,11 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/my_gym.css?v=4">
+  <link rel="stylesheet" href="/static/css/employment_status.css?v=1">
   <script src="/static/js/common_layout.js?v=17" defer></script>
   <script src="/static/js/gym_search.js?v=2" defer></script>
-  <script src="/static/js/my_gym.js?v=2" defer></script>
+  <script src="/static/js/employment_status.js?v=1" defer></script>
+  <script src="/static/js/my_gym.js?v=4" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -68,12 +70,21 @@
           <div><span class="eyebrow">MANAGE</span><h2>헬스장 관리</h2></div>
           <button type="button" class="primary" id="gymChangeButton">헬스장 변경</button>
           <button type="button" class="danger" id="gymDisconnectButton">연결 해제</button>
-          <p id="gymEditPolicy" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p>
         </section>
         <section class="employment-card" id="employmentCard" hidden>
           <span class="eyebrow">EMPLOYMENT</span>
           <h2>헬스장 소속 승인</h2>
-          <strong id="employmentStatus"></strong>
+          <div class="employment-status-row">
+            <span class="employment-status-label">소속 승인 상태</span>
+            <span class="employment-status-badge none" id="employmentStatus">미등록</span>
+            <div class="employment-info-wrap">
+              <button class="employment-info-button" type="button" data-employment-info aria-label="헬스장 변경 안내" aria-expanded="false">ⓘ</button>
+              <aside class="employment-info-popover" data-employment-popover hidden>
+                <h3>헬스장 변경 안내</h3>
+                <p>승인 후에도 소속 헬스장을 변경할 수 있습니다. 변경 시 재직·소속 증빙을 다시 제출해야 하며, 관리자 승인 전까지 헬스장 관리 기능이 제한됩니다.</p>
+              </aside>
+            </div>
+          </div>
           <p id="employmentMessage"></p>
           <p id="employmentFileName" hidden></p>
           <label class="employment-upload">

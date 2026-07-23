@@ -15,7 +15,7 @@
     "gymLoading", "gymError", "gymErrorMessage", "gymEmpty", "gymContent",
     "gymName", "gymRoadAddress", "gymAddress", "gymCategory", "gymMapSection", "gymMap",
     "gymMapMessage", "gymPhoneLink", "copyAddressButton", "kakaoPlaceLink",
-    "gymChangeButton", "gymDisconnectButton", "gymEditPolicy",
+    "gymChangeButton", "gymDisconnectButton",
     "gymSearchOverlay", "gymSaveButton", "gymSaveMessage", "disconnectOverlay",
     "disconnectConfirm", "gymToast",
     "employmentCard", "employmentStatus", "employmentMessage",
@@ -139,7 +139,6 @@
     elements.copyAddressButton.hidden = !(gym.road_address || gym.address);
     elements.gymChangeButton.disabled = !canEdit;
     elements.gymDisconnectButton.disabled = !canEdit;
-    elements.gymEditPolicy.hidden = canEdit;
     await renderMap(gym);
   }
 
@@ -168,12 +167,14 @@
     try {
       const data = await requestJson("/api/trainers/me/employment");
       const labels = {
-        NONE: "소속 미등록",
-        PENDING: "관리자 검토 대기",
-        APPROVED: "소속 승인 완료",
-        REJECTED: "소속 승인 거절",
+        NONE: "미등록",
+        PENDING: "승인 대기",
+        APPROVED: "승인",
+        REJECTED: "승인 거절",
       };
-      elements.employmentStatus.textContent = labels[data.employment_status] || data.employment_status;
+      const status = String(data.employment_status || "NONE").toUpperCase();
+      elements.employmentStatus.textContent = labels[status] || "미등록";
+      elements.employmentStatus.className = `employment-status-badge ${status.toLowerCase()}`;
       elements.employmentMessage.textContent = data.employment_status === "APPROVED"
         ? "현재 헬스장의 관리 기능을 사용할 수 있습니다."
         : data.employment_status === "REJECTED"

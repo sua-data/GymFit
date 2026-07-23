@@ -1,52 +1,23 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>GYMFIT | 트레이너 승인 관리</title>
-  <link rel="stylesheet" href="/static/css/common.css">
-  <link rel="stylesheet" href="/static/css/admin_trainers.css?v=3">
-  <script src="/static/js/admin_trainers.js?v=4" defer></script>
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
-  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/admin.css?v=1">
+  <script src="/static/js/admin_trainers.js?v=5" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1"><meta name="theme-color" content="#000000">
 </head>
-<body>
-  <main class="admin-page">
-    <div class="admin-container">
-      <header class="admin-only-header">
-        <a href="/admin/dashboard">GYMFIT 관리자</a>
-        <button id="adminLogout" type="button">로그아웃</button>
-      </header>
-      <section class="admin-hero"><span>ADMIN</span><h1>트레이너 승인 관리</h1><p>신청 자료와 현재 승인 상태를 확인하고 처리합니다.</p></section>
-      <nav class="status-tabs" aria-label="승인 상태 필터">
-        <button type="button" data-status="PENDING">대기</button>
-        <button type="button" data-status="APPROVED">승인</button>
-        <button type="button" data-status="REJECTED">거절</button>
-        <button type="button" data-status="ALL">전체</button>
-      </nav>
-      <section class="admin-state" id="adminLoading">트레이너 신청을 불러오고 있어요.</section>
-      <section class="admin-state error" id="adminError" hidden><strong>신청 목록을 불러오지 못했어요.</strong><p id="adminErrorMessage"></p><button type="button" id="adminRetry">다시 시도</button></section>
-      <section class="admin-state" id="adminEmpty" hidden><strong>해당 상태의 신청이 없습니다.</strong></section>
-      <section class="trainer-list" id="trainerList" aria-live="polite"></section>
-    </div>
-    <div class="sheet-overlay" id="detailOverlay" hidden>
-      <button class="sheet-backdrop" id="detailBackdrop" type="button" aria-label="상세 닫기"></button>
-      <section class="review-sheet detail-review-sheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
-        <header><div><span>APPLICATION</span><h2 id="detailTitle">트레이너 상세</h2></div><button class="icon-close" id="detailClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
-        <div id="detailContent"></div>
-      </section>
-    </div>
-    <div class="sheet-overlay" id="reviewOverlay" hidden>
-      <button class="sheet-backdrop" id="reviewBackdrop" type="button" aria-label="승인 처리 닫기"></button>
-      <section class="review-sheet" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
-        <header><div><span>REVIEW</span><h2 id="reviewTitle">승인 처리</h2></div><button class="icon-close" id="reviewClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
-        <p id="reviewMessage"></p>
-        <label class="reject-reason" id="reasonField" hidden>사유<textarea id="reviewReason" maxlength="500" rows="4" placeholder="사유를 입력해 주세요."></textarea><small><span id="reasonCount">0</span>/500</small></label>
-        <p class="review-error" id="reviewError" hidden></p>
-        <div class="review-actions"><button type="button" id="reviewCancel">취소</button><button type="button" id="reviewConfirm">확인</button></div>
-      </section>
-    </div>
-    <div class="admin-toast" id="adminToast" role="status" aria-live="polite" hidden></div>
-  </main>
-</body>
-</html>
+<body><main class="admin-page"><div class="admin-shell">
+  <header class="admin-header"><a class="admin-brand" href="/admin/dashboard"><strong>GYMFIT</strong><span class="admin-badge">ADMIN</span></a><button class="admin-logout" id="adminLogout" type="button">로그아웃</button></header>
+  <nav class="admin-tabs" aria-label="관리자 메뉴"><a href="/admin/dashboard">대시보드</a><a class="active" href="/admin/trainers" aria-current="page">트레이너 승인</a><a href="/admin/employments">소속 승인</a></nav>
+  <section class="admin-page-header"><span>TRAINER REVIEW</span><h1>트레이너 승인 관리</h1><p>자격 자료와 현재 승인 상태를 확인합니다.</p></section>
+  <nav class="admin-status-tabs" aria-label="승인 상태 필터"><button data-status="PENDING" type="button">대기</button><button data-status="APPROVED" type="button">승인</button><button data-status="REJECTED" type="button">거절</button><button data-status="ALL" type="button">전체</button></nav>
+  <section class="admin-state" id="adminLoading">트레이너 신청을 불러오고 있어요.</section>
+  <section class="admin-state" id="adminError" hidden><strong>신청 목록을 불러오지 못했어요.</strong><p id="adminErrorMessage"></p><button id="adminRetry" type="button">다시 시도</button></section>
+  <section class="admin-state" id="adminEmpty" hidden><strong>해당 상태의 신청이 없습니다.</strong></section>
+  <section class="admin-list" id="trainerList" aria-live="polite"></section>
+</div>
+<div class="admin-sheet-overlay" id="detailOverlay" hidden><button class="admin-sheet-backdrop" id="detailBackdrop" type="button" aria-label="상세 닫기"></button><section class="admin-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle"><header class="admin-sheet-header"><div><span>APPLICATION</span><h2 id="detailTitle">트레이너 상세</h2></div><button class="admin-sheet-close" id="detailClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header><div class="admin-sheet-body" id="detailContent"></div><footer class="admin-sheet-footer" id="detailActions"></footer></section></div>
+<div class="admin-sheet-overlay" id="reviewOverlay" hidden><button class="admin-sheet-backdrop" id="reviewBackdrop" type="button" aria-label="승인 처리 닫기"></button><section class="admin-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="reviewTitle"><header class="admin-sheet-header"><div><span>REVIEW</span><h2 id="reviewTitle">승인 처리</h2></div><button class="admin-sheet-close" id="reviewClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header><div class="admin-sheet-body"><p id="reviewMessage"></p><label class="admin-form-label" id="reasonField" hidden>사유<textarea id="reviewReason" maxlength="500" rows="4" placeholder="사유를 입력해 주세요."></textarea><small class="admin-form-count"><span id="reasonCount">0</span>/500</small></label><p class="admin-error" id="reviewError" hidden></p></div><footer class="admin-sheet-footer"><button class="admin-button-secondary" id="reviewCancel" type="button">취소</button><button class="admin-button-primary" id="reviewConfirm" type="button">확인</button></footer></section></div>
+<div class="admin-toast" id="adminToast" role="status" aria-live="polite" hidden></div>
+</main></body></html>

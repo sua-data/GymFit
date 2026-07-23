@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>GYMFIT | 헬스장 소속 승인</title>
-  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/admin_trainers.css?v=4">
-  <script src="/static/js/admin_employments.js?v=1" defer></script>
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/admin.css?v=1">
+  <script src="/static/js/admin_employments.js?v=2" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1"><meta name="theme-color" content="#000000">
 </head>
-<body><main class="admin-page"><div class="admin-container">
-  <header class="admin-only-header"><a href="/admin/dashboard">GYMFIT 관리자</a><button id="adminLogout" type="button">로그아웃</button></header>
-  <section class="admin-hero"><span>EMPLOYMENT</span><h1>헬스장 소속 승인</h1><p>새 헬스장과 재직·소속 증빙을 검토합니다.</p></section>
-  <nav class="status-tabs"><button data-status="PENDING">대기</button><button data-status="APPROVED">승인</button><button data-status="REJECTED">거절</button><button data-status="ALL">전체</button></nav>
+<body><main class="admin-page"><div class="admin-shell">
+  <header class="admin-header"><a class="admin-brand" href="/admin/dashboard"><strong>GYMFIT</strong><span class="admin-badge">ADMIN</span></a><button class="admin-logout" id="adminLogout" type="button">로그아웃</button></header>
+  <nav class="admin-tabs" aria-label="관리자 메뉴"><a href="/admin/dashboard">대시보드</a><a href="/admin/trainers">트레이너 승인</a><a class="active" href="/admin/employments" aria-current="page">소속 승인</a></nav>
+  <section class="admin-page-header"><span>EMPLOYMENT REVIEW</span><h1>헬스장 소속 승인</h1><p>재직 및 소속 증빙을 검토합니다.</p></section>
+  <nav class="admin-status-tabs" aria-label="소속 승인 상태 필터"><button data-status="PENDING" type="button">대기</button><button data-status="APPROVED" type="button">승인</button><button data-status="REJECTED" type="button">거절</button><button data-status="ALL" type="button">전체</button></nav>
   <section class="admin-state" id="employmentLoading">소속 신청을 불러오고 있어요.</section>
-  <section class="admin-state" id="employmentEmpty" hidden>해당 소속 신청이 없습니다.</section>
-  <section class="trainer-list" id="employmentList"></section>
+  <section class="admin-state" id="employmentEmpty" hidden><strong>해당 상태의 신청이 없습니다.</strong></section>
+  <section class="admin-list" id="employmentList" aria-live="polite"></section>
 </div>
-<div class="sheet-overlay" id="employmentOverlay" hidden><button class="sheet-backdrop" id="employmentBackdrop" type="button"></button><section class="review-sheet"><header><div><span>REVIEW</span><h2>소속 승인 검토</h2></div><button class="icon-close" id="employmentClose" type="button"><img src="/static/assets/icons/no.svg" alt=""></button></header><div id="employmentDetail"></div><label class="reject-reason" id="employmentReasonField" hidden>거절 사유<textarea id="employmentReason" maxlength="500"></textarea></label><p class="review-error" id="employmentError" hidden></p><div class="review-actions" id="employmentConfirmActions" hidden><button id="employmentCancel" type="button">취소</button><button id="employmentConfirm" type="button">확인</button></div></section></div>
+<div class="admin-sheet-overlay" id="employmentOverlay" hidden><button class="admin-sheet-backdrop" id="employmentBackdrop" type="button" aria-label="소속 상세 닫기"></button><section class="admin-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="employmentTitle"><header class="admin-sheet-header"><div><span>EMPLOYMENT</span><h2 id="employmentTitle">소속 승인 상세</h2></div><button class="admin-sheet-close" id="employmentClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header><div class="admin-sheet-body"><div id="employmentDetail"></div><label class="admin-form-label" id="employmentReasonField" hidden>거절 사유<textarea id="employmentReason" maxlength="500" rows="4" placeholder="거절 사유를 입력해 주세요."></textarea></label><p class="admin-error" id="employmentError" hidden></p></div><footer class="admin-sheet-footer" id="employmentActions"></footer></section></div>
+<div class="admin-toast" id="employmentToast" role="status" aria-live="polite" hidden></div>
 </main></body></html>

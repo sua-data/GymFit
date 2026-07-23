@@ -9,7 +9,7 @@ const LEVEL_LABELS = { BEGINNER: "초급", INTERMEDIATE: "중급", ADVANCED: "�
 function installExtendedProfileUI() {
   document.querySelector("#profileLevel")?.closest("div")?.insertAdjacentHTML("afterend", '<div id="profileWeeklyRow"><dt>주간 운동 목표</dt><dd id="profileWeekly">-</dd></div>');
   document.querySelector("#profileLevelSelect")?.closest("label")?.insertAdjacentHTML("afterend", '<label>주간 운동 횟수<select id="profileWeeklySelect" data-gymfit-select required><option value="">선택</option><option value="1">주 1회</option><option value="2">주 2회</option><option value="3">주 3회</option><option value="4">주 4회</option><option value="5">주 5회</option><option value="6">주 6회</option><option value="7">매일</option></select></label>');
-  document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">등록</button></div><div class="gym-link-grid" id="gymLinkGrid" hidden><a class="gym-detail-link" href="/my-gym">상세보기</a><a class="gym-detail-link secondary" href="/machines">헬스장 머신</a></div><p class="gym-policy-message" id="gymPolicyMessage" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p></section>');
+  document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">등록</button></div><div class="gym-link-grid" id="gymLinkGrid" hidden><a class="gym-detail-link" href="/my-gym">상세보기</a><a class="gym-detail-link secondary" href="/machines">헬스장 머신</a></div><div class="employment-status-row" id="gymEmploymentStatusRow" hidden><span class="employment-status-label">소속 승인 상태</span><span class="employment-status-badge none" id="gymEmploymentStatusBadge">미등록</span><div class="employment-info-wrap"><button class="employment-info-button" type="button" data-employment-info aria-label="헬스장 변경 안내" aria-expanded="false">ⓘ</button><aside class="employment-info-popover" data-employment-popover hidden><h3>헬스장 변경 안내</h3><p>승인 후에도 소속 헬스장을 변경할 수 있습니다. 변경 시 재직·소속 증빙을 다시 제출해야 하며, 관리자 승인 전까지 헬스장 관리 기능이 제한됩니다.</p></aside></div></div></section>');
   document.querySelector("#profileEditOverlay")?.insertAdjacentHTML("afterend", '<div class="sheet-overlay" id="gymEditOverlay" hidden><button class="sheet-backdrop" id="gymEditBackdrop" type="button" aria-label="헬스장 변경 닫기"></button><section class="profile-sheet" role="dialog" aria-modal="true"><header><div><span>GYM SEARCH</span><h2>헬스장 변경</h2></div><button type="button" id="gymEditClose" aria-label="닫기">×</button></header><div class="gym-search" data-gym-search><div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div><p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p><div class="gym-search-results" data-gym-results hidden></div><div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div></div><p class="form-message" id="gymSaveMessage" hidden></p><button type="button" class="save-profile-button" id="gymSaveButton">선택한 헬스장 저장</button></section></div>');
 }
 
@@ -195,11 +195,24 @@ function renderFitnessProfile(user) {
   document.querySelector("#profileGym").textContent = currentUser.gym_name || "등록 없음";
   document.querySelector("#currentGymName").textContent = currentUser.gym_name || "소속 헬스장 없음";
   document.querySelector("#currentGymAddress").textContent = currentUser.gym_road_address || (currentUser.gym_name ? "기존 문자열 헬스장 정보" : "헬스장을 연결하면 이곳에 표시됩니다.");
-  const gymLocked = currentUser.account_type === "TRAINER" && currentUser.trainer_approval_status === "APPROVED";
-  document.querySelector("#openGymSheetButton").disabled = gymLocked;
-  document.querySelector("#openGymSheetButton").hidden = Boolean(currentUser.gym_id);
+  const isTrainer = currentUser.account_type === "TRAINER";
+  const gymButton = document.querySelector("#openGymSheetButton");
+  gymButton.disabled = false;
+  gymButton.hidden = false;
+  gymButton.textContent = currentUser.gym_id ? "변경" : "등록";
   document.querySelector("#gymLinkGrid").hidden = !currentUser.gym_id;
-  document.querySelector("#gymPolicyMessage").hidden = !gymLocked;
+  const employmentLabels = {
+    NONE: "미등록",
+    PENDING: "승인 대기",
+    APPROVED: "승인",
+    REJECTED: "승인 거절",
+  };
+  const employmentStatus = String(currentUser.trainer_employment_status || "NONE").toUpperCase();
+  const employmentRow = document.querySelector("#gymEmploymentStatusRow");
+  const employmentBadge = document.querySelector("#gymEmploymentStatusBadge");
+  employmentRow.hidden = !(isTrainer && currentUser.gym_id);
+  employmentBadge.textContent = employmentLabels[employmentStatus] || "미등록";
+  employmentBadge.className = `employment-status-badge ${employmentStatus.toLowerCase()}`;
   const dateValue = currentUser.last_login_at || currentUser.created_at;
   document.querySelector("#profileDateLabel").textContent = currentUser.last_login_at ? "마지막 로그인" : "가입일";
   document.querySelector("#profileDate").textContent = formatDate(dateValue);
@@ -533,7 +546,7 @@ async function submitWithdrawal(event) {
   }
 }
 function openGymSheet() {
-  if (!currentUser || (currentUser.account_type === "TRAINER" && currentUser.trainer_approval_status === "APPROVED")) return;
+  if (!currentUser) return;
   document.querySelector("#gymEditOverlay").hidden = false;
   document.body.classList.add("modal-open");
 }
