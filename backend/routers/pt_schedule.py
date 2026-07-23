@@ -16,6 +16,10 @@ router = APIRouter(prefix="/api/pt/schedules", tags=["pt-schedules"])
 KST = ZoneInfo("Asia/Seoul")
 
 
+def now_kst() -> datetime:
+    return datetime.now(KST).replace(tzinfo=None)
+
+
 def normalize_datetime(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value
@@ -236,3 +240,45 @@ def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_u
         db.rollback(); raise
     except Exception as exc:
         db.rollback(); raise HTTPException(status_code=500, detail="PT 일정을 취소하지 못했습니다.") from exc
+
+
+@router.patch("/{schedule_id}/complete", response_model=PtScheduleItem)
+def complete_schedule(schedule_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_role(current_user, "TRAINER")
+    try:
+        item = owned_schedule(db, schedule_id, current_user, lock=True)
+        active_relationship(db, item.trainer_id, item.member_id, lock=True)
+        if item.status == "CANCELLED":
+            raise HTTPException(status_code=409, detail="취소된 PT 일정은 완료 처리할 수 없습니다.")
+        if item.status == "COMPLETED":
+            raise HTTPException(status_code=409, detail="이미 완료된 PT 일정입니다.")
+        if item.status != "SCHEDULED":
+            raise HTTPException(status_code=409, detail="예정 상태의 PT 일정만 완료 처리할 수 있습니다.")
+        if item.start_at > now_kst():
+            raise HTTPException(status_code=409, detail="아직 시작하지 않은 PT 일정은 완료 처리할 수 없습니다.")
+
+        item.status = "COMPLETED"
+        create_notification(
+            db,
+            user_id=item.member_id,
+            title="PT 일정이 완료됐어요",
+            message=f"{format_time(item.start_at)} PT 일정이 완료 처리됐습니다.",
+            notification_type="PT_SCHEDULE_COMPLETED",
+            target_url=f"/pt/schedules#schedule-{item.schedule_id}",
+            reference_id=item.schedule_id,
+        )
+        create_notification(
+            db,
+            user_id=item.trainer_id,
+            title="PT 완료 처리 기록",
+            message=f"{item.member.name} 회원의 {format_time(item.start_at)} PT 일정을 완료 처리했습니다.",
+            notification_type="PT_SCHEDULE_COMPLETED",
+            target_url=f"/trainer/schedules#schedule-{item.schedule_id}",
+            reference_id=item.schedule_id,
+        )
+        db.commit()
+        return serialize(db.scalar(schedule_query().where(PtSchedule.schedule_id == item.schedule_id)))
+    except HTTPException:
+        db.rollback(); raise
+    except Exception as exc:
+        db.rollback(); raise HTTPException(status_code=500, detail="PT 일정을 완료 처리하지 못했습니다.") from exc

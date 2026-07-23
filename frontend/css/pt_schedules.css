@@ -16,13 +16,16 @@ body { background:#000; }
 .schedule-state { padding:24px 10px; color:var(--schedule-muted); text-align:center; font-size:14px; }
 .schedule-card { padding:17px; background:var(--schedule-card); border:1px solid rgba(255,255,255,.08); border-radius:17px; scroll-margin-top:20px; }
 .schedule-card.cancelled { opacity:.62; }
+.schedule-card.completed { border-color:rgba(168,255,53,.22); }
 .schedule-card-heading { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
 .schedule-card h3 { font-size:17px; line-height:1.4; }
 .schedule-badge { flex:none; padding:5px 8px; color:#050505; background:var(--schedule-accent); border-radius:999px; font-size:10px; font-weight:900; }
-.schedule-card.cancelled .schedule-badge,.schedule-card.past .schedule-badge { color:#ddd; background:#383838; }
+.schedule-card.cancelled .schedule-badge,.schedule-card.past.incomplete .schedule-badge { color:#ddd; background:#383838; }
+.schedule-card.completed .schedule-badge { color:#050505; background:var(--schedule-accent); }
 .schedule-actions { display:flex; gap:8px; margin-top:14px; }
 .schedule-actions button { flex:1; min-height:40px; background:#2b2b2b; border-radius:11px; font-weight:800; }
 .schedule-actions .danger { color:#ff9b9b; }
+.schedule-actions .complete { color:#050505; background:var(--schedule-accent); }
 .schedule-toolbar { display:grid; gap:10px; }
 .schedule-toolbar label,.schedule-sheet label { color:rgba(255,255,255,.7); font-size:12px; font-weight:800; }
 .schedule-toolbar .gymfit-select { margin-top:7px; }

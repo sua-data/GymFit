@@ -7,6 +7,7 @@
   let user = null, schedules = [], members = [], selectedMemberId = null, filter = isTrainerPage ? "all" : "upcoming";
   let editingId = null, busy = false;
   let cancelSchedule = async () => {};
+  let completeSchedule = async () => {};
 
   function currentUser() {
     try {
@@ -53,16 +54,25 @@
     items.forEach(item => {
       const card = document.createElement("article");
       card.id = `schedule-${item.schedule_id}`;
-      card.className = `schedule-card ${item.status === "CANCELLED" ? "cancelled" : isPast(item) ? "past" : ""}`;
+      const cardState = item.status === "CANCELLED" ? "cancelled" : item.status === "COMPLETED" ? "completed" : isPast(item) ? "past incomplete" : "";
+      card.className = `schedule-card ${cardState}`;
       const heading = makeText("div", "", "schedule-card-heading");
       heading.append(makeText("h3", `${dateTime(item.start_at)} ~ ${timeOnly(item.end_at)}`), makeText("span", statusText(item), "schedule-badge"));
       card.append(heading, makeText("p", `${isTrainerPage ? item.member_name + " 회원" : item.trainer_name + " 트레이너"}${item.location ? ` · ${item.location}` : ""}`));
       if (item.memo) card.append(makeText("p", item.memo));
-      if (isTrainerPage && item.status === "SCHEDULED" && !isPast(item)) {
+      if (isTrainerPage && item.status === "SCHEDULED") {
         const actions = makeText("div", "", "schedule-actions");
-        const edit = makeText("button", "수정"); edit.type = "button"; edit.addEventListener("click", () => openForm(item));
-        const cancel = makeText("button", "취소", "danger"); cancel.type = "button"; cancel.addEventListener("click", () => cancelSchedule(item));
-        actions.append(edit, cancel); card.append(actions);
+        if (timeValue(item.start_at) <= now()) {
+          const complete = makeText("button", "PT 완료", "complete");
+          complete.type = "button";
+          complete.addEventListener("click", () => completeSchedule(item));
+          actions.append(complete);
+        } else {
+          const edit = makeText("button", "수정"); edit.type = "button"; edit.addEventListener("click", () => openForm(item));
+          const cancel = makeText("button", "취소", "danger"); cancel.type = "button"; cancel.addEventListener("click", () => cancelSchedule(item));
+          actions.append(edit, cancel);
+        }
+        card.append(actions);
       }
       list.append(card);
     });
@@ -121,6 +131,15 @@
     cancelSchedule = async function (item) {
       if (!confirm(`${dateTime(item.start_at)} 일정을 취소하시겠어요?`)) return;
       try { await api(`/api/pt/schedules/${item.schedule_id}/cancel`, { method:"PATCH", body:"{}" }); await load(); } catch (error) { alert(error.message); }
+    };
+    completeSchedule = async function (item) {
+      if (!confirm(`${dateTime(item.start_at)} PT를 완료 처리하시겠어요?`)) return;
+      try {
+        await api(`/api/pt/schedules/${item.schedule_id}/complete`, { method:"PATCH", body:"{}" });
+        await load();
+      } catch (error) {
+        alert(error.message);
+      }
     };
     document.querySelector("#openScheduleForm").addEventListener("click", () => openForm());
     document.querySelector("#scheduleFormClose").addEventListener("click", closeForm); document.querySelector("#scheduleFormBackdrop").addEventListener("click", closeForm);
