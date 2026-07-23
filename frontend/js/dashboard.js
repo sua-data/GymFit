@@ -85,6 +85,9 @@ const recentWorkoutList =
 const nextPtSchedule =
   document.querySelector("#nextPtSchedule");
 
+const nextPtScheduleCard =
+  document.querySelector("#nextPtScheduleCard");
+
 const nextPtScheduleLink =
   document.querySelector("#nextPtScheduleLink");
 
@@ -458,7 +461,7 @@ function renderWeeklyData(data) {
   weeklyGoalText.textContent =
     weeklyGoalDays === null
       ? "주간 목표 미설정"
-      : `목표 주 ${weeklyGoalDays}회 · 이번 주 ${workoutDays}일`;
+      : `목표 주 ${weeklyGoalDays}회 · 이번 주 ${workoutDays}회`;
 
   weeklyBars.innerHTML = "";
 
@@ -535,15 +538,21 @@ function renderRecentWorkouts(workouts) {
     button.className =
       "recent-workout-item";
 
-    button.innerHTML = `
-      <img
+    const isPt = workout.record_type === "PT";
+    const imageMarkup = workout.image_url ? `<img
         src="${escapeAttribute(
-          workout.image_url || ""
+          workout.image_url
         )}"
         alt="${escapeAttribute(
           workout.exercise_name
         )}"
-      >
+      >` : "";
+    const ptDetail = isPt
+      ? [workout.trainer_name && `${workout.trainer_name} 트레이너`, ...(workout.exercise_names || []).slice(0, 2)].filter(Boolean).join(" · ")
+      : `${Number(workout.completed_sets) || 0}세트`;
+
+    button.innerHTML = `
+      ${imageMarkup}
 
       <div class="recent-workout-info">
         <strong>
@@ -557,25 +566,21 @@ function renderRecentWorkouts(workouts) {
             workout.workout_date_text
           )}
           ·
-          ${Number(
-            workout.completed_sets
-          ) || 0}세트
+          ${escapeHtml(ptDetail || `${Number(workout.workout_minutes) || 0}분`)}
         </span>
       </div>
 
       <div class="recent-workout-result">
-        <span>
+        <span${isPt ? ' class="pt-record-badge"' : ""}>
           <strong>
-            ${Number(
-              workout.repetition_count
-            ) || 0}
+            ${isPt ? "PT" : Number(workout.repetition_count) || 0}
           </strong>
-          회
+          ${isPt ? "" : "회"}
         </span>
 
         <span>
           ${workout.average_posture_score === null || workout.average_posture_score === undefined
-            ? "자세 점수 없음"
+            ? `${Number(workout.workout_minutes) || 0}분`
             : `<strong>${Number(workout.average_posture_score)}</strong>점`}
         </span>
       </div>
@@ -695,7 +700,15 @@ function renderDashboard(data) {
 
 
 function renderNextPtSchedule(data) {
-  if (!nextPtSchedule || !nextPtScheduleLink) return;
+  if (!nextPtScheduleCard || !nextPtSchedule || !nextPtScheduleLink) return;
+  const accountType = String(data.account_type || "").toUpperCase();
+  const shouldShow = accountType === "TRAINER"
+    || (accountType === "MEMBER" && data.has_active_trainer === true);
+  if (!shouldShow) {
+    nextPtScheduleCard.remove();
+    return;
+  }
+  nextPtScheduleCard.hidden = false;
   const item = data.next_pt_schedule;
   nextPtScheduleLink.href = item?.target_url || (data.account_type === "TRAINER" ? "/trainer/schedules" : "/pt/schedules");
   nextPtSchedule.replaceChildren();
@@ -714,9 +727,9 @@ function renderNextPtSchedule(data) {
   const person = document.createElement("p");
   person.textContent = `${item.person_name} ${item.person_label} · ${timeFormatter.format(date)} ~ ${timeFormatter.format(end)}`;
   nextPtSchedule.append(title, person);
-  if (item.location || item.memo) {
+  if (item.memo) {
     const detail = document.createElement("p");
-    detail.textContent = [item.location, item.memo].filter(Boolean).join(" · ");
+    detail.textContent = item.memo;
     nextPtSchedule.append(detail);
   }
 }

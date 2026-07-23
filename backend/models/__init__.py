@@ -20,6 +20,7 @@ from backend.models.trainer_member import TrainerMember
 from backend.models.pt_assignment import PtAssignment
 from backend.models.pt_feedback import PtFeedback
 from backend.models.pt_schedule import PtSchedule
+from backend.models.workout_record_detail import WorkoutRecordDetailItem, WorkoutRecordMedia
 
 
 __all__ = [
@@ -43,4 +44,6 @@ __all__ = [
     "PtAssignment",
     "PtFeedback",
     "PtSchedule",
+    "WorkoutRecordDetailItem",
+    "WorkoutRecordMedia",
 ]

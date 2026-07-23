@@ -5,10 +5,16 @@
   <title>PT 일정 관리 | GYMFIT</title>
   <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/pt_schedules.css?v=3">
-  <script src="/static/js/common_layout.js?v=11" defer></script>
+  <link rel="stylesheet" href="/static/css/pt_schedules.css?v=5">
+  <script src="/static/js/common_layout.js?v=12" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
-  <script src="/static/js/pt_schedules.js?v=2" defer></script>
+  <script src="/static/js/pt_schedules.js?v=5" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
+  <link rel="shortcut icon" href="/static/favicon.ico?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png?v=1">
+  <meta name="theme-color" content="#000000">
 </head>
 <body data-page="trainer-schedules" data-header-title="PT 일정 관리" data-header-subtitle="회원별 PT 일정을 관리하세요">
   <main class="schedule-page">
@@ -33,10 +39,24 @@
         <form id="scheduleForm">
           <label>시작 일시<input id="scheduleStart" type="datetime-local" required></label>
           <label>종료 일시<input id="scheduleEnd" type="datetime-local" required></label>
-          <label>장소<input id="scheduleLocation" type="text" maxlength="200" placeholder="예: 2층 PT 존"></label>
           <label>메모<textarea id="scheduleMemo" maxlength="2000" rows="3" placeholder="준비물이나 전달 사항"></textarea></label>
           <p id="scheduleFormMessage" class="schedule-form-message" role="alert"></p>
           <button type="submit" id="scheduleSave" class="schedule-primary">일정 등록</button>
+        </form>
+      </section>
+    </div>
+    <div id="ptCompleteOverlay" class="schedule-sheet-overlay" hidden>
+      <button type="button" id="ptCompleteBackdrop" class="schedule-sheet-backdrop" aria-label="완료 입력 닫기"></button>
+      <section class="schedule-sheet pt-complete-sheet" role="dialog" aria-modal="true" aria-labelledby="ptCompleteTitle">
+        <div class="schedule-sheet-handle"></div><header class="sheet-sticky-header"><div><h2 id="ptCompleteTitle">PT 운동 기록</h2><p>오늘 진행한 운동을 기록해 주세요</p></div><button type="button" id="ptCompleteClose" class="sheet-icon-close" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
+        <form id="ptCompleteForm">
+          <section id="ptCompleteSummary" class="pt-complete-summary" aria-label="PT 일정 정보"></section>
+          <label>기록 제목 <small>필수</small><input id="ptCompleteRecordTitle" maxlength="150" value="PT 수업" required></label>
+          <label>운동 부위 <small>선택</small><select id="ptCompletePart" data-gymfit-select><option value="">선택 안 함</option><option>상체</option><option>하체</option><option>가슴</option><option>등</option><option>어깨</option><option>팔</option><option>코어</option><option>유산소</option></select></label>
+          <label>전체 메모 <small>선택</small><textarea id="ptCompleteMemo" maxlength="5000" rows="3" placeholder="수업에 대한 메모"></textarea></label>
+          <section class="pt-complete-items"><div class="pt-complete-items-heading"><strong>수행 운동</strong><span id="ptCompleteItemCount">0개</span></div><div id="ptCompleteItemList"></div><p id="ptCompleteEmptyGuide">운동 없이 PT 수업 기록만 저장됩니다.</p><button id="addPtCompleteItem" class="pt-add-exercise" type="button">+ 운동 추가</button></section>
+          <p id="ptCompleteMessage" class="schedule-form-message" role="alert"></p>
+          <footer class="pt-complete-actions"><button id="ptCompleteCancel" type="button" class="schedule-secondary">취소</button><button id="ptCompleteSave" class="schedule-primary" type="submit">PT 완료 저장</button></footer>
         </form>
       </section>
     </div>

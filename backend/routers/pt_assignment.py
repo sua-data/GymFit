@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
-from backend.models import Exercise, PtAssignment, TrainerMember, User, UserExercise, WorkoutRecord
+from backend.models import Exercise, PtAssignment, TrainerMember, User, UserExercise, WorkoutRecord, WorkoutRecordDetailItem
 from backend.pt_assignment_schemas import PtAssignmentComplete, PtAssignmentCreate, PtAssignmentItem, PtAssignmentList, PtAssignmentUpdate, PtManualRecordCreate, PtCustomExerciseCreate
 from backend.services.exercise_catalog import is_coaching_supported
 from backend.routers.pt import get_current_user, require_role
@@ -283,6 +283,9 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
         completed_at = now_kst()
         record = WorkoutRecord(
             user_id=current_user.user_id,
+            record_type="WORKOUT",
+            title=f"{item.title} 운동",
+            workout_date=completed_at.date(),
             exercise_id=item.exercise_id,
             user_exercise_id=item.user_exercise_id,
             started_at=completed_at - timedelta(minutes=payload.workout_minutes),
@@ -300,6 +303,17 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
             manual_note=payload.note,
         )
         db.add(record); db.flush()
+        db.add(WorkoutRecordDetailItem(
+            record_id=record.workout_record_id,
+            exercise_id=item.exercise_id,
+            user_exercise_id=item.user_exercise_id,
+            exercise_name=item.title,
+            repetitions=payload.repetition_count or None,
+            completed_sets=payload.completed_sets or None,
+            workout_minutes=payload.workout_minutes or None,
+            memo=payload.note,
+            display_order=1,
+        ))
         item.workout_record_id = record.workout_record_id
         item.status = "COMPLETED"
         item.completed_at = completed_at

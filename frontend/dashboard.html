@@ -32,7 +32,7 @@
   >
 
   <script
-    src="/static/js/common_layout.js?v=11"
+    src="/static/js/common_layout.js?v=12"
     defer
   ></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
@@ -43,9 +43,15 @@
   ></script>
 
   <script
-    src="/static/js/dashboard.js?v=9"
+    src="/static/js/dashboard.js?v=11"
     defer
   ></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
+  <link rel="shortcut icon" href="/static/favicon.ico?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png?v=1">
+  <meta name="theme-color" content="#000000">
 </head>
 
 <body
@@ -406,7 +412,7 @@
               운동
               <strong id="weeklyWorkoutDays">
                 0
-              </strong>일
+              </strong>회
             </p>
 
             <span id="weeklyWorkoutMinutes">
@@ -437,7 +443,7 @@
       </div>
 
 
-      <section class="next-pt-dashboard-card">
+      <section id="nextPtScheduleCard" class="next-pt-dashboard-card" hidden>
         <div class="next-pt-dashboard-heading">
           <div><span>NEXT PT</span><h2>다음 PT 일정</h2></div>
           <a id="nextPtScheduleLink" href="/pt/schedules">일정 보기 <span>›</span></a>

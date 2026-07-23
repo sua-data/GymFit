@@ -3,13 +3,15 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
-from backend.models import PtSchedule, TrainerMember, User
-from backend.pt_schedule_schemas import PtScheduleCreate, PtScheduleItem, PtScheduleList, PtScheduleUpdate
+from backend.models import PtSchedule, TrainerMember, User, WorkoutRecord, WorkoutRecordDetailItem
+from backend.pt_schedule_schemas import PtScheduleCompleteRequest, PtScheduleCreate, PtScheduleItem, PtScheduleList, PtScheduleUpdate
 from backend.routers.pt import get_current_user, require_role
 from backend.services.notification_service import create_notification
+from backend.routers.workout_session import validate_item_reference
 
 
 router = APIRouter(prefix="/api/pt/schedules", tags=["pt-schedules"])
@@ -71,7 +73,7 @@ def validate_overlap(
     db: Session, trainer_id: int, member_id: int, start_at: datetime, end_at: datetime, exclude_id: int | None = None
 ) -> None:
     filters = [
-        PtSchedule.status != "CANCELLED",
+        PtSchedule.status == "SCHEDULED",
         PtSchedule.start_at < end_at,
         PtSchedule.end_at > start_at,
         or_(PtSchedule.trainer_id == trainer_id, PtSchedule.member_id == member_id),
@@ -243,7 +245,7 @@ def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_u
 
 
 @router.patch("/{schedule_id}/complete", response_model=PtScheduleItem)
-def complete_schedule(schedule_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def complete_schedule(schedule_id: int, payload: PtScheduleCompleteRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_role(current_user, "TRAINER")
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
@@ -257,7 +259,56 @@ def complete_schedule(schedule_id: int, current_user: User = Depends(get_current
         if item.start_at > now_kst():
             raise HTTPException(status_code=409, detail="아직 시작하지 않은 PT 일정은 완료 처리할 수 없습니다.")
 
+        existing_record = db.scalar(
+            select(WorkoutRecord).where(WorkoutRecord.pt_schedule_id == item.schedule_id).with_for_update()
+        )
+        if existing_record is not None:
+            raise HTTPException(status_code=409, detail="이미 운동 기록이 생성된 PT 일정입니다.")
+
         item.status = "COMPLETED"
+        duration_minutes = max(0, round((item.end_at - item.start_at).total_seconds() / 60))
+        record = WorkoutRecord(
+            user_id=item.member_id,
+            record_type="PT",
+            title=(payload.title.strip() if payload.title and payload.title.strip() else "PT 수업"),
+            workout_date=item.start_at.date(),
+            workout_part=payload.workout_part.strip() if payload.workout_part else None,
+            trainer_id=item.trainer_id,
+            pt_schedule_id=item.schedule_id,
+            location=None,
+            memo=(payload.memo.strip() if payload.memo else item.memo),
+            record_source="PT_SCHEDULE",
+            started_at=item.start_at,
+            completed_at=item.end_at,
+            completed_sets=sum(detail.completed_sets or 0 for detail in payload.items),
+            repetition_count=sum((detail.repetitions or 0) * (detail.completed_sets or 1) for detail in payload.items),
+            workout_minutes=duration_minutes,
+            calories=0,
+            average_posture_score=None,
+            best_posture_score=None,
+        )
+        db.add(record)
+        db.flush()
+        workout_items = []
+        for display_order, detail in enumerate(payload.items, 1):
+            validate_item_reference(db, item.member_id, detail)
+            workout_item = WorkoutRecordDetailItem(
+                record_id=record.workout_record_id,
+                exercise_id=detail.exercise_id,
+                user_exercise_id=detail.user_exercise_id,
+                exercise_name=detail.exercise_name.strip(),
+                weight_value=detail.weight_value,
+                weight_text=detail.weight_text.strip() if detail.weight_text else None,
+                repetitions=detail.repetitions,
+                completed_sets=detail.completed_sets,
+                rpe=detail.rpe,
+                workout_minutes=detail.workout_minutes,
+                memo=detail.memo.strip() if detail.memo else None,
+                display_order=display_order,
+            )
+            db.add(workout_item)
+            workout_items.append(workout_item)
+        db.flush()
         create_notification(
             db,
             user_id=item.member_id,
@@ -277,8 +328,13 @@ def complete_schedule(schedule_id: int, current_user: User = Depends(get_current
             reference_id=item.schedule_id,
         )
         db.commit()
-        return serialize(db.scalar(schedule_query().where(PtSchedule.schedule_id == item.schedule_id)))
+        result = serialize(db.scalar(schedule_query().where(PtSchedule.schedule_id == item.schedule_id)))
+        result.workout_record_id = record.workout_record_id
+        result.workout_item_ids = [workout_item.item_id for workout_item in workout_items]
+        return result
     except HTTPException:
         db.rollback(); raise
+    except IntegrityError as exc:
+        db.rollback(); raise HTTPException(status_code=409, detail="이미 운동 기록이 생성된 PT 일정입니다.") from exc
     except Exception as exc:
         db.rollback(); raise HTTPException(status_code=500, detail="PT 일정을 완료 처리하지 못했습니다.") from exc

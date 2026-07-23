@@ -36,15 +36,15 @@ const ptMemberMenuItems = [
 
 const trainerMenuItems = [
   {
-    label: "담당 회원 관리",
+    label: "담당 회원",
     path: "/trainer/members"
   },
   {
-    label: "PT 숙제 관리",
+    label: "PT 숙제",
     path: "/trainer/assignments"
   },
   {
-    label: "PT 일정 관리",
+    label: "PT 일정",
     path: "/trainer/schedules"
   }
 ];

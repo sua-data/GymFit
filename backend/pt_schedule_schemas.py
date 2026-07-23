@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from backend.workout_session_schemas import WorkoutSessionItemInput
 
 
 class PtScheduleCreate(BaseModel):
@@ -40,6 +41,16 @@ class PtScheduleItem(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    workout_record_id: int | None = None
+    workout_item_ids: list[int] = Field(default_factory=list)
+
+
+class PtScheduleCompleteRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=150)
+    workout_part: str | None = Field(default=None, max_length=100)
+    location: str | None = Field(default=None, max_length=200)
+    memo: str | None = Field(default=None, max_length=5000)
+    items: list[WorkoutSessionItemInput] = Field(default_factory=list, max_length=50)
 
 
 class PtScheduleList(BaseModel):

@@ -35,6 +35,7 @@ from backend.models import (
     WorkoutPlan,
     WorkoutPlanSet,
     WorkoutRecord,
+    WorkoutRecordDetailItem,
     PtAssignment,
     TrainerMember,
 )
@@ -1711,6 +1712,9 @@ def create_workout_record(
     try:
         workout_record = WorkoutRecord(
             user_id=request.user_id,
+            record_type="WORKOUT",
+            title=f"{exercise.exercise_name} 운동",
+            workout_date=started_at.date(),
             exercise_id=(
                 exercise.exercise_id
             ),
@@ -1741,6 +1745,17 @@ def create_workout_record(
 
         db.add(workout_record)
         db.flush()
+        db.add(WorkoutRecordDetailItem(
+            record_id=workout_record.workout_record_id,
+            exercise_id=exercise.exercise_id,
+            exercise_name=exercise.exercise_name,
+            repetitions=request.repetition_count or None,
+            completed_sets=request.completed_sets or None,
+            workout_minutes=request.workout_minutes or None,
+            posture_score=request.average_posture_score,
+            feedback=request.feedback,
+            display_order=1,
+        ))
 
         if assignment is not None:
             assignment.workout_record_id = workout_record.workout_record_id

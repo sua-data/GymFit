@@ -1,12 +1,15 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Date,
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import (
@@ -52,6 +55,21 @@ class WorkoutRecord(Base):
         index=True,
         comment="운동 종목 번호",
     )
+
+    record_type: Mapped[str] = mapped_column(
+        Enum("WORKOUT", "PT", native_enum=True), nullable=False, default="WORKOUT", server_default="WORKOUT"
+    )
+    title: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    workout_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    workout_part: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    trainer_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.user_id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True
+    )
+    pt_schedule_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("pt_schedule.schedule_id", ondelete="RESTRICT", onupdate="CASCADE"), nullable=True, unique=True
+    )
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    memo: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user_exercise_id: Mapped[int | None] = mapped_column(
         BigInteger,
@@ -149,5 +167,14 @@ class WorkoutRecord(Base):
         comment="기록 생성 일시",
     )
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
     exercise: Mapped[Exercise] = relationship()
     user_exercise = relationship("UserExercise")
+    trainer = relationship("User", foreign_keys=[trainer_id])
+    pt_schedule = relationship("PtSchedule")
+    items = relationship(
+        "WorkoutRecordDetailItem", back_populates="record", cascade="all, delete-orphan", order_by="WorkoutRecordDetailItem.display_order"
+    )

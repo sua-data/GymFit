@@ -17,16 +17,17 @@ from sqlalchemy import (
     func,
     select,
 )
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from backend.database import get_db
-from backend.models import MemberProfile, User
+from backend.models import MemberProfile, TrainerMember, User
 from backend.models.exercise import Exercise
 from backend.models.notification import Notification
 from backend.models.workout_plan import WorkoutPlan
 from backend.models.workout_record import WorkoutRecord
 from backend.models.user_exercise import UserExercise
 from backend.models.pt_schedule import PtSchedule
+from backend.services.pt_service import has_active_trainer
 
 
 router = APIRouter(
@@ -395,6 +396,7 @@ def get_dashboard(
                 ),
                 0,
             ).label("total_minutes"),
+            func.count(WorkoutRecord.workout_record_id).label("session_count"),
         )
         .where(
             WorkoutRecord.user_id == user_id,
@@ -414,6 +416,7 @@ def get_dashboard(
         date,
         int,
     ] = {}
+    weekly_sessions_by_date: dict[date, int] = {}
 
     for row in weekly_rows:
         row_date = row.workout_date
@@ -431,6 +434,7 @@ def get_dashboard(
         ] = int(
             row.total_minutes or 0
         )
+        weekly_sessions_by_date[row_date] = int(row.session_count or 0)
 
     max_daily_minutes = max(
         weekly_minutes_by_date.values(),
@@ -466,20 +470,14 @@ def get_dashboard(
                 "label": WEEKDAY_LABELS[index],
                 "minutes": minutes,
                 "percent": percent,
-                "completed": minutes > 0,
+                "completed": weekly_sessions_by_date.get(target_date, 0) > 0,
             }
         )
-
-    completed_weekly_workout_days = sum(
-        1
-        for minutes
-        in weekly_minutes_by_date.values()
-        if minutes > 0
-    )
 
     weekly_total_minutes = sum(
         weekly_minutes_by_date.values()
     )
+    weekly_session_count = sum(weekly_sessions_by_date.values())
 
     # 최근 운동 기록
     recent_rows = db.execute(
@@ -487,6 +485,10 @@ def get_dashboard(
             WorkoutRecord,
             Exercise,
             UserExercise,
+        )
+        .options(
+            joinedload(WorkoutRecord.trainer),
+            selectinload(WorkoutRecord.items),
         )
         .outerjoin(
             Exercise,
@@ -512,8 +514,12 @@ def get_dashboard(
                     record.workout_record_id
                 ),
                 "exercise_name": (
-                    exercise.exercise_name if exercise else user_exercise.exercise_name if user_exercise else "운동 기록"
+                    record.title if record.record_type == "PT"
+                    else exercise.exercise_name if exercise else user_exercise.exercise_name if user_exercise else record.title or "운동 기록"
                 ),
+                "record_type": record.record_type,
+                "trainer_name": record.trainer.name if record.trainer else None,
+                "exercise_names": [item.exercise_name for item in record.items[:2]],
                 "image_url": record.image_url,
                 "workout_date_text": (
                     record.started_at.strftime(
@@ -532,6 +538,15 @@ def get_dashboard(
             }
         )
 
+    user_has_active_trainer = has_active_trainer(
+        db,
+        user.user_id,
+        user.account_type,
+    )
+    should_show_pt_schedule = (
+        user.account_type == "TRAINER"
+        or user_has_active_trainer
+    )
     next_schedule = None
     schedule_owner = (
         PtSchedule.trainer_id
@@ -543,17 +558,25 @@ def get_dashboard(
         if user.account_type == "TRAINER"
         else PtSchedule.trainer_id
     )
-    schedule_row = db.execute(
-        select(PtSchedule, User)
-        .join(User, User.user_id == schedule_person_id)
-        .where(
-            schedule_owner == user_id,
-            PtSchedule.status == "SCHEDULED",
-            PtSchedule.start_at >= datetime.now(ZoneInfo("Asia/Seoul")).replace(tzinfo=None),
-        )
-        .order_by(PtSchedule.start_at.asc())
-        .limit(1)
-    ).first()
+    schedule_row = None
+    if should_show_pt_schedule:
+        schedule_row = db.execute(
+            select(PtSchedule, User)
+            .join(
+                TrainerMember,
+                TrainerMember.trainer_member_id
+                == PtSchedule.trainer_member_id,
+            )
+            .join(User, User.user_id == schedule_person_id)
+            .where(
+                schedule_owner == user_id,
+                TrainerMember.status == "ACTIVE",
+                PtSchedule.status == "SCHEDULED",
+                PtSchedule.start_at >= datetime.now(ZoneInfo("Asia/Seoul")).replace(tzinfo=None),
+            )
+            .order_by(PtSchedule.start_at.asc())
+            .limit(1)
+        ).first()
     if schedule_row:
         schedule, person = schedule_row
         next_schedule = {
@@ -596,7 +619,7 @@ def get_dashboard(
         },
         "weekly_summary": {
             "workout_days": (
-                completed_weekly_workout_days
+                int(weekly_session_count)
             ),
             "weekly_workout_days": weekly_workout_days,
             "total_minutes": (
@@ -608,5 +631,6 @@ def get_dashboard(
             recent_workouts
         ),
         "account_type": user.account_type,
+        "has_active_trainer": user_has_active_trainer,
         "next_pt_schedule": next_schedule,
     }
