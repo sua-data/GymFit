@@ -62,15 +62,10 @@ results/*
 *.temp
 ~$*
 
-# =========================
-# DB 백업 파일
-# =========================
+# DB backup
 backup/
-backups/
-
 gymfit_latest.sql
 gymfit_before_*.sql
 *_backup_*.sql
-
 *.dump
 *.bak
