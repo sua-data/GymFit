@@ -50,6 +50,15 @@ const routineSetRows = document.querySelector("#routineSetRows");
 const routineAddSetButton = document.querySelector(
   "#routineAddSetButton"
 );
+const recommendationButton = document.querySelector("#recommendationButton");
+const recommendationStatus = document.querySelector("#recommendationStatus");
+const recommendationResult = document.querySelector("#recommendationResult");
+const recommendationResultClose = document.querySelector("#recommendationResultClose");
+const recommendationSummary = document.querySelector("#recommendationSummary");
+const recommendationDays = document.querySelector("#recommendationDays");
+const recommendationResultError = document.querySelector("#recommendationResultError");
+const recommendationRegenerate = document.querySelector("#recommendationRegenerate");
+const recommendationApply = document.querySelector("#recommendationApply");
 
 let activePlanDate = null;
 let isSavingPlan = false;
@@ -58,6 +67,8 @@ let deletingPlanId = null;
 let exerciseListState = "idle";
 let formMode = "create";
 let editingPlan = null;
+let currentRecommendation = null;
+let recommendationBusy = false;
 
 function getLoginUserId() {
   const savedUser = sessionStorage.getItem("gymfitUser");
@@ -78,6 +89,103 @@ function escapeHtml(value) {
   const element = document.createElement("div");
   element.textContent = value ?? "";
   return element.innerHTML;
+}
+
+const adjustmentLabels = {
+  BASE: "기본 추천", MAINTAIN: "강도 유지", PROGRESS: "강도 증가",
+  POSTURE_CORRECTION: "자세 교정", PERFORMANCE_DOWN: "수행량 조정",
+  REPEATED_FEEDBACK: "반복 피드백",
+};
+
+function setRecommendationBusy(value, message = "") {
+  recommendationBusy = value;
+  recommendationButton.disabled = value;
+  recommendationRegenerate.disabled = value;
+  recommendationApply.disabled = value || currentRecommendation?.status === "APPLIED";
+  recommendationStatus.hidden = !message;
+  recommendationStatus.textContent = message;
+}
+
+function renderRecommendation(data) {
+  currentRecommendation = data;
+  recommendationResult.hidden = false;
+  recommendationResultError.hidden = true;
+  recommendationSummary.innerHTML = `
+    <p><strong>${data.days_per_week}일</strong> · 회당 ${data.workout_minutes}분 · ${escapeHtml(data.level)}</p>
+    <span>${data.items.length}개 운동 · 기록과 자세 결과 반영</span>`;
+  const grouped = data.items.reduce((result, item) => {
+    (result[item.workout_date] ||= []).push(item);
+    return result;
+  }, {});
+  recommendationDays.innerHTML = Object.entries(grouped).map(([workoutDate, items]) => `
+    <section class="recommendation-day">
+      <h3>${escapeHtml(formatPlanDate(workoutDate))}</h3>
+      ${items.map((item) => `
+        <article class="recommendation-exercise">
+          <div class="recommendation-exercise-heading">
+            <strong>${escapeHtml(item.exercise_name)}</strong>
+            <span class="adjustment-badge adjustment-${item.adjustment_type.toLowerCase()}">
+              ${escapeHtml(adjustmentLabels[item.adjustment_type] || item.adjustment_type)}
+            </span>
+          </div>
+          <div class="recommendation-meta">
+            <span>${item.recommended_sets}세트 × ${item.recommended_reps}회</span>
+            <span>난이도 ${escapeHtml(item.difficulty)}</span>
+            <span>${item.coaching_supported ? "AI 코칭 지원" : "직접 기록"}</span>
+          </div>
+          <p>${escapeHtml(item.recommendation_reason)}</p>
+        </article>`).join("")}
+    </section>`).join("");
+  recommendationApply.textContent = data.status === "APPLIED" ? "적용 완료" : "내 루틴에 적용";
+  setRecommendationBusy(false);
+  recommendationResult.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function requestRecommendation(regenerate = false) {
+  const userId = getLoginUserId();
+  if (!userId || recommendationBusy) return;
+  setRecommendationBusy(true, "맞춤 루틴을 구성하고 있습니다.");
+  try {
+    const response = await fetch(
+      regenerate ? "/api/routine/recommendations/regenerate" : "/api/routine/recommendations",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: Number(userId), workout_minutes: 40 }),
+      }
+    );
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(data, "추천을 생성하지 못했습니다."));
+    recommendationStatus.hidden = true;
+    renderRecommendation(data);
+  } catch (error) {
+    setRecommendationBusy(false, error.message || "추천을 생성하지 못했습니다.");
+  }
+}
+
+async function applyRecommendation() {
+  if (!currentRecommendation || recommendationBusy) return;
+  setRecommendationBusy(true, "추천 루틴을 적용하고 있습니다.");
+  recommendationResultError.hidden = true;
+  try {
+    const response = await fetch(
+      `/api/routine/recommendations/${currentRecommendation.recommendation_id}/apply`,
+      { method: "POST" }
+    );
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(data, "추천을 적용하지 못했습니다."));
+    currentRecommendation.status = "APPLIED";
+    recommendationApply.textContent = "적용 완료";
+    setRecommendationBusy(
+      false,
+      `${data.created_count}개 계획을 적용했습니다.${data.skipped_count ? ` 기존 계획 ${data.skipped_count}개는 유지했습니다.` : ""}`
+    );
+    await loadPlan(getLoginUserId(), activePlanDate);
+  } catch (error) {
+    setRecommendationBusy(false);
+    recommendationResultError.hidden = false;
+    recommendationResultError.textContent = error.message || "추천을 적용하지 못했습니다.";
+  }
 }
 
 function formatPlanDate(value) {
@@ -910,6 +1018,12 @@ routineAddSetButton.addEventListener(
 );
 routineExerciseSelect.addEventListener("change", () => {
   syncCustomExerciseField();
+});
+recommendationButton.addEventListener("click", () => requestRecommendation(false));
+recommendationRegenerate.addEventListener("click", () => requestRecommendation(true));
+recommendationApply.addEventListener("click", applyRecommendation);
+recommendationResultClose.addEventListener("click", () => {
+  recommendationResult.hidden = true;
 });
 
 routineSheetOverlay.addEventListener("click", (event) => {

@@ -18,12 +18,12 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/routine.css?v=3">
+  <link rel="stylesheet" href="/static/css/routine.css?v=4">
 
   <script src="/static/js/common_layout.js?v=17" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/coaching_plan.js?v=1" defer></script>
-  <script src="/static/js/routine.js?v=5" defer></script>
+  <script src="/static/js/routine.js?v=6" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -40,6 +40,30 @@
   <main class="routine-page">
     <div class="routine-container">
       <div id="topHeaderContainer"></div>
+
+      <section class="recommendation-card" aria-labelledby="recommendationTitle">
+        <div class="recommendation-card-copy">
+          <span>PERSONAL ROUTINE</span>
+          <h1 id="recommendationTitle">맞춤 루틴 추천</h1>
+          <p>최근 운동 기록과 자세 분석 결과를 바탕으로<br>이번 주 운동 루틴을 추천해 드려요.</p>
+        </div>
+        <button type="button" id="recommendationButton">루틴 추천받기</button>
+        <p class="recommendation-status" id="recommendationStatus" hidden></p>
+      </section>
+
+      <section class="recommendation-result" id="recommendationResult" hidden aria-live="polite">
+        <div class="recommendation-result-heading">
+          <div><span>RECOMMENDATION</span><h2>추천 결과</h2></div>
+          <button type="button" id="recommendationResultClose" aria-label="추천 결과 닫기">×</button>
+        </div>
+        <div id="recommendationSummary"></div>
+        <div class="recommendation-days" id="recommendationDays"></div>
+        <p class="recommendation-result-error" id="recommendationResultError" hidden></p>
+        <div class="recommendation-actions">
+          <button type="button" class="recommendation-secondary" id="recommendationRegenerate">다시 추천받기</button>
+          <button type="button" class="recommendation-primary" id="recommendationApply">내 루틴에 적용</button>
+        </div>
+      </section>
 
       <section class="routine-heading">
         <div>

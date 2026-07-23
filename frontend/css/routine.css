@@ -46,6 +46,166 @@ button {
   padding: max(22px, env(safe-area-inset-top)) 22px 34px;
 }
 
+.recommendation-card {
+  margin-top: 24px;
+  padding: 22px;
+  background: linear-gradient(145deg, rgba(168, 255, 53, 0.15), #1d1d1d 58%);
+  border: 1px solid rgba(168, 255, 53, 0.28);
+  border-radius: 22px;
+}
+
+.recommendation-card-copy > span,
+.recommendation-result-heading span {
+  color: var(--gymfit-green);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.recommendation-card h1 { margin: 7px 0 8px; font-size: 22px; }
+.recommendation-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+#recommendationButton {
+  width: 100%;
+  height: 46px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 14px;
+  color: #050505;
+  background: var(--gymfit-green);
+  font-weight: 900;
+}
+
+#recommendationButton:disabled,
+.recommendation-actions button:disabled { opacity: 0.55; }
+.recommendation-card .recommendation-status {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  text-align: center;
+}
+
+.recommendation-result {
+  margin-top: 16px;
+  padding: 20px;
+  background: #181818;
+  border: 1px solid var(--routine-border);
+  border-radius: 22px;
+}
+
+.recommendation-result-heading,
+.recommendation-exercise-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.recommendation-result-heading h2 { margin: 4px 0 0; font-size: 20px; }
+#recommendationResultClose {
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  background: #292929;
+  border: 0;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+#recommendationSummary {
+  margin-top: 16px;
+  padding: 13px;
+  background: #222;
+  border-radius: 14px;
+}
+
+#recommendationSummary p, #recommendationSummary span { margin: 0; font-size: 12px; }
+#recommendationSummary span {
+  display: block;
+  margin-top: 5px;
+  color: var(--routine-muted);
+}
+
+.recommendation-days { display: grid; gap: 14px; margin-top: 18px; }
+.recommendation-day h3 {
+  margin: 0 0 9px;
+  color: var(--gymfit-green);
+  font-size: 13px;
+}
+
+.recommendation-exercise { padding: 14px; background: #232323; border-radius: 14px; }
+.recommendation-exercise + .recommendation-exercise { margin-top: 8px; }
+.recommendation-exercise-heading strong { font-size: 15px; }
+.adjustment-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  color: #c9ff83;
+  background: rgba(168, 255, 53, 0.12);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.adjustment-posture_correction,
+.adjustment-performance_down,
+.adjustment-repeated_feedback {
+  color: #ffd58a;
+  background: rgba(255, 174, 35, 0.13);
+}
+
+.recommendation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.recommendation-meta span {
+  padding: 5px 7px;
+  color: rgba(255, 255, 255, 0.62);
+  background: #171717;
+  border-radius: 8px;
+  font-size: 9px;
+}
+
+.recommendation-exercise p {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.recommendation-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.recommendation-actions button {
+  min-height: 44px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.recommendation-secondary {
+  color: #fff;
+  background: #292929;
+  border: 1px solid var(--routine-border);
+}
+.recommendation-primary { color: #050505; background: var(--gymfit-green); border: 0; }
+.recommendation-result-error { color: #ff8f8f; font-size: 12px; }
+
+@media (max-width: 390px) {
+  .routine-container { padding-right: 16px; padding-left: 16px; }
+  .recommendation-card, .recommendation-result { padding: 17px; }
+}
+
 .routine-heading {
   margin-top: 32px;
   display: flex;

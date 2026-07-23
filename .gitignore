@@ -76,3 +76,5 @@ gymfit_before_*.sql
 
 backups/
 *.sql
+!migrations/20260723_add_routine_recommendation.sql
+!migrations/20260723_add_routine_recommendation_rollback.sql

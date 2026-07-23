@@ -50,6 +50,7 @@ from backend.routers.pt_assignment import router as pt_assignment_router
 from backend.routers.pt_feedback import router as pt_feedback_router
 from backend.routers.pt_schedule import router as pt_schedule_router
 from backend.routers.workout_session import router as workout_session_router
+from backend.routers.routine import router as routine_router
 
 # 모든 모델을 SQLAlchemy에 등록
 import backend.models
@@ -101,6 +102,7 @@ app.include_router(pt_assignment_router)
 app.include_router(pt_feedback_router)
 app.include_router(pt_schedule_router)
 app.include_router(workout_session_router)
+app.include_router(routine_router)
 
 # frontend 폴더 전체를 /static 경로로 연결
 app.mount(

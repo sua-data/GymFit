@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    String,
     UniqueConstraint,
     func,
 )
@@ -142,4 +143,22 @@ class WorkoutPlan(Base):
         back_populates="workout_plan",
         cascade="all, delete-orphan",
         order_by="WorkoutPlanSet.set_order",
+    )
+
+    recommendation_item_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey(
+            "routine_recommendation_item.recommendation_item_id",
+            ondelete="SET NULL",
+            onupdate="CASCADE",
+        ),
+        nullable=True,
+        unique=True,
+    )
+
+    plan_source: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="MANUAL",
+        server_default="MANUAL",
     )
