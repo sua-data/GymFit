@@ -19,27 +19,20 @@ ENV/
 !.env.example
 
 # =========================
-# IDE / 에디터
+# IDE / 운영체제
 # =========================
 .vscode/
 .idea/
-
-# =========================
-# 운영체제
-# =========================
 .DS_Store
 Thumbs.db
 desktop.ini
 
 # =========================
-# 로그
+# 로그 / 테스트 캐시
 # =========================
 *.log
 logs/
 
-# =========================
-# 테스트 / 캐시
-# =========================
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -69,12 +62,15 @@ results/*
 *.temp
 ~$*
 
+# =========================
+# DB 백업 파일
+# =========================
+backup/
+backups/
+
+gymfit_latest.sql
+gymfit_before_*.sql
 *_backup_*.sql
+
 *.dump
 *.bak
-gymfit_before_*.sql
-
-backups/
-*.sql
-!migrations/20260723_add_routine_recommendation.sql
-!migrations/20260723_add_routine_recommendation_rollback.sql
