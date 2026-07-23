@@ -829,6 +829,7 @@ coachingButton.addEventListener(
     }
 
     coachingButton.setAttribute("aria-busy", "true");
+    delete coachingButton.dataset.coachingQuery;
 
     try {
       const response = await fetch(
@@ -848,8 +849,16 @@ coachingButton.addEventListener(
 
         if (coachingPlans.length === 1) {
           saveCoachingPlan(coachingPlans[0]);
+          const plan = coachingPlans[0];
+          const params = new URLSearchParams({
+            exercise_code: String(plan.exercise_code || ""),
+            reps: String(Number(plan.sets?.[0]?.repetition_count || 0)),
+            sets: String(Number(plan.sets?.length || 0)),
+          });
+          coachingButton.dataset.coachingQuery = params.toString();
         } else {
           clearCoachingPlan();
+          delete coachingButton.dataset.coachingQuery;
         }
       } else {
         clearCoachingPlan();
@@ -859,7 +868,8 @@ coachingButton.addEventListener(
       clearCoachingPlan();
     } finally {
       coachingButton.removeAttribute("aria-busy");
-      window.location.href = "/coaching";
+      const query = coachingButton.dataset.coachingQuery;
+      window.location.href = query ? `/coaching?${query}` : "/coaching";
     }
   }
 );

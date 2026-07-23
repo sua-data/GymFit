@@ -161,6 +161,7 @@ const resultDashboardButton =
   document.querySelector("#resultDashboardButton");
 const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
 const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
+const poseInitialNotice = document.querySelector("#poseInitialNotice");
 
 
 let selectedExerciseCode =
@@ -423,7 +424,7 @@ function setOverlayFeedback(text) {
 }
 
 function getMovementCue(status) {
-  if (!status?.stage) {
+  if (!status?.stage || status.stage === "UNKNOWN") {
     return "준비";
   }
 
@@ -805,6 +806,10 @@ function selectExerciseTab(exerciseCode) {
   });
   selectedExerciseCode = targetTab.dataset.exerciseCode;
   selectedExerciseName = targetTab.dataset.exerciseName;
+  const analyzer = getExerciseAnalyzer(selectedExerciseCode);
+  if (poseInitialNotice) {
+    poseInitialNotice.hidden = !analyzer?.initialTest;
+  }
   return true;
 }
 
@@ -841,6 +846,12 @@ async function changeSelectedExercise(exerciseCode) {
   coachingModeLoading.hidden = false;
   coachingModeLoading.textContent =
     `${selectedExerciseName}의 오늘 계획을 확인하고 있습니다.`;
+
+  try {
+    await resetCurrentExerciseAnalyzer();
+  } catch (error) {
+    console.error(`${selectedExerciseName} 상태 초기화 실패:`, error);
+  }
 
   const result = await fetchTodayCoachingPlans();
   if (requestId !== coachingModeRequestId) {
@@ -2207,6 +2218,16 @@ async function initializeCoachingTargets() {
   const requestedExerciseCode = String(
     params.get("exercise_code") || ""
   ).toUpperCase();
+  const requestedReps = Number(params.get("reps"));
+  const requestedSets = Number(params.get("sets"));
+  const hasRequestedFreeTarget = (
+    Number.isInteger(requestedReps)
+    && requestedReps >= 1
+    && requestedReps <= 100
+    && Number.isInteger(requestedSets)
+    && requestedSets >= 1
+    && requestedSets <= 20
+  );
   const requestedAssignmentId = Number(params.get("assignment_id"));
   const isPtAssignmentRequest = params.get("source") === "PT_ASSIGNMENT"
     && Number.isInteger(requestedAssignmentId)
@@ -2287,7 +2308,21 @@ async function initializeCoachingTargets() {
   selectExerciseTab(initialExerciseCode);
 
   const todayPlanResult = await fetchTodayCoachingPlans();
-  applySelectedExerciseMode();
+  if (hasRequestedFreeTarget && !validSavedPlan) {
+    freeCoachingRows = Array.from(
+      { length: requestedSets },
+      (_, index) => ({
+        set_order: index + 1,
+        repetition_count: requestedReps,
+        weight_kg: 0,
+      })
+    );
+    saveFreeCoachingSets();
+    clearCoachingPlan();
+    prepareFreeCoaching();
+  } else {
+    applySelectedExerciseMode();
+  }
 
   if (todayPlanResult === "error") {
     setSettingsMessage(

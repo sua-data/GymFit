@@ -1,10 +1,24 @@
+from datetime import datetime
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import delete, select
+from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend.database import get_db
-from backend.models import Gym, MemberGoal, MemberProfile, User, UserGym
+from backend.models import (
+    Gym,
+    MemberGoal,
+    MemberProfile,
+    PtSchedule,
+    TrainerMember,
+    User,
+    UserGym,
+)
+from backend.routers.pt import get_current_user
+from backend.services.password_service import hash_password, verify_password
 from backend.services.pt_service import (
     get_pending_pt_request_count,
     has_active_trainer,
@@ -12,6 +26,7 @@ from backend.services.pt_service import (
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+KST = ZoneInfo("Asia/Seoul")
 
 GOAL_NAMES = {
     "WEIGHT_LOSS": "체중 감량",
@@ -89,6 +104,7 @@ def serialize_user(user: User, db: Session) -> dict:
         "account_type": user.account_type,
         "name": user.name,
         "email": user.email,
+        "login_provider": user.login_provider,
         "exercise_level": profile.exercise_level if profile else None,
         "weekly_workout_days": profile.weekly_workout_days if profile else None,
         "goals": [
@@ -223,3 +239,168 @@ def update_user_gym(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="헬스장 연결을 변경하지 못했습니다.",
         ) from error
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=8, max_length=100)
+    new_password: str = Field(min_length=8, max_length=100)
+    new_password_confirm: str = Field(min_length=8, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_new_password_confirmation(self):
+        if self.new_password != self.new_password_confirm:
+            raise ValueError("새 비밀번호가 일치하지 않습니다.")
+        return self
+
+
+class WithdrawalRequest(BaseModel):
+    confirmation_phrase: str = Field(min_length=1, max_length=20)
+    current_password: str | None = Field(default=None, max_length=100)
+
+    @field_validator("confirmation_phrase")
+    @classmethod
+    def validate_confirmation_phrase(cls, value: str) -> str:
+        cleaned = value.strip()
+        if cleaned != "회원 탈퇴":
+            raise ValueError("확인 문구에 '회원 탈퇴'를 정확히 입력해 주세요.")
+        return cleaned
+
+
+@router.patch("/me/password")
+def change_my_password(
+    payload: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = db.scalar(
+        select(User)
+        .where(
+            User.user_id == current_user.user_id,
+            User.is_active.is_(True),
+        )
+        .with_for_update()
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자 정보를 찾을 수 없습니다.",
+        )
+    if user.login_provider != "LOCAL" or not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google 로그인 계정은 비밀번호를 변경할 수 없습니다.",
+        )
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 비밀번호가 올바르지 않습니다.",
+        )
+    if verify_password(payload.new_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="새 비밀번호는 현재 비밀번호와 달라야 합니다.",
+        )
+
+    try:
+        user.password_hash = hash_password(payload.new_password)
+        user.must_change_password = False
+        user.temporary_password_expires_at = None
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="비밀번호를 변경하지 못했습니다.",
+        ) from error
+
+    return {"message": "비밀번호가 변경되었습니다."}
+
+
+@router.post("/me/withdraw")
+def withdraw_my_account(
+    payload: WithdrawalRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = db.scalar(
+        select(User)
+        .where(
+            User.user_id == current_user.user_id,
+            User.is_active.is_(True),
+        )
+        .with_for_update()
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자 정보를 찾을 수 없습니다.",
+        )
+
+    if user.login_provider == "LOCAL":
+        if not payload.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="현재 비밀번호를 입력해 주세요.",
+            )
+        if not user.password_hash or not verify_password(
+            payload.current_password,
+            user.password_hash,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="현재 비밀번호가 올바르지 않습니다.",
+            )
+
+    now = datetime.now(KST).replace(tzinfo=None)
+    relationships = db.scalars(
+        select(TrainerMember)
+        .where(
+            or_(
+                TrainerMember.trainer_id == user.user_id,
+                TrainerMember.member_id == user.user_id,
+            ),
+            TrainerMember.status.in_(("PENDING", "ACTIVE")),
+        )
+        .with_for_update()
+    ).all()
+    schedules = db.scalars(
+        select(PtSchedule)
+        .where(
+            or_(
+                PtSchedule.trainer_id == user.user_id,
+                PtSchedule.member_id == user.user_id,
+            ),
+            PtSchedule.status == "SCHEDULED",
+        )
+        .with_for_update()
+    ).all()
+
+    try:
+        for relationship in relationships:
+            relationship.status = "ENDED"
+            relationship.ended_at = now.date()
+        for schedule in schedules:
+            schedule.status = "CANCELLED"
+
+        anonymized_key = f"{user.user_id}-{uuid4().hex}"
+        user.email = f"deleted+{anonymized_key}@deleted.gymfit.local"
+        user.name = "탈퇴 회원"
+        user.google_sub = None
+        user.password_hash = None
+        user.must_change_password = False
+        user.temporary_password_expires_at = None
+        user.last_login_at = None
+        user.is_active = False
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="회원 탈퇴를 처리하지 못했습니다.",
+        ) from error
+
+    return {
+        "message": "회원 탈퇴가 완료되었습니다.",
+        "cancelled_schedule_count": len(schedules),
+        "ended_relationship_count": len(relationships),
+    }

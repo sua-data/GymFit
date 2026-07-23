@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import cv2
@@ -13,10 +14,9 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.squat_pose import SquatAnalyzer
 from backend.exercise_pose import (
-    PushUpAnalyzer,
-    ShoulderPressAnalyzer,
+    create_pose_analyzers,
+    get_pose_analyzer,
 )
 
 from backend.database import (
@@ -63,12 +63,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
-squat_analyzer = SquatAnalyzer()
-exercise_analyzers = {
-    "SQUAT": squat_analyzer,
-    "PUSHUP": PushUpAnalyzer(squat_analyzer.model),
-    "SHOULDER_PRESS": ShoulderPressAnalyzer(squat_analyzer.model),
-}
+exercise_analyzers = create_pose_analyzers()
+squat_analyzer = exercise_analyzers["SQUAT"]
 
 COACHING_PATH_TO_CODE = {
     "squat": "SQUAT",
@@ -296,12 +292,13 @@ def get_exercise_analyzer(exercise_path: str):
     exercise_code = COACHING_PATH_TO_CODE.get(
         exercise_path.strip().lower()
     )
-    analyzer = exercise_analyzers.get(exercise_code)
-    if analyzer is None:
+    try:
+        analyzer = get_pose_analyzer(exercise_analyzers, exercise_code)
+    except KeyError:
         raise HTTPException(
             status_code=404,
             detail="지원하지 않는 코칭 운동입니다.",
-        )
+        ) from None
     return exercise_code, analyzer
 
 
@@ -327,12 +324,48 @@ def normalize_analysis_status(exercise_code: str, status: dict):
                 posture_score -= 10
         posture_score = max(0, min(100, posture_score))
 
-    return {
+    normalized = {
         "exercise_code": exercise_code,
         "posture_score": posture_score or 0,
         "landmarks_detected": bool(status.get("pose_valid")),
+        "is_visible": bool(status.get("pose_valid")),
         **status,
     }
+    if exercise_code == "SQUAT":
+        normalized.setdefault(
+            "angles",
+            {
+                "left_knee": status.get("left_angle"),
+                "right_knee": status.get("right_angle"),
+                "knee": status.get("average_angle"),
+                "torso": status.get("torso_angle"),
+            },
+        )
+        if os.getenv("POSE_DEBUG", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }:
+            selected_side = (
+                "BOTH"
+                if status.get("left_angle") is not None
+                and status.get("right_angle") is not None
+                else "LEFT"
+                if status.get("left_angle") is not None
+                else "RIGHT"
+                if status.get("right_angle") is not None
+                else None
+            )
+            normalized.setdefault(
+                "debug",
+                {
+                    "selected_side": selected_side,
+                    "stable_frames": max(
+                        squat_analyzer.down_frames,
+                        squat_analyzer.up_frames,
+                    ),
+                    "missing_frames": squat_analyzer.missing_frames,
+                },
+            )
+    return normalized
 
 
 async def decode_uploaded_image(image: UploadFile):

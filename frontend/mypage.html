@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/mypage.css?v=6">
-  <script src="/static/js/common_layout.js?v=12" defer></script>
+  <link rel="stylesheet" href="/static/css/mypage.css?v=7">
+  <script src="/static/js/common_layout.js?v=13" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/gym_search.js?v=1" defer></script>
-  <script src="/static/js/mypage.js?v=6" defer></script>
+  <script src="/static/js/mypage.js?v=7" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -77,7 +77,7 @@
         </section>
 
         <section class="mypage-menu" aria-labelledby="accountMenuTitle">
-          <div class="section-heading"><span>ACCOUNT</span><h2 id="accountMenuTitle">계정 및 설정</h2></div>
+          <div class="section-heading"><span>ACCOUNT</span><h2 id="accountMenuTitle">계정 관리</h2></div>
           <div id="commonMenuList" class="menu-list"></div>
         </section>
       </div>
@@ -105,6 +105,44 @@
         <h2 id="logoutTitle">로그아웃하시겠어요?</h2>
         <p>현재 기기의 로그인 정보와 코칭 임시 설정이 정리됩니다.</p>
         <div><button type="button" id="logoutCancelButton">취소</button><button type="button" id="logoutConfirmButton">로그아웃</button></div>
+      </section>
+    </div>
+
+    <div class="sheet-overlay" id="passwordChangeOverlay" hidden>
+      <button class="sheet-backdrop" id="passwordChangeBackdrop" type="button" aria-label="비밀번호 변경 닫기"></button>
+      <section class="profile-sheet account-sheet" role="dialog" aria-modal="true" aria-labelledby="passwordChangeTitle">
+        <header>
+          <div><span>SECURITY</span><h2 id="passwordChangeTitle">비밀번호 변경</h2></div>
+          <button type="button" class="sheet-icon-close" id="passwordChangeClose" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button>
+        </header>
+        <p class="account-provider-notice" id="passwordUnavailable" hidden>Google 로그인 계정은 GYMFIT 비밀번호를 사용하지 않습니다.</p>
+        <form id="passwordChangeForm" novalidate>
+          <label>현재 비밀번호<input id="currentPassword" type="password" minlength="8" maxlength="100" autocomplete="current-password" required></label>
+          <label>새 비밀번호<input id="newPassword" type="password" minlength="8" maxlength="100" autocomplete="new-password" required><small>8자 이상 100자 이하로 입력해 주세요.</small></label>
+          <label>새 비밀번호 확인<input id="newPasswordConfirm" type="password" minlength="8" maxlength="100" autocomplete="new-password" required></label>
+          <p class="form-message" id="passwordChangeMessage" role="alert" hidden></p>
+          <button type="submit" class="save-profile-button" id="passwordChangeButton">비밀번호 변경</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="sheet-overlay" id="withdrawOverlay" hidden>
+      <button class="sheet-backdrop" id="withdrawBackdrop" type="button" aria-label="회원 탈퇴 닫기"></button>
+      <section class="profile-sheet account-sheet withdraw-sheet" role="dialog" aria-modal="true" aria-labelledby="withdrawTitle">
+        <header>
+          <div><span>DELETE ACCOUNT</span><h2 id="withdrawTitle">회원 탈퇴</h2></div>
+          <button type="button" class="sheet-icon-close" id="withdrawClose" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button>
+        </header>
+        <div class="withdraw-warning">
+          <strong>탈퇴 전에 확인해 주세요.</strong>
+          <p>예정된 PT 일정이 취소되고 트레이너 연결이 종료됩니다. 운동 및 PT 기록은 서비스 무결성을 위해 보관됩니다.</p>
+        </div>
+        <form id="withdrawForm" novalidate>
+          <label id="withdrawPasswordField">현재 비밀번호<input id="withdrawPassword" type="password" minlength="8" maxlength="100" autocomplete="current-password"></label>
+          <label>확인 문구<small><b>회원 탈퇴</b>를 정확히 입력해 주세요.</small><input id="withdrawPhrase" maxlength="20" autocomplete="off" required></label>
+          <p class="form-message" id="withdrawMessage" role="alert" hidden></p>
+          <button type="submit" class="withdraw-submit-button" id="withdrawButton">회원 탈퇴</button>
+        </form>
       </section>
     </div>
 

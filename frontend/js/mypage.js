@@ -32,10 +32,19 @@ const profileSaveButton = document.querySelector("#profileSaveButton");
 const profileWeeklySelect = document.querySelector("#profileWeeklySelect");
 const logoutOverlay = document.querySelector("#logoutOverlay");
 const mypageToast = document.querySelector("#mypageToast");
+const passwordChangeOverlay = document.querySelector("#passwordChangeOverlay");
+const passwordChangeForm = document.querySelector("#passwordChangeForm");
+const passwordChangeMessage = document.querySelector("#passwordChangeMessage");
+const passwordChangeButton = document.querySelector("#passwordChangeButton");
+const withdrawOverlay = document.querySelector("#withdrawOverlay");
+const withdrawForm = document.querySelector("#withdrawForm");
+const withdrawMessage = document.querySelector("#withdrawMessage");
+const withdrawButton = document.querySelector("#withdrawButton");
 
 let currentUser = null;
 let trainerActivity = null;
 let isSaving = false;
+let isAccountSubmitting = false;
 let toastTimer = null;
 const gymSearchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
@@ -116,16 +125,13 @@ function createMenuItem(label, action, comingSoon = false, danger = false) {
   return button;
 }
 
-function comingSoon() { showToast("준비 중인 기능입니다."); }
-
 function renderMenus() {
   const commonMenuList = document.querySelector("#commonMenuList");
   commonMenuList.replaceChildren(
     createMenuItem("프로필 수정", openEditSheet),
-    createMenuItem("알림 설정", comingSoon, true),
-    createMenuItem("비밀번호 변경", comingSoon, true),
+    createMenuItem("비밀번호 변경", openPasswordChangeSheet),
     createMenuItem("로그아웃", openLogoutDialog, false, true),
-    createMenuItem("회원 탈퇴", comingSoon, true, true),
+    createMenuItem("회원 탈퇴", openWithdrawSheet, false, true),
   );
 }
 
@@ -318,6 +324,7 @@ function updateSessionUser(user) {
     account_type: user.account_type,
     name: user.name,
     email: user.email,
+    login_provider: user.login_provider,
     exercise_level: user.exercise_level,
     goals: user.goals,
     weekly_workout_days: user.weekly_workout_days,
@@ -389,6 +396,134 @@ function closeEditSheetAfterSave() {
 
 function openLogoutDialog() { logoutOverlay.hidden = false; document.body.classList.add("modal-open"); }
 function closeLogoutDialog() { logoutOverlay.hidden = true; document.body.classList.remove("modal-open"); }
+function openPasswordChangeSheet() {
+  if (!currentUser) return;
+  passwordChangeForm.reset();
+  passwordChangeMessage.hidden = true;
+  const isLocal = currentUser.login_provider === "LOCAL";
+  document.querySelector("#passwordUnavailable").hidden = isLocal;
+  passwordChangeForm.hidden = !isLocal;
+  passwordChangeOverlay.hidden = false;
+  document.body.classList.add("modal-open");
+  if (isLocal) document.querySelector("#currentPassword").focus();
+}
+function closePasswordChangeSheet() {
+  if (isAccountSubmitting) return;
+  passwordChangeOverlay.hidden = true;
+  passwordChangeForm.reset();
+  passwordChangeMessage.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+async function submitPasswordChange(event) {
+  event.preventDefault();
+  if (isAccountSubmitting || currentUser?.login_provider !== "LOCAL") return;
+  const currentPassword = document.querySelector("#currentPassword").value;
+  const newPassword = document.querySelector("#newPassword").value;
+  const newPasswordConfirm = document.querySelector("#newPasswordConfirm").value;
+  if (newPassword !== newPasswordConfirm) {
+    passwordChangeMessage.textContent = "새 비밀번호가 일치하지 않습니다.";
+    passwordChangeMessage.hidden = false;
+    document.querySelector("#newPasswordConfirm").focus();
+    return;
+  }
+  if (currentPassword === newPassword) {
+    passwordChangeMessage.textContent = "새 비밀번호는 현재 비밀번호와 달라야 합니다.";
+    passwordChangeMessage.hidden = false;
+    document.querySelector("#newPassword").focus();
+    return;
+  }
+  if (!passwordChangeForm.reportValidity()) return;
+  isAccountSubmitting = true;
+  passwordChangeButton.disabled = true;
+  passwordChangeButton.textContent = "변경 중...";
+  passwordChangeMessage.hidden = true;
+  try {
+    await requestJson("/api/users/me/password", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": String(currentUser.user_id),
+      },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirm: newPasswordConfirm,
+      }),
+    });
+    isAccountSubmitting = false;
+    closePasswordChangeSheet();
+    showToast("비밀번호를 변경했습니다.");
+  } catch (error) {
+    passwordChangeMessage.textContent = getErrorMessage(error, "비밀번호를 변경하지 못했습니다.");
+    passwordChangeMessage.hidden = false;
+  } finally {
+    isAccountSubmitting = false;
+    passwordChangeButton.disabled = false;
+    passwordChangeButton.textContent = "비밀번호 변경";
+  }
+}
+function openWithdrawSheet() {
+  if (!currentUser) return;
+  withdrawForm.reset();
+  withdrawMessage.hidden = true;
+  const needsPassword = currentUser.login_provider === "LOCAL";
+  document.querySelector("#withdrawPasswordField").hidden = !needsPassword;
+  document.querySelector("#withdrawPassword").required = needsPassword;
+  withdrawOverlay.hidden = false;
+  document.body.classList.add("modal-open");
+  (needsPassword
+    ? document.querySelector("#withdrawPassword")
+    : document.querySelector("#withdrawPhrase")).focus();
+}
+function closeWithdrawSheet() {
+  if (isAccountSubmitting) return;
+  withdrawOverlay.hidden = true;
+  withdrawForm.reset();
+  withdrawMessage.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+async function submitWithdrawal(event) {
+  event.preventDefault();
+  if (isAccountSubmitting || !currentUser) return;
+  const phrase = document.querySelector("#withdrawPhrase").value.trim();
+  if (phrase !== "회원 탈퇴") {
+    withdrawMessage.textContent = "확인 문구에 '회원 탈퇴'를 정확히 입력해 주세요.";
+    withdrawMessage.hidden = false;
+    document.querySelector("#withdrawPhrase").focus();
+    return;
+  }
+  if (!withdrawForm.reportValidity()) return;
+  isAccountSubmitting = true;
+  withdrawButton.disabled = true;
+  withdrawButton.textContent = "탈퇴 처리 중...";
+  withdrawMessage.hidden = true;
+  try {
+    await requestJson("/api/users/me/withdraw", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": String(currentUser.user_id),
+      },
+      body: JSON.stringify({
+        confirmation_phrase: phrase,
+        current_password: currentUser.login_provider === "LOCAL"
+          ? document.querySelector("#withdrawPassword").value
+          : null,
+      }),
+    });
+    window.speechSynthesis?.cancel();
+    sessionStorage.clear();
+    sessionStorage.setItem("gymfitAccountWithdrawn", "1");
+    window.history.replaceState(null, "", "/login");
+    window.location.replace("/login");
+  } catch (error) {
+    withdrawMessage.textContent = getErrorMessage(error, "회원 탈퇴를 처리하지 못했습니다.");
+    withdrawMessage.hidden = false;
+    isAccountSubmitting = false;
+    withdrawButton.disabled = false;
+    withdrawButton.textContent = "회원 탈퇴";
+  }
+}
 function openGymSheet() {
   if (!currentUser || (currentUser.account_type === "TRAINER" && currentUser.trainer_approval_status === "APPROVED")) return;
   document.querySelector("#gymEditOverlay").hidden = false;
@@ -440,6 +575,12 @@ document.querySelector("#profileEditBackdrop").addEventListener("click", closeEd
 profileEditForm.addEventListener("submit", submitProfile);
 document.querySelector("#logoutCancelButton").addEventListener("click", closeLogoutDialog);
 document.querySelector("#logoutConfirmButton").addEventListener("click", logout);
+document.querySelector("#passwordChangeClose").addEventListener("click", closePasswordChangeSheet);
+document.querySelector("#passwordChangeBackdrop").addEventListener("click", closePasswordChangeSheet);
+passwordChangeForm.addEventListener("submit", submitPasswordChange);
+document.querySelector("#withdrawClose").addEventListener("click", closeWithdrawSheet);
+document.querySelector("#withdrawBackdrop").addEventListener("click", closeWithdrawSheet);
+withdrawForm.addEventListener("submit", submitWithdrawal);
 document.querySelector("#openGymSheetButton").addEventListener("click", openGymSheet);
 document.querySelector("#gymEditClose").addEventListener("click", closeGymSheet);
 document.querySelector("#gymEditBackdrop").addEventListener("click", closeGymSheet);
@@ -448,6 +589,8 @@ document.querySelector("#disconnectGymButton").addEventListener("click", disconn
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (!logoutOverlay.hidden) closeLogoutDialog();
+  else if (!withdrawOverlay.hidden) closeWithdrawSheet();
+  else if (!passwordChangeOverlay.hidden) closePasswordChangeSheet();
   else if (!profileEditOverlay.hidden) closeEditSheet();
 });
 

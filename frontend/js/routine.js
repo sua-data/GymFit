@@ -661,7 +661,18 @@ async function deletePlan(userId, workoutPlanId) {
 
 function moveToCoaching(item) {
   saveCoachingPlan(item);
-  window.location.href = "/coaching";
+  const repetitions = Number(
+    item.sets?.[0]?.repetition_count
+    ?? item.repetition_count
+    ?? 0
+  );
+  const sets = Number(item.sets?.length ?? item.set_count ?? 0);
+  const params = new URLSearchParams({
+    exercise_code: String(item.exercise_code || ""),
+    reps: String(repetitions),
+    sets: String(sets),
+  });
+  window.location.href = `/coaching?${params.toString()}`;
 }
 
 function getButtonState(item) {

@@ -71,6 +71,19 @@ function getUserRoleLabel(user) {
 
 window.getUserRoleLabel = getUserRoleLabel;
 
+window.addEventListener("pageshow", () => {
+  const withdrawn = sessionStorage.getItem("gymfitAccountWithdrawn") === "1";
+  if (
+    withdrawn
+    && !getLoginUser()
+    && !["/", "/login", "/signup", "/signup/type", "/find-password"].includes(
+      window.location.pathname
+    )
+  ) {
+    window.location.replace("/login");
+  }
+});
+
 
 function updateGymfitStoredUser(profile) {
   const previousUser = getLoginUser() || {};
@@ -91,6 +104,7 @@ function updateGymfitStoredUser(profile) {
 
   delete nextUser.hasActiveTrainer;
   sessionStorage.setItem("gymfitUser", JSON.stringify(nextUser));
+  sessionStorage.removeItem("gymfitAccountWithdrawn");
   return nextUser;
 }
 
