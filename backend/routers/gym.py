@@ -23,6 +23,9 @@ def serialize_gym(gym) -> dict:
         "gym_name": gym.gym_name,
         "road_address": gym.road_address,
         "address": gym.address,
+        "phone": gym.phone,
+        "place_url": gym.place_url,
+        "category_name": gym.category_name,
         "latitude": float(gym.latitude) if gym.latitude is not None else None,
         "longitude": float(gym.longitude) if gym.longitude is not None else None,
     }
@@ -65,10 +68,19 @@ def search_gyms(query: str = Query(min_length=2, max_length=100)) -> dict:
             "gym_name": name,
             "road_address": road_address or address,
             "address": address or None,
+            "phone": str(item.get("phone") or "").strip() or None,
+            "place_url": str(item.get("place_url") or "").strip() or None,
+            "category_name": str(item.get("category_name") or "").strip() or None,
             "latitude": float(item["y"]) if item.get("y") else None,
             "longitude": float(item["x"]) if item.get("x") else None,
         })
     return {"items": items}
+
+
+@router.get("/map-config")
+def read_kakao_map_config() -> dict:
+    """카카오 지도 JavaScript 키를 정적 파일에 하드코딩하지 않는다."""
+    return {"app_key": os.getenv("KAKAO_JAVASCRIPT_KEY", "").strip()}
 
 
 @router.post("/select")

@@ -9,7 +9,7 @@ const LEVEL_LABELS = { BEGINNER: "초급", INTERMEDIATE: "중급", ADVANCED: "�
 function installExtendedProfileUI() {
   document.querySelector("#profileLevel")?.closest("div")?.insertAdjacentHTML("afterend", '<div id="profileWeeklyRow"><dt>주간 운동 목표</dt><dd id="profileWeekly">-</dd></div>');
   document.querySelector("#profileLevelSelect")?.closest("label")?.insertAdjacentHTML("afterend", '<label>주간 운동 횟수<select id="profileWeeklySelect" data-gymfit-select required><option value="">선택</option><option value="1">주 1회</option><option value="2">주 2회</option><option value="3">주 3회</option><option value="4">주 4회</option><option value="5">주 5회</option><option value="6">주 6회</option><option value="7">매일</option></select></label>');
-  document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">변경</button></div><button type="button" class="disconnect-gym-button" id="disconnectGymButton" hidden>연결 해제</button><p class="gym-policy-message" id="gymPolicyMessage" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p></section>');
+  document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">등록</button></div><a class="gym-detail-link" id="gymDetailLink" href="/my-gym" hidden>상세보기</a><p class="gym-policy-message" id="gymPolicyMessage" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p></section>');
   document.querySelector("#profileEditOverlay")?.insertAdjacentHTML("afterend", '<div class="sheet-overlay" id="gymEditOverlay" hidden><button class="sheet-backdrop" id="gymEditBackdrop" type="button" aria-label="헬스장 변경 닫기"></button><section class="profile-sheet" role="dialog" aria-modal="true"><header><div><span>GYM SEARCH</span><h2>헬스장 변경</h2></div><button type="button" id="gymEditClose" aria-label="닫기">×</button></header><div class="gym-search" data-gym-search><div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div><p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p><div class="gym-search-results" data-gym-results hidden></div><div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div></div><p class="form-message" id="gymSaveMessage" hidden></p><button type="button" class="save-profile-button" id="gymSaveButton">선택한 헬스장 저장</button></section></div>');
 }
 
@@ -197,7 +197,8 @@ function renderFitnessProfile(user) {
   document.querySelector("#currentGymAddress").textContent = currentUser.gym_road_address || (currentUser.gym_name ? "기존 문자열 헬스장 정보" : "헬스장을 연결하면 이곳에 표시됩니다.");
   const gymLocked = currentUser.account_type === "TRAINER" && currentUser.trainer_approval_status === "APPROVED";
   document.querySelector("#openGymSheetButton").disabled = gymLocked;
-  document.querySelector("#disconnectGymButton").hidden = !currentUser.gym_id || gymLocked;
+  document.querySelector("#openGymSheetButton").hidden = Boolean(currentUser.gym_id);
+  document.querySelector("#gymDetailLink").hidden = !currentUser.gym_id;
   document.querySelector("#gymPolicyMessage").hidden = !gymLocked;
   const dateValue = currentUser.last_login_at || currentUser.created_at;
   document.querySelector("#profileDateLabel").textContent = currentUser.last_login_at ? "마지막 로그인" : "가입일";
@@ -541,25 +542,18 @@ async function saveSelectedGym() {
   if (!selected) { message.textContent = "검색 결과에서 헬스장을 선택해 주세요."; message.hidden = false; return; }
   button.disabled = true;
   try {
-    const gym = await requestJson("/api/gyms/select", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(selected) });
-    currentUser = await requestJson(`/api/users/${currentUser.user_id}/gym`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gym_id: gym.gym_id }) });
-    updateSessionUser(currentUser);
-    renderProfile();
+    await requestJson("/api/users/me/gym", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-User-Id": String(currentUser.user_id) },
+      body: JSON.stringify(selected),
+    });
     closeGymSheet();
+    await loadProfile();
     showToast("헬스장을 변경했습니다.");
   } catch (error) {
     message.textContent = getErrorMessage(error, "헬스장 변경에 실패했습니다.");
     message.hidden = false;
   } finally { button.disabled = false; }
-}
-async function disconnectGym() {
-  if (!currentUser?.gym_id || !window.confirm("헬스장 연결을 해제하시겠어요?")) return;
-  try {
-    currentUser = await requestJson(`/api/users/${currentUser.user_id}/gym`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gym_id: null }) });
-    updateSessionUser(currentUser);
-    renderProfile();
-    showToast("헬스장 연결을 해제했습니다.");
-  } catch (error) { showToast(getErrorMessage(error, "연결 해제에 실패했습니다.")); }
 }
 function logout() {
   ["gymfitUser", "gymfitCoachingPlan", "gymfitCoachingRestSeconds", "gymfitFreeCoachingSets", "gymfitCoachingVoiceEnabled"].forEach((key) => sessionStorage.removeItem(key));
@@ -585,7 +579,6 @@ document.querySelector("#openGymSheetButton").addEventListener("click", openGymS
 document.querySelector("#gymEditClose").addEventListener("click", closeGymSheet);
 document.querySelector("#gymEditBackdrop").addEventListener("click", closeGymSheet);
 document.querySelector("#gymSaveButton").addEventListener("click", saveSelectedGym);
-document.querySelector("#disconnectGymButton").addEventListener("click", disconnectGym);
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (!logoutOverlay.hidden) closeLogoutDialog();

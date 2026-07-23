@@ -14,6 +14,9 @@ class GymSelection(BaseModel):
     gym_name: str = Field(min_length=1, max_length=150)
     road_address: str = Field(min_length=1, max_length=255)
     address: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=50)
+    place_url: str | None = Field(default=None, max_length=500)
+    category_name: str | None = Field(default=None, max_length=255)
     latitude: Decimal | None = None
     longitude: Decimal | None = None
 
@@ -33,7 +36,7 @@ class GymSelection(BaseModel):
             raise ValueError("선택한 장소 정보가 올바르지 않습니다.")
         return cleaned
 
-    @field_validator("address")
+    @field_validator("address", "phone", "place_url", "category_name")
     @classmethod
     def clean_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -62,6 +65,9 @@ def select_or_create_gym(db: Session, selection: GymSelection) -> Gym:
         gym_name=statement.inserted.gym_name,
         road_address=statement.inserted.road_address,
         address=statement.inserted.address,
+        phone=statement.inserted.phone,
+        place_url=statement.inserted.place_url,
+        category_name=statement.inserted.category_name,
         latitude=statement.inserted.latitude,
         longitude=statement.inserted.longitude,
         is_active=True,

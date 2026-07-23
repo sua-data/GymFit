@@ -18,6 +18,7 @@ from backend.models import (
     UserGym,
 )
 from backend.routers.pt import get_current_user
+from backend.services.gym_service import GymSelection, select_or_create_gym
 from backend.services.password_service import hash_password, verify_password
 from backend.services.pt_service import (
     get_pending_pt_request_count,
@@ -134,6 +135,124 @@ def serialize_user(user: User, db: Session) -> dict:
             db, user.user_id, user.account_type
         ),
     }
+
+
+def serialize_my_gym(gym: Gym | None) -> dict | None:
+    if gym is None:
+        return None
+    return {
+        "gym_id": gym.gym_id,
+        "provider": gym.provider,
+        "external_place_id": gym.external_place_id,
+        "gym_name": gym.gym_name,
+        "road_address": gym.road_address,
+        "address": gym.address,
+        "phone": gym.phone,
+        "place_url": gym.place_url,
+        "category_name": gym.category_name,
+        "latitude": float(gym.latitude) if gym.latitude is not None else None,
+        "longitude": float(gym.longitude) if gym.longitude is not None else None,
+    }
+
+
+def get_linked_gym(db: Session, user_id: int) -> Gym | None:
+    return db.scalar(
+        select(Gym)
+        .join(UserGym, UserGym.gym_id == Gym.gym_id)
+        .where(UserGym.user_id == user_id, Gym.is_active.is_(True))
+    )
+
+
+def ensure_gym_is_editable(user: User) -> None:
+    if (
+        user.account_type == "TRAINER"
+        and user.trainer_profile
+        and user.trainer_profile.approval_status == "APPROVED"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.",
+        )
+
+
+@router.get("/me/gym")
+def read_my_gym(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = get_active_user(db, current_user.user_id)
+    return {
+        "gym": serialize_my_gym(get_linked_gym(db, user.user_id)),
+        "can_edit": not (
+            user.account_type == "TRAINER"
+            and user.trainer_profile
+            and user.trainer_profile.approval_status == "APPROVED"
+        ),
+    }
+
+
+@router.patch("/me/gym")
+def replace_my_gym(
+    payload: GymSelection,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = get_active_user(db, current_user.user_id)
+    ensure_gym_is_editable(user)
+    try:
+        gym = select_or_create_gym(db, payload)
+        link = db.scalar(
+            select(UserGym)
+            .where(UserGym.user_id == user.user_id)
+            .with_for_update()
+        )
+        if link is None:
+            db.add(UserGym(user_id=user.user_id, gym_id=gym.gym_id))
+        else:
+            link.gym_id = gym.gym_id
+        if user.account_type == "TRAINER" and user.trainer_profile:
+            user.trainer_profile.gym_name = gym.gym_name
+        db.commit()
+        return {
+            "gym": serialize_my_gym(get_linked_gym(db, user.user_id)),
+            "can_edit": True,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="헬스장 정보를 변경하지 못했습니다.",
+        ) from error
+
+
+@router.delete("/me/gym")
+def disconnect_my_gym(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = get_active_user(db, current_user.user_id)
+    ensure_gym_is_editable(user)
+    try:
+        link = db.scalar(
+            select(UserGym)
+            .where(UserGym.user_id == user.user_id)
+            .with_for_update()
+        )
+        if link is not None:
+            db.delete(link)
+        if user.account_type == "TRAINER" and user.trainer_profile:
+            user.trainer_profile.gym_name = None
+        db.commit()
+        return {"gym": None, "can_edit": True}
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="헬스장 연결을 해제하지 못했습니다.",
+        ) from error
 
 
 @router.get("/{user_id}")

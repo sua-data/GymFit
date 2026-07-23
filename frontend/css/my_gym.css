@@ -1,0 +1,663 @@
+:root {
+  --gym-green: #a8ff35;
+  --gym-card: #171717;
+  --gym-muted: rgba(255, 255, 255, 0.58);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+
+  color: #ffffff;
+  background: #000000;
+
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* =========================
+   페이지
+========================= */
+
+.my-gym-page {
+  min-height: 100dvh;
+
+  padding-bottom:
+    calc(98px + env(safe-area-inset-bottom));
+
+  background:
+    radial-gradient(
+      circle at 50% 0,
+      rgba(168, 255, 53, 0.07),
+      transparent 30%
+    ),
+    #000000;
+}
+
+.my-gym-container {
+  width: 100%;
+  max-width: 430px;
+
+  margin: auto;
+
+  padding:
+    max(22px, env(safe-area-inset-top))
+    20px
+    32px;
+}
+
+/* =========================
+   로딩·오류·빈 상태
+========================= */
+
+.gym-state,
+.gym-empty {
+  margin-top: 24px;
+  padding: 32px 20px;
+
+  color: var(--gym-muted);
+  background: var(--gym-card);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+
+  text-align: center;
+}
+
+.gym-state strong {
+  display: block;
+  color: #ffffff;
+}
+
+.gym-state p {
+  font-size: 13px;
+}
+
+.gym-state button,
+.gym-empty button {
+  min-height: 46px;
+
+  padding: 0 20px;
+
+  color: #050505;
+  background: var(--gym-green);
+
+  border: 0;
+  border-radius: 13px;
+
+  font-weight: 900;
+}
+
+.gym-empty-icon {
+  width: 64px;
+  height: 64px;
+
+  display: grid;
+  place-items: center;
+
+  margin: auto;
+
+  color: #050505;
+  background: var(--gym-green);
+
+  border-radius: 50%;
+
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.gym-empty h2 {
+  margin: 18px 0 7px;
+
+  color: #ffffff;
+
+  font-size: 20px;
+}
+
+.gym-empty p {
+  margin: 0 0 20px;
+
+  font-size: 13px;
+}
+
+/* =========================
+   공통 카드
+========================= */
+
+.gym-detail-card,
+.gym-map-card,
+.gym-manage-card {
+  margin-top: 18px;
+  padding: 20px;
+
+  background: var(--gym-card);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+
+.eyebrow {
+  color: var(--gym-green);
+
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.gym-detail-card h2,
+.gym-manage-card h2 {
+  margin: 6px 0 0;
+
+  font-size: 21px;
+}
+
+.gym-detail-card p {
+  margin: 9px 0 0;
+
+  line-height: 1.55;
+}
+
+.road-address {
+  font-size: 14px;
+}
+
+.lot-address,
+.gym-category {
+  color: var(--gym-muted);
+
+  font-size: 12px;
+}
+
+/* =========================
+   지도
+========================= */
+
+.gym-map-card {
+  padding: 0;
+
+  overflow: hidden;
+}
+
+#gymMap {
+  width: 100%;
+  height: 260px;
+
+  background: #202020;
+}
+
+.map-message {
+  margin: 0;
+  padding: 16px;
+
+  color: var(--gym-muted);
+
+  font-size: 12px;
+  text-align: center;
+}
+
+/* =========================
+   빠른 작업 버튼
+========================= */
+
+.gym-actions {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 8px;
+
+  margin-top: 12px;
+}
+
+.gym-actions a,
+.gym-actions button {
+  min-width: 0;
+  min-height: 46px;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0 10px;
+
+  color: #ffffff;
+  background: #242424;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+
+  text-decoration: none;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 카카오맵 공식 가로 로고 버튼 */
+.gym-actions .kakao-map-button {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  min-height: 46px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 9px;
+
+  background: #f3f3f3;
+  border-color: #f3f3f3;
+}
+
+.gym-actions .kakao-map-button:hover {
+  background: #e9e9e9;
+  border-color: #e9e9e9;
+}
+
+.gym-actions .kakao-map-button:active {
+  background: #dddddd;
+  border-color: #dddddd;
+
+  transform: scale(0.98);
+}
+
+.kakao-map-button img {
+  display: block;
+
+  width: auto;
+  height: 21px;
+  max-width: 100%;
+
+  flex: 0 1 auto;
+
+  object-fit: contain;
+}
+
+/* =========================
+   관리 영역
+========================= */
+
+.gym-manage-card {
+  display: grid;
+
+  gap: 9px;
+}
+
+.gym-manage-card button {
+  min-height: 48px;
+
+  border: 0;
+  border-radius: 13px;
+
+  font-weight: 900;
+}
+
+.gym-manage-card .primary {
+  margin-top: 8px;
+
+  color: #050505;
+  background: var(--gym-green);
+}
+
+.gym-manage-card .danger {
+  color: #ff8b8b;
+  background: #292929;
+}
+
+.gym-manage-card p {
+  margin: 2px 0 0;
+
+  color: #ffcc78;
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* =========================
+   바텀시트
+========================= */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 200;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+
+  background: rgba(0, 0, 0, 0.74);
+
+  border: 0;
+}
+
+.gym-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  width: min(100%, 430px);
+  max-height: 88dvh;
+
+  margin: auto;
+
+  padding:
+    22px
+    20px
+    calc(24px + env(safe-area-inset-bottom));
+
+  overflow: auto;
+
+  background: #151515;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px 24px 0 0;
+}
+
+.gym-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gym-sheet header span {
+  color: var(--gym-green);
+
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.gym-sheet h2 {
+  margin: 4px 0 0;
+
+  font-size: 22px;
+}
+
+.icon-close {
+  width: 40px;
+  height: 40px;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0;
+
+  background: transparent;
+
+  border: 0;
+}
+
+.icon-close img {
+  width: 21px;
+  height: 21px;
+}
+
+/* =========================
+   헬스장 검색
+========================= */
+
+.gym-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+
+  gap: 8px;
+
+  margin-top: 20px;
+}
+
+.gym-search-row input {
+  min-width: 0;
+  height: 48px;
+
+  padding: 0 13px;
+
+  color: #ffffff;
+  background: #222222;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+
+  outline: none;
+}
+
+.gym-search-row input:focus {
+  border-color: var(--gym-green);
+}
+
+.gym-search-row button,
+.selected-gym button {
+  padding: 0 14px;
+
+  color: #050505;
+  background: var(--gym-green);
+
+  border: 0;
+  border-radius: 12px;
+
+  font-weight: 850;
+}
+
+.gym-search [data-gym-status] {
+  color: var(--gym-muted);
+
+  font-size: 12px;
+}
+
+.gym-search-results {
+  display: grid;
+
+  gap: 8px;
+
+  max-height: 230px;
+
+  overflow: auto;
+}
+
+.gym-result-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+
+  gap: 5px 10px;
+
+  padding: 13px;
+
+  color: #ffffff;
+  background: #222222;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+
+  text-align: left;
+}
+
+.gym-result-item.selected {
+  background: rgba(168, 255, 53, 0.08);
+
+  border-color: var(--gym-green);
+}
+
+.gym-result-address {
+  grid-column: 1;
+
+  color: var(--gym-muted);
+
+  font-size: 12px;
+}
+
+.gym-result-action {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+
+  align-self: center;
+
+  color: var(--gym-green);
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.selected-gym {
+  display: grid;
+
+  gap: 6px;
+
+  margin-top: 10px;
+  padding: 14px;
+
+  background: rgba(168, 255, 53, 0.08);
+
+  border: 1px solid rgba(168, 255, 53, 0.25);
+  border-radius: 13px;
+}
+
+.selected-gym span {
+  color: var(--gym-muted);
+
+  font-size: 12px;
+}
+
+.selected-gym button {
+  min-height: 38px;
+
+  margin-top: 6px;
+}
+
+.form-message {
+  margin: 10px 0 0;
+
+  color: #ff8585;
+
+  font-size: 12px;
+}
+
+.sheet-submit {
+  width: 100%;
+  min-height: 52px;
+
+  margin-top: 20px;
+
+  color: #050505;
+  background: var(--gym-green);
+
+  border: 0;
+  border-radius: 15px;
+
+  font-weight: 900;
+}
+
+.sheet-submit:disabled {
+  opacity: 0.5;
+
+  cursor: wait;
+}
+
+/* =========================
+   연결 해제 확인
+========================= */
+
+.confirm-sheet p {
+  margin: 20px 0;
+
+  color: var(--gym-muted);
+
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 8px;
+}
+
+.confirm-actions button {
+  min-height: 48px;
+
+  border: 0;
+  border-radius: 13px;
+
+  font-weight: 900;
+}
+
+.confirm-actions button:first-child {
+  color: #ffffff;
+  background: #292929;
+}
+
+.confirm-actions button:last-child {
+  color: #ffffff;
+  background: #b62e2e;
+}
+
+/* =========================
+   토스트
+========================= */
+
+.gym-toast {
+  position: fixed;
+  right: 20px;
+  bottom:
+    calc(94px + env(safe-area-inset-bottom));
+  left: 20px;
+
+  z-index: 260;
+
+  max-width: 390px;
+
+  margin: auto;
+  padding: 13px 16px;
+
+  color: #ffffff;
+  background: #292929;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 13px;
+
+  font-size: 13px;
+  text-align: center;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* =========================
+   데스크톱
+========================= */
+
+@media (min-width: 700px) {
+  .my-gym-container {
+    padding-top: 28px;
+  }
+
+  .gym-sheet {
+    bottom: 24px;
+
+    border-radius: 24px;
+  }
+}

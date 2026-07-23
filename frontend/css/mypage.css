@@ -43,6 +43,7 @@ button { cursor: pointer; }
 .gym-current button { color: #050505; background: var(--my-green); }
 .gym-current button:disabled { opacity: .45; }
 .disconnect-gym-button { width: 100%; margin-top: 12px; color: #ff8585; background: #292929; }
+.gym-detail-link { min-height: 42px; display: grid; place-items: center; margin-top: 12px; color: #050505; background: var(--my-green); border-radius: 11px; text-decoration: none; font-size: 13px; font-weight: 850; }
 .gym-policy-message { color: #ffcc78; font-size: 12px; line-height: 1.5; }
 .gym-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 18px; }
 .gym-search-row input { min-width: 0; height: 48px; padding: 0 13px; color: #fff; background: #222; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; }

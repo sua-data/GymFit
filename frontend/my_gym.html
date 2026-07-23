@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GYMFIT | 내 헬스장</title>
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/my_gym.css?v=3">
+  <script src="/static/js/common_layout.js?v=14" defer></script>
+  <script src="/static/js/gym_search.js?v=2" defer></script>
+  <script src="/static/js/my_gym.js?v=1" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
+  <link rel="shortcut icon" href="/static/favicon.ico?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png?v=1">
+  <meta name="theme-color" content="#000000">
+</head>
+<body data-page="my-gym" data-header-title="내 헬스장">
+  <main class="my-gym-page">
+    <div class="my-gym-container">
+      <div id="topHeaderContainer"></div>
+
+      <section class="gym-state" id="gymLoading">헬스장 정보를 불러오고 있어요.</section>
+      <section class="gym-state gym-error" id="gymError" hidden>
+        <strong>헬스장 정보를 불러오지 못했어요.</strong>
+        <p id="gymErrorMessage"></p>
+        <button type="button" id="gymRetryButton">다시 시도</button>
+      </section>
+
+      <section class="gym-empty" id="gymEmpty" hidden>
+        <div class="gym-empty-icon" aria-hidden="true">G</div>
+        <h2>등록된 헬스장이 없어요.</h2>
+        <p>자주 이용하는 헬스장을 등록해보세요.</p>
+        <button type="button" id="gymRegisterButton">헬스장 등록</button>
+      </section>
+
+      <div id="gymContent" hidden>
+        <section class="gym-detail-card">
+          <span class="eyebrow">MY GYM</span>
+          <h2 id="gymName"></h2>
+          <p class="road-address" id="gymRoadAddress" hidden></p>
+          <p class="lot-address" id="gymAddress" hidden></p>
+          <p class="gym-category" id="gymCategory" hidden></p>
+        </section>
+
+        <section class="gym-map-card" id="gymMapSection" hidden>
+          <div id="gymMap" role="img" aria-label="등록된 헬스장 위치 지도"></div>
+          <p class="map-message" id="gymMapMessage" hidden></p>
+        </section>
+
+        <section class="gym-actions" aria-label="빠른 작업">
+          <a id="gymPhoneLink" href="#" hidden>전화하기</a>
+          <button type="button" id="copyAddressButton">주소 복사</button>
+          <a
+            class="my-gym-action-button kakao-map-button"
+            id="kakaoPlaceLink"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="카카오맵에서 헬스장 위치 보기"
+            hidden
+          ><img src="/static/assets/icons/kakaomap-logo-horizontal.png?v=1" alt=""></a>
+        </section>
+
+        <section class="gym-manage-card">
+          <div><span class="eyebrow">MANAGE</span><h2>헬스장 관리</h2></div>
+          <button type="button" class="primary" id="gymChangeButton">헬스장 변경</button>
+          <button type="button" class="danger" id="gymDisconnectButton">연결 해제</button>
+          <p id="gymEditPolicy" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p>
+        </section>
+      </div>
+    </div>
+
+    <div class="sheet-overlay" id="gymSearchOverlay" hidden>
+      <button class="sheet-backdrop" id="gymSearchBackdrop" type="button" aria-label="헬스장 검색 닫기"></button>
+      <section class="gym-sheet" role="dialog" aria-modal="true" aria-labelledby="gymSearchTitle">
+        <header><div><span>GYM SEARCH</span><h2 id="gymSearchTitle">헬스장 등록·변경</h2></div><button class="icon-close" id="gymSearchClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
+        <div class="gym-search" data-gym-search>
+          <div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div>
+          <p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p>
+          <div class="gym-search-results" data-gym-results hidden></div>
+          <div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div>
+        </div>
+        <p class="form-message" id="gymSaveMessage" role="alert" hidden></p>
+        <button class="sheet-submit" id="gymSaveButton" type="button">선택한 헬스장 저장</button>
+      </section>
+    </div>
+
+    <div class="sheet-overlay" id="disconnectOverlay" hidden>
+      <button class="sheet-backdrop" id="disconnectBackdrop" type="button" aria-label="연결 해제 닫기"></button>
+      <section class="gym-sheet confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="disconnectTitle">
+        <header><div><span>DISCONNECT</span><h2 id="disconnectTitle">헬스장 연결 해제</h2></div><button class="icon-close" id="disconnectClose" type="button" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
+        <p>등록된 헬스장 연결을 해제할까요?<br>운동 기록과 PT 기록은 삭제되지 않습니다.</p>
+        <div class="confirm-actions"><button type="button" id="disconnectCancel">취소</button><button type="button" id="disconnectConfirm">연결 해제</button></div>
+      </section>
+    </div>
+
+    <div class="gym-toast" id="gymToast" role="status" aria-live="polite" hidden></div>
+    <div id="sideMenuContainer"></div>
+    <div id="bottomNavigationContainer"></div>
+  </main>
+</body>
+</html>

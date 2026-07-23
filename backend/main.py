@@ -201,6 +201,13 @@ def mypage_page():
     )
 
 
+@app.get("/my-gym", include_in_schema=False)
+def my_gym_page():
+    return FileResponse(
+        FRONTEND_DIR / "my_gym.html"
+    )
+
+
 @app.get("/pt", include_in_schema=False)
 @app.get("/pt/requests", include_in_schema=False)
 @app.get("/trainer/members", include_in_schema=False)

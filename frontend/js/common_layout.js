@@ -1,6 +1,7 @@
 const memberServiceMenuItems = [
   {
-    label: "내 헬스장"
+    label: "내 헬스장",
+    path: "/my-gym"
   },
   {
     label: "머신 사용법"
@@ -9,7 +10,8 @@ const memberServiceMenuItems = [
 
 const trainerServiceMenuItems = [
   {
-    label: "내 헬스장"
+    label: "내 헬스장",
+    path: "/my-gym"
   },
   {
     label: "보유 머신 관리"
