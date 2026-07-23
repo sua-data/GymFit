@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GYMFIT | 자격증 관리</title>
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/trainer_certifications.css?v=1">
+  <script src="/static/js/common_layout.js?v=18" defer></script>
+  <script src="/static/js/trainer_certifications.js?v=1" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <meta name="theme-color" content="#000000">
+</head>
+<body data-page="trainer-certifications" data-header-title="자격증 관리">
+  <main class="cert-page"><div class="cert-container">
+    <div id="topHeaderContainer"></div>
+    <section class="cert-status" id="certStatus"></section>
+    <div class="cert-heading"><div><span>TRAINER</span><h1>자격증 관리</h1></div><button id="addCertification" type="button">추가</button></div>
+    <p class="cert-guide">자격증이나 증빙을 변경하면 관리자 재검토가 필요합니다. 승인 신청에는 유효한 증빙 이미지가 1개 이상 필요합니다.</p>
+    <section class="cert-state" id="certLoading">자격증을 불러오고 있어요.</section>
+    <section class="cert-state" id="certEmpty" hidden>등록된 자격증이 없습니다.</section>
+    <section class="cert-list" id="certList"></section>
+  </div><div id="sideMenuContainer"></div><div id="bottomNavContainer"></div></main>
+  <div class="cert-overlay" id="certOverlay" hidden>
+    <button class="cert-backdrop" id="certBackdrop" type="button" aria-label="닫기"></button>
+    <section class="cert-sheet" role="dialog" aria-modal="true" aria-labelledby="certFormTitle">
+      <header><h2 id="certFormTitle">자격증 추가</h2><button id="certClose" type="button"><img src="/static/assets/icons/no.svg" alt=""></button></header>
+      <form id="certForm">
+        <label>자격증명<input id="certName" maxlength="150" required></label>
+        <label>발급 기관<input id="certIssuer" maxlength="150"></label>
+        <label>자격증 번호<input id="certNumber" maxlength="100"></label>
+        <label>취득일<input id="certDate" type="date"></label>
+        <p class="form-error" id="certError" hidden></p>
+        <button class="primary" id="certSubmit" type="submit">저장</button>
+      </form>
+    </section>
+  </div>
+  <div class="cert-toast" id="certToast" hidden></div>
+</body>
+</html>

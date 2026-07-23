@@ -6,10 +6,10 @@
   <title>GYMFIT | 내 헬스장</title>
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
-  <link rel="stylesheet" href="/static/css/my_gym.css?v=3">
-  <script src="/static/js/common_layout.js?v=14" defer></script>
+  <link rel="stylesheet" href="/static/css/my_gym.css?v=4">
+  <script src="/static/js/common_layout.js?v=17" defer></script>
   <script src="/static/js/gym_search.js?v=2" defer></script>
-  <script src="/static/js/my_gym.js?v=1" defer></script>
+  <script src="/static/js/my_gym.js?v=2" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -69,6 +69,17 @@
           <button type="button" class="primary" id="gymChangeButton">헬스장 변경</button>
           <button type="button" class="danger" id="gymDisconnectButton">연결 해제</button>
           <p id="gymEditPolicy" hidden>승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.</p>
+        </section>
+        <section class="employment-card" id="employmentCard" hidden>
+          <span class="eyebrow">EMPLOYMENT</span>
+          <h2>헬스장 소속 승인</h2>
+          <strong id="employmentStatus"></strong>
+          <p id="employmentMessage"></p>
+          <p id="employmentFileName" hidden></p>
+          <label class="employment-upload">
+            <span id="employmentUploadLabel">재직·소속 증빙 등록</span>
+            <input id="employmentEvidenceInput" type="file" accept=".jpg,.jpeg,.png,.webp">
+          </label>
         </section>
       </div>
     </div>

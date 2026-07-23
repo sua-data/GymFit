@@ -18,6 +18,8 @@
     "gymChangeButton", "gymDisconnectButton", "gymEditPolicy",
     "gymSearchOverlay", "gymSaveButton", "gymSaveMessage", "disconnectOverlay",
     "disconnectConfirm", "gymToast",
+    "employmentCard", "employmentStatus", "employmentMessage",
+    "employmentFileName", "employmentEvidenceInput", "employmentUploadLabel",
   ].map((id) => [id, document.getElementById(id)]));
 
   let currentGym = null;
@@ -28,6 +30,7 @@
   let marker = null;
   let kakaoSdkPromise = null;
   let toastTimer = null;
+  let employmentUploading = false;
   const searchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
   async function requestJson(url, options = {}) {
@@ -148,12 +151,61 @@
       currentGym = body?.gym || null;
       canEdit = body?.can_edit !== false;
       await renderGym();
+      await loadEmployment();
     } catch (error) {
       elements.gymLoading.hidden = true;
       elements.gymContent.hidden = true;
       elements.gymEmpty.hidden = true;
       elements.gymErrorMessage.textContent = error instanceof Error ? error.message : "잠시 후 다시 시도해 주세요.";
       elements.gymError.hidden = false;
+    }
+  }
+
+  async function loadEmployment() {
+    const isTrainer = String(sessionUser.account_type || "").toUpperCase() === "TRAINER";
+    elements.employmentCard.hidden = !isTrainer || !currentGym;
+    if (!isTrainer || !currentGym) return;
+    try {
+      const data = await requestJson("/api/trainers/me/employment");
+      const labels = {
+        NONE: "소속 미등록",
+        PENDING: "관리자 검토 대기",
+        APPROVED: "소속 승인 완료",
+        REJECTED: "소속 승인 거절",
+      };
+      elements.employmentStatus.textContent = labels[data.employment_status] || data.employment_status;
+      elements.employmentMessage.textContent = data.employment_status === "APPROVED"
+        ? "현재 헬스장의 관리 기능을 사용할 수 있습니다."
+        : data.employment_status === "REJECTED"
+          ? `새 헬스장의 관리 권한이 없습니다.${data.employment_rejection_reason ? ` 사유: ${data.employment_rejection_reason}` : ""}`
+          : "승인 전까지 현재 헬스장의 회원·머신·PT 관리 기능이 제한됩니다.";
+      elements.employmentFileName.textContent = data.evidence_original_name || "";
+      elements.employmentFileName.hidden = !data.evidence_original_name;
+      elements.employmentUploadLabel.textContent = data.has_evidence ? "재직·소속 증빙 교체" : "재직·소속 증빙 등록";
+    } catch (error) {
+      elements.employmentMessage.textContent = error instanceof Error ? error.message : "소속 승인 정보를 불러오지 못했습니다.";
+    }
+  }
+
+  async function uploadEmploymentEvidence(file) {
+    if (!file || employmentUploading) return;
+    employmentUploading = true;
+    elements.employmentEvidenceInput.disabled = true;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await requestJson("/api/trainers/me/employment/evidence", {
+        method: "POST",
+        body: formData,
+      });
+      await loadEmployment();
+      showToast("소속 증빙을 제출했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "소속 증빙을 제출하지 못했습니다.");
+    } finally {
+      employmentUploading = false;
+      elements.employmentEvidenceInput.disabled = false;
+      elements.employmentEvidenceInput.value = "";
     }
   }
 
@@ -232,6 +284,9 @@
   document.getElementById("disconnectBackdrop").addEventListener("click", () => closeOverlay(elements.disconnectOverlay));
   document.getElementById("disconnectCancel").addEventListener("click", () => closeOverlay(elements.disconnectOverlay));
   elements.disconnectConfirm.addEventListener("click", disconnectGym);
+  elements.employmentEvidenceInput.addEventListener("change", () => {
+    uploadEmploymentEvidence(elements.employmentEvidenceInput.files?.[0]);
+  });
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     if (!elements.disconnectOverlay.hidden) closeOverlay(elements.disconnectOverlay);

@@ -40,6 +40,10 @@ from backend.routers.user import (
 from backend.routers.gym import (
     router as gym_router
 )
+from backend.routers.gym_machine import router as gym_machine_router
+from backend.routers.admin import router as admin_router
+from backend.routers.trainer_certification import router as trainer_certification_router
+from backend.routers.trainer_employment import router as trainer_employment_router
 from backend.routers.pt import router as pt_router
 from backend.routers.notification import router as notification_router
 from backend.routers.pt_assignment import router as pt_assignment_router
@@ -87,6 +91,10 @@ app.include_router(dashboard_router)
 app.include_router(workout_router)
 app.include_router(user_router)
 app.include_router(gym_router)
+app.include_router(gym_machine_router)
+app.include_router(admin_router)
+app.include_router(trainer_certification_router)
+app.include_router(trainer_employment_router)
 app.include_router(pt_router)
 app.include_router(notification_router)
 app.include_router(pt_assignment_router)
@@ -206,6 +214,31 @@ def my_gym_page():
     return FileResponse(
         FRONTEND_DIR / "my_gym.html"
     )
+
+
+@app.get("/machines", include_in_schema=False)
+def machines_page():
+    return FileResponse(FRONTEND_DIR / "machines.html")
+
+
+@app.get("/admin/trainers", include_in_schema=False)
+def admin_trainers_page():
+    return FileResponse(FRONTEND_DIR / "admin_trainers.html")
+
+
+@app.get("/admin/employments", include_in_schema=False)
+def admin_employments_page():
+    return FileResponse(FRONTEND_DIR / "admin_employments.html")
+
+
+@app.get("/admin/dashboard", include_in_schema=False)
+def admin_dashboard_page():
+    return FileResponse(FRONTEND_DIR / "admin_dashboard.html")
+
+
+@app.get("/trainer/certifications", include_in_schema=False)
+def trainer_certifications_page():
+    return FileResponse(FRONTEND_DIR / "trainer_certifications.html")
 
 
 @app.get("/pt", include_in_schema=False)

@@ -20,6 +20,7 @@ from backend.models import (
 from backend.routers.pt import get_current_user
 from backend.services.gym_service import GymSelection, select_or_create_gym
 from backend.services.password_service import hash_password, verify_password
+from backend.routers.trainer_employment import safe_unlink as safe_unlink_employment
 from backend.services.pt_service import (
     get_pending_pt_request_count,
     has_active_trainer,
@@ -125,6 +126,12 @@ def serialize_user(user: User, db: Session) -> dict:
         "trainer_approval_status": (
             trainer_profile.approval_status if trainer_profile else None
         ),
+        "trainer_employment_status": (
+            trainer_profile.employment_status if trainer_profile else None
+        ),
+        "trainer_employment_rejection_reason": (
+            trainer_profile.employment_rejection_reason if trainer_profile else None
+        ),
         "trainer_career_years": (
             trainer_profile.career_years if trainer_profile else None
         ),
@@ -164,15 +171,9 @@ def get_linked_gym(db: Session, user_id: int) -> Gym | None:
 
 
 def ensure_gym_is_editable(user: User) -> None:
-    if (
-        user.account_type == "TRAINER"
-        and user.trainer_profile
-        and user.trainer_profile.approval_status == "APPROVED"
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.",
-        )
+    # 트레이너 자격 승인과 헬스장 소속 승인은 독립적이다.
+    # 승인된 트레이너도 헬스장을 변경할 수 있다.
+    del user
 
 
 @router.get("/me/gym")
@@ -183,10 +184,16 @@ def read_my_gym(
     user = get_active_user(db, current_user.user_id)
     return {
         "gym": serialize_my_gym(get_linked_gym(db, user.user_id)),
-        "can_edit": not (
-            user.account_type == "TRAINER"
-            and user.trainer_profile
-            and user.trainer_profile.approval_status == "APPROVED"
+        "can_edit": True,
+        "employment_status": (
+            user.trainer_profile.employment_status
+            if user.account_type == "TRAINER" and user.trainer_profile
+            else None
+        ),
+        "employment_rejection_reason": (
+            user.trainer_profile.employment_rejection_reason
+            if user.account_type == "TRAINER" and user.trainer_profile
+            else None
         ),
     }
 
@@ -199,6 +206,7 @@ def replace_my_gym(
 ) -> dict:
     user = get_active_user(db, current_user.user_id)
     ensure_gym_is_editable(user)
+    old_evidence_path = None
     try:
         gym = select_or_create_gym(db, payload)
         link = db.scalar(
@@ -206,16 +214,33 @@ def replace_my_gym(
             .where(UserGym.user_id == user.user_id)
             .with_for_update()
         )
+        gym_changed = link is None or link.gym_id != gym.gym_id
         if link is None:
             db.add(UserGym(user_id=user.user_id, gym_id=gym.gym_id))
         else:
             link.gym_id = gym.gym_id
         if user.account_type == "TRAINER" and user.trainer_profile:
-            user.trainer_profile.gym_name = gym.gym_name
+            profile = user.trainer_profile
+            profile.gym_name = gym.gym_name
+            if gym_changed:
+                old_evidence_path = profile.employment_storage_path
+                profile.employment_status = "PENDING"
+                profile.employment_evidence_url = None
+                profile.employment_storage_path = None
+                profile.employment_original_name = None
+                profile.employment_reviewed_by = None
+                profile.employment_reviewed_at = None
+                profile.employment_rejection_reason = None
         db.commit()
+        safe_unlink_employment(old_evidence_path)
         return {
             "gym": serialize_my_gym(get_linked_gym(db, user.user_id)),
             "can_edit": True,
+            "employment_status": (
+                user.trainer_profile.employment_status
+                if user.account_type == "TRAINER" and user.trainer_profile
+                else None
+            ),
         }
     except HTTPException:
         db.rollback()
@@ -235,6 +260,7 @@ def disconnect_my_gym(
 ) -> dict:
     user = get_active_user(db, current_user.user_id)
     ensure_gym_is_editable(user)
+    old_evidence_path = None
     try:
         link = db.scalar(
             select(UserGym)
@@ -244,9 +270,19 @@ def disconnect_my_gym(
         if link is not None:
             db.delete(link)
         if user.account_type == "TRAINER" and user.trainer_profile:
-            user.trainer_profile.gym_name = None
+            profile = user.trainer_profile
+            old_evidence_path = profile.employment_storage_path
+            profile.gym_name = None
+            profile.employment_status = "NONE"
+            profile.employment_evidence_url = None
+            profile.employment_storage_path = None
+            profile.employment_original_name = None
+            profile.employment_reviewed_by = None
+            profile.employment_reviewed_at = None
+            profile.employment_rejection_reason = None
         db.commit()
-        return {"gym": None, "can_edit": True}
+        safe_unlink_employment(old_evidence_path)
+        return {"gym": None, "can_edit": True, "employment_status": "NONE"}
     except Exception as error:
         db.rollback()
         raise HTTPException(
@@ -315,15 +351,7 @@ def update_user_gym(
     db: Session = Depends(get_db),
 ) -> dict:
     user = get_active_user(db, user_id)
-    if (
-        user.account_type == "TRAINER"
-        and user.trainer_profile
-        and user.trainer_profile.approval_status == "APPROVED"
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="승인 완료 후에는 소속 헬스장을 직접 변경할 수 없습니다.",
-        )
+    old_evidence_path = None
 
     try:
         link = db.scalar(select(UserGym).where(UserGym.user_id == user.user_id))
@@ -331,7 +359,16 @@ def update_user_gym(
             if link is not None:
                 db.delete(link)
             if user.account_type == "TRAINER" and user.trainer_profile:
-                user.trainer_profile.gym_name = None
+                profile = user.trainer_profile
+                old_evidence_path = profile.employment_storage_path
+                profile.gym_name = None
+                profile.employment_status = "NONE"
+                profile.employment_evidence_url = None
+                profile.employment_storage_path = None
+                profile.employment_original_name = None
+                profile.employment_reviewed_by = None
+                profile.employment_reviewed_at = None
+                profile.employment_rejection_reason = None
         else:
             gym = db.scalar(
                 select(Gym).where(Gym.gym_id == payload.gym_id, Gym.is_active.is_(True))
@@ -341,13 +378,25 @@ def update_user_gym(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="선택한 헬스장을 찾을 수 없습니다.",
                 )
+            gym_changed = link is None or link.gym_id != gym.gym_id
             if link is None:
                 db.add(UserGym(user_id=user.user_id, gym_id=gym.gym_id))
             else:
                 link.gym_id = gym.gym_id
             if user.account_type == "TRAINER" and user.trainer_profile:
-                user.trainer_profile.gym_name = gym.gym_name
+                profile = user.trainer_profile
+                profile.gym_name = gym.gym_name
+                if gym_changed:
+                    old_evidence_path = profile.employment_storage_path
+                    profile.employment_status = "PENDING"
+                    profile.employment_evidence_url = None
+                    profile.employment_storage_path = None
+                    profile.employment_original_name = None
+                    profile.employment_reviewed_by = None
+                    profile.employment_reviewed_at = None
+                    profile.employment_rejection_reason = None
         db.commit()
+        safe_unlink_employment(old_evidence_path)
         return serialize_user(get_active_user(db, user_id), db)
     except HTTPException:
         db.rollback()

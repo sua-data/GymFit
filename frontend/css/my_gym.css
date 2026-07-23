@@ -661,3 +661,4 @@ body.modal-open {
     border-radius: 24px;
   }
 }
+.employment-card{margin-top:14px;padding:18px;background:#171717;border:1px solid rgba(168,255,53,.14);border-radius:18px}.employment-card h2{margin:6px 0 14px;font-size:18px}.employment-card strong{display:block;color:#a8ff35;font-size:13px}.employment-card p{margin:7px 0;color:rgba(255,255,255,.58);font-size:12px;line-height:1.6}.employment-upload{min-height:46px;display:flex;align-items:center;justify-content:center;margin-top:14px;color:#050505;background:#a8ff35;border-radius:13px;font-size:13px;font-weight:900;cursor:pointer}.employment-upload input{display:none}.employment-upload:has(input:disabled){opacity:.5;cursor:wait}

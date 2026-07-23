@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/mypage.css?v=8">
-  <script src="/static/js/common_layout.js?v=14" defer></script>
+  <link rel="stylesheet" href="/static/css/mypage.css?v=10">
+  <script src="/static/js/common_layout.js?v=17" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/gym_search.js?v=2" defer></script>
-  <script src="/static/js/mypage.js?v=8" defer></script>
+  <script src="/static/js/mypage.js?v=10" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -63,6 +63,7 @@
 
         <section class="trainer-activity-card" id="trainerActivityCard" aria-labelledby="trainerActivityTitle" hidden>
           <div class="section-heading"><span>TRAINER</span><h2 id="trainerActivityTitle">트레이너 활동</h2></div>
+          <p class="trainer-approval-message" id="trainerApprovalMessage"></p>
           <dl class="trainer-activity-summary">
             <div><dt>경력</dt><dd id="trainerCareerYears">-</dd></div>
             <div><dt>담당 회원</dt><dd id="trainerMemberCount">-</dd></div>
@@ -70,6 +71,7 @@
             <div><dt>확인할 완료 결과</dt><dd id="trainerCompletedAssignmentCount">-</dd></div>
           </dl>
           <nav class="trainer-activity-links" aria-label="트레이너 관리 메뉴">
+            <a class="mypage-action-row" href="/trainer/certifications"><span>자격증 관리</span><svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
             <a class="mypage-action-row" href="/trainer/members"><span>담당 회원 관리</span><svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
             <a class="mypage-action-row" href="/trainer/assignments"><span>PT 숙제·피드백 관리</span><svg class="mypage-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
           </nav>

@@ -42,6 +42,18 @@ def get_current_user(
 def require_role(user: User, account_type: str) -> None:
     if user.account_type != account_type:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="접근 권한이 없습니다.")
+    if (
+        account_type == "TRAINER"
+        and (
+            user.trainer_profile is None
+            or user.trainer_profile.approval_status != "APPROVED"
+            or user.trainer_profile.employment_status != "APPROVED"
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="트레이너 자격과 헬스장 소속이 모두 승인되어야 이 기능을 사용할 수 있습니다.",
+        )
 
 
 def relationship_query():

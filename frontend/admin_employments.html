@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>GYMFIT | 헬스장 소속 승인</title>
+  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/admin_trainers.css?v=4">
+  <script src="/static/js/admin_employments.js?v=1" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+</head>
+<body><main class="admin-page"><div class="admin-container">
+  <header class="admin-only-header"><a href="/admin/dashboard">GYMFIT 관리자</a><button id="adminLogout" type="button">로그아웃</button></header>
+  <section class="admin-hero"><span>EMPLOYMENT</span><h1>헬스장 소속 승인</h1><p>새 헬스장과 재직·소속 증빙을 검토합니다.</p></section>
+  <nav class="status-tabs"><button data-status="PENDING">대기</button><button data-status="APPROVED">승인</button><button data-status="REJECTED">거절</button><button data-status="ALL">전체</button></nav>
+  <section class="admin-state" id="employmentLoading">소속 신청을 불러오고 있어요.</section>
+  <section class="admin-state" id="employmentEmpty" hidden>해당 소속 신청이 없습니다.</section>
+  <section class="trainer-list" id="employmentList"></section>
+</div>
+<div class="sheet-overlay" id="employmentOverlay" hidden><button class="sheet-backdrop" id="employmentBackdrop" type="button"></button><section class="review-sheet"><header><div><span>REVIEW</span><h2>소속 승인 검토</h2></div><button class="icon-close" id="employmentClose" type="button"><img src="/static/assets/icons/no.svg" alt=""></button></header><div id="employmentDetail"></div><label class="reject-reason" id="employmentReasonField" hidden>거절 사유<textarea id="employmentReason" maxlength="500"></textarea></label><p class="review-error" id="employmentError" hidden></p><div class="review-actions" id="employmentConfirmActions" hidden><button id="employmentCancel" type="button">취소</button><button id="employmentConfirm" type="button">확인</button></div></section></div>
+</main></body></html>

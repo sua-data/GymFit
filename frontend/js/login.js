@@ -288,8 +288,16 @@ function clearSignupSession() {
 ========================= */
 
 function moveAfterLogin() {
+  let accountType = "";
+  try {
+    accountType = String(
+      JSON.parse(sessionStorage.getItem("gymfitUser") || "null")?.account_type || ""
+    ).toUpperCase();
+  } catch {
+    accountType = "";
+  }
   window.location.href =
-    "/dashboard";
+    accountType === "ADMIN" ? "/admin/dashboard" : "/dashboard";
 }
 
 

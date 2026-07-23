@@ -16,6 +16,7 @@ from backend.models.workout_plan import WorkoutPlan
 from backend.models.workout_plan_set import WorkoutPlanSet
 from backend.models.workout_record import WorkoutRecord
 from backend.models.gym import Gym, UserGym
+from backend.models.gym_machine import GymMachine
 from backend.models.trainer_member import TrainerMember
 from backend.models.pt_assignment import PtAssignment
 from backend.models.pt_feedback import PtFeedback
@@ -40,6 +41,7 @@ __all__ = [
     "WorkoutRecord",
     "Gym",
     "UserGym",
+    "GymMachine",
     "TrainerMember",
     "PtAssignment",
     "PtFeedback",

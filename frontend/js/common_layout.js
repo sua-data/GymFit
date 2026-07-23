@@ -4,7 +4,8 @@ const memberServiceMenuItems = [
     path: "/my-gym"
   },
   {
-    label: "머신 사용법"
+    label: "헬스장 머신",
+    path: "/machines"
   }
 ];
 
@@ -14,10 +15,8 @@ const trainerServiceMenuItems = [
     path: "/my-gym"
   },
   {
-    label: "보유 머신 관리"
-  },
-  {
-    label: "머신 사용법"
+    label: "보유 머신 관리",
+    path: "/machines"
   }
 ];
 
@@ -51,6 +50,17 @@ const trainerMenuItems = [
   }
 ];
 
+const adminMenuItems = [
+  {
+    label: "관리자 홈",
+    path: "/admin/dashboard"
+  },
+  {
+    label: "트레이너 승인",
+    path: "/admin/trainers"
+  }
+];
+
 
 function getUserRoleLabel(user) {
   const accountType = String(
@@ -65,6 +75,9 @@ function getUserRoleLabel(user) {
   if (accountType === "TRAINER") {
     return "트레이너";
   }
+  if (accountType === "ADMIN") {
+    return "관리자";
+  }
   if (accountType === "MEMBER" && hasActiveTrainer) {
     return "PT 회원";
   }
@@ -74,6 +87,19 @@ function getUserRoleLabel(user) {
 window.getUserRoleLabel = getUserRoleLabel;
 
 window.addEventListener("pageshow", () => {
+  const currentUser = getLoginUser();
+  const accountType = String(
+    currentUser?.account_type
+    ?? currentUser?.accountType
+    ?? ""
+  ).toUpperCase();
+  if (
+    accountType === "ADMIN"
+    && !window.location.pathname.startsWith("/admin/")
+  ) {
+    window.location.replace("/admin/dashboard");
+    return;
+  }
   const withdrawn = sessionStorage.getItem("gymfitAccountWithdrawn") === "1";
   if (
     withdrawn
@@ -330,12 +356,23 @@ function renderSideMenu() {
     ?? ""
   ).toUpperCase();
   const isTrainer = accountType === "TRAINER";
+  const isAdmin = accountType === "ADMIN";
 
   const hasActiveTrainer =
     user.has_active_trainer === true
     || user.hasActiveTrainer === true;
 
   userType.textContent = getUserRoleLabel(user);
+
+  if (isAdmin) {
+    menuList.appendChild(
+      createMenuSection(
+        "관리자",
+        adminMenuItems
+      )
+    );
+    return;
+  }
 
   menuList.appendChild(
     createMenuSection(

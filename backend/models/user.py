@@ -44,6 +44,7 @@ class User(Base):
         Enum(
             "MEMBER",
             "TRAINER",
+            "ADMIN",
             native_enum=True,
         ),
         nullable=False,
@@ -167,6 +168,7 @@ class User(Base):
         MemberProfile | None
     ] = relationship(
         back_populates="user",
+        foreign_keys="MemberProfile.user_id",
         cascade="all, delete-orphan",
         uselist=False,
     )
@@ -182,6 +184,7 @@ class User(Base):
         TrainerProfile | None
     ] = relationship(
         back_populates="user",
+        foreign_keys="TrainerProfile.user_id",
         cascade="all, delete-orphan",
         uselist=False,
     )
@@ -289,7 +292,8 @@ class MemberProfile(Base):
     )
 
     user: Mapped[User] = relationship(
-        back_populates="member_profile"
+        back_populates="member_profile",
+        foreign_keys=[user_id],
     )
 
     weekly_workout_days: Mapped[int | None] = mapped_column(
@@ -413,6 +417,59 @@ class TrainerProfile(Base):
         comment="트레이너 승인 상태",
     )
 
+    rejection_reason: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="트레이너 승인 거절 사유",
+    )
+
+    reviewed_by: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("users.user_id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    employment_status: Mapped[str] = mapped_column(
+        Enum("NONE", "PENDING", "APPROVED", "REJECTED", native_enum=True),
+        nullable=False,
+        default="NONE",
+        server_default="NONE",
+        comment="헬스장 소속 승인 상태",
+    )
+
+    employment_evidence_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    employment_storage_path: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+
+    employment_original_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    employment_reviewed_by: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("users.user_id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+    )
+
+    employment_reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    employment_rejection_reason: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -429,7 +486,8 @@ class TrainerProfile(Base):
     )
 
     user: Mapped[User] = relationship(
-        back_populates="trainer_profile"
+        back_populates="trainer_profile",
+        foreign_keys=[user_id],
     )
 
 
@@ -539,6 +597,23 @@ class TrainerCertification(Base):
         Date,
         nullable=True,
         comment="자격증 취득일",
+    )
+
+    certification_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    evidence_image_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="자격증 증빙 이미지 URL",
+    )
+
+    evidence_storage_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    evidence_original_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="1",
     )
 
     created_at: Mapped[datetime] = mapped_column(

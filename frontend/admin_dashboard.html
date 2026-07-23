@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GYMFIT 관리자</title>
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/admin_dashboard.css?v=2">
+  <script src="/static/js/admin_dashboard.js?v=2" defer></script>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
+  <meta name="theme-color" content="#000000">
+</head>
+<body>
+  <main class="admin-dashboard-page">
+    <div class="admin-dashboard-container">
+      <header class="admin-only-header">
+        <a href="/admin/dashboard">GYMFIT 관리자</a>
+        <div><a href="/admin/employments">소속 승인</a><button id="adminLogout" type="button">로그아웃</button></div>
+      </header>
+      <section class="admin-welcome">
+        <span>ADMIN</span>
+        <h1>GYMFIT 관리자</h1>
+        <p>트레이너 가입 신청을 확인하고 승인 상태를 관리합니다.</p>
+      </section>
+      <section class="dashboard-state" id="dashboardLoading">관리자 정보를 불러오고 있어요.</section>
+      <section class="dashboard-state error" id="dashboardError" hidden>
+        <strong>관리자 정보를 불러오지 못했어요.</strong>
+        <p id="dashboardErrorMessage"></p>
+        <button type="button" id="dashboardRetry">다시 시도</button>
+      </section>
+      <div id="dashboardContent" hidden>
+        <section class="status-count-grid" aria-label="트레이너 승인 현황">
+          <a class="status-count pending" href="/admin/trainers?status=PENDING"><span>승인 대기</span><strong id="pendingCount">0</strong></a>
+          <a class="status-count approved" href="/admin/trainers?status=APPROVED"><span>승인</span><strong id="approvedCount">0</strong></a>
+          <a class="status-count rejected" href="/admin/trainers?status=REJECTED"><span>거절</span><strong id="rejectedCount">0</strong></a>
+        </section>
+        <section class="recent-card">
+          <div class="section-title"><div><span>RECENT</span><h2>최근 승인 대기 신청</h2></div><a href="/admin/trainers">전체 신청 보기</a></div>
+          <div class="recent-list" id="recentList"></div>
+          <p class="recent-empty" id="recentEmpty" hidden>현재 승인 대기 신청이 없습니다.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
