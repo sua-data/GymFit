@@ -41,7 +41,7 @@ from backend.models import (
     TrainerMember,
 )
 from backend.services.notification_service import create_notification
-from backend.security import enforce_self, get_current_user
+from backend.security import enforce_self, get_current_user, require_account_type
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 from backend.services.calorie_service import (
     calculate_for_record,
@@ -59,6 +59,7 @@ router = APIRouter(
 KST = timezone(
     timedelta(hours=9)
 )
+require_member = require_account_type("MEMBER")
 
 def korea_now_naive() -> datetime:
     return datetime.now(
@@ -106,8 +107,7 @@ class WorkoutRecordCreate(BaseModel):
     )
 
     repetition_count: int = Field(
-        default=0,
-        ge=0,
+        ge=1,
         le=10000,
     )
 
@@ -1083,7 +1083,7 @@ def get_today_workout_plan(
 )
 def create_or_update_workout_plan(
     request: WorkoutPlanCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     enforce_self(current_user, request.user_id)
@@ -1103,10 +1103,7 @@ def create_or_update_workout_plan(
             detail="사용자를 찾을 수 없습니다.",
         )
 
-    if user.account_type not in {
-        "MEMBER",
-        "TRAINER",
-    }:
+    if user.account_type != "MEMBER":
         raise HTTPException(
             status_code=(
                 status.HTTP_403_FORBIDDEN
@@ -1279,7 +1276,7 @@ def create_or_update_workout_plan(
 def update_workout_plan(
     workout_plan_id: int,
     request: WorkoutPlanUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     enforce_self(current_user, request.user_id)
@@ -1399,7 +1396,7 @@ def update_workout_plan(
 def complete_workout_plan(
     workout_plan_id: int,
     request: WorkoutPlanCompleteRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     enforce_self(current_user, request.user_id)
@@ -1604,7 +1601,7 @@ def complete_workout_plan(
 )
 def uncomplete_workout_plan(
     workout_plan_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     try:
@@ -1684,7 +1681,7 @@ def uncomplete_workout_plan(
 def delete_workout_plan(
     workout_plan_id: int,
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     enforce_self(current_user, user_id)
@@ -1912,7 +1909,7 @@ def get_workout_record_detail(
 )
 def create_workout_record(
     request: WorkoutRecordCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     enforce_self(current_user, request.user_id)
@@ -1934,10 +1931,7 @@ def create_workout_record(
             ),
         )
 
-    if user.account_type not in {
-        "MEMBER",
-        "TRAINER",
-    }:
+    if user.account_type != "MEMBER":
         raise HTTPException(
             status_code=403,
             detail="운동 기록을 저장할 권한이 없습니다."

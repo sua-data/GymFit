@@ -192,7 +192,7 @@ def test_unsupported_exercise_api_returns_400():
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type(
-        "UserStub", (), {"user_id": 1}
+        "UserStub", (), {"user_id": 1, "account_type": "MEMBER"}
     )()
     app.dependency_overrides[get_db] = lambda: None
 

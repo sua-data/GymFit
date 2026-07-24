@@ -289,6 +289,14 @@ function renderBestPosture(
     return;
   }
 
+  if (
+    posture.posture_score === null
+    || posture.posture_score === undefined
+  ) {
+    renderEmptyPosture(posture);
+    return;
+  }
+
   if (posture.image_url) {
     bestFrameImage.src =
       posture.image_url;
@@ -353,29 +361,29 @@ function renderBestPosture(
    베스트 자세 없음
 ========================= */
 
-function renderEmptyPosture() {
+function renderEmptyPosture(posture = null) {
   bestFrameImage.removeAttribute("src");
   bestFrameImage.hidden = true;
 
   bestFramePlaceholder.hidden = false;
   bestFramePlaceholder.textContent =
-    "아직 분석 기록이 없습니다.";
+    "아직 이 운동의 자세 기록이 없어요.";
 
   bestFrameCaption.textContent =
-    "저장된 베스트 자세가 없습니다.";
+    posture?.exercise_name || "베스트 자세 기록 없음";
 
   frameScoreValue.textContent = "0";
-  exerciseName.textContent = "-";
+  exerciseName.textContent = posture?.exercise_name || "-";
   repCount.textContent = "0";
   setCount.textContent = "0";
   postureScore.textContent = "0";
   scoreRingValue.textContent = "0";
 
   feedbackTitle.textContent =
-    "아직 분석 기록이 없습니다.";
+    "아직 이 운동의 자세 기록이 없어요.";
 
   feedbackText.textContent =
-    "실시간 자세 코칭을 시작해 운동 기록을 만들어 보세요.";
+    "AI 코칭으로 운동하면 베스트 자세를 확인할 수 있어요.";
 
   updateScoreRing(0);
 }
@@ -747,6 +755,7 @@ function renderNextPtSchedule(data) {
 bestExerciseSelect.addEventListener(
   "change",
   (event) => {
+    renderEmptyPosture();
     renderBestPosture(
       event.target.value
     );

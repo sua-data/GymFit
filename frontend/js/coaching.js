@@ -139,8 +139,12 @@ const overlayMovementState =
   document.querySelector("#overlayMovementState");
 const overlayFeedbackText =
   document.querySelector("#overlayFeedbackText");
+const overlayExerciseName =
+  document.querySelector("#overlayExerciseName");
 const coachingResult =
   document.querySelector("#coachingResult");
+const coachingResultTitle =
+  document.querySelector("#coachingResultTitle");
 const resultExerciseName =
   document.querySelector("#resultExerciseName");
 const resultRepetitions =
@@ -165,6 +169,16 @@ const resultFeedbackText =
   document.querySelector("#resultFeedbackText");
 const resultDashboardButton =
   document.querySelector("#resultDashboardButton");
+const resultPrimaryButton =
+  document.querySelector("#resultPrimaryButton");
+const resultRetryButton =
+  document.querySelector("#resultRetryButton");
+const resultRecordStatus =
+  document.querySelector("#resultRecordStatus");
+const resultPlanStatus =
+  document.querySelector("#resultPlanStatus");
+const cameraRetryButton =
+  document.querySelector("#cameraRetryButton");
 const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
 const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
 const poseInitialNotice = document.querySelector("#poseInitialNotice");
@@ -195,6 +209,9 @@ let isSavingWorkout = false;
 let workoutRecordSaved = false;
 let savedWorkoutResult = null;
 let isResultDisplayed = false;
+let lastWorkoutSaveError = null;
+let lastPlanCompletionError = null;
+let planCompletionSucceeded = null;
 let restIntervalId = null;
 let restSecondsRemaining = 0;
 let restDurationSeconds = 60;
@@ -216,6 +233,10 @@ let bestCapturedPostureScore = -1;
 let bestPostureImageDataUrl = null;
 
 let workoutStartedAt = null;
+let effectiveWorkoutStartedAt = null;
+let workoutFinishedAt = null;
+let pauseStartedAt = null;
+let accumulatedPausedMilliseconds = 0;
 let cameraStream = null;
 
 let isWorkoutActive = false;
@@ -422,6 +443,7 @@ function updateWorkoutOverlay() {
   overlayCurrentReps.textContent = String(currentReps);
   overlayTargetReps.textContent = String(currentTarget);
   overlayRepCount.textContent = String(currentReps);
+  overlayExerciseName.textContent = selectedExerciseName;
 }
 
 function setOverlayMovement(text) {
@@ -893,6 +915,7 @@ async function startCamera() {
     );
   }
 
+  setCameraPlaceholderState("permission", "카메라 권한 요청 중", "브라우저의 카메라 권한을 확인하고 있어요.");
   cameraStream =
     await navigator.mediaDevices
       .getUserMedia({
@@ -908,11 +931,22 @@ async function startCamera() {
         audio: false
       });
 
-  cameraVideo.srcObject =
-    cameraStream;
+  setCameraPlaceholderState("connecting", "카메라 연결 중", "영상 장치를 준비하고 있어요.");
+  cameraVideo.srcObject = cameraStream;
+  await cameraVideo.play();
+  setCameraPlaceholderState("ready", "분석 준비 완료", "운동을 시작합니다.");
+  cameraPlaceholder.hidden = true;
+}
 
-  cameraPlaceholder.style.display =
-    "none";
+function setCameraPlaceholderState(state, title, message, { error = false } = {}) {
+  document.body.dataset.coachingState = state;
+  cameraPlaceholder.dataset.cameraState = state;
+  cameraPlaceholder.hidden = false;
+  cameraPlaceholder.style.display = "";
+  cameraPlaceholder.setAttribute("role", error ? "alert" : "status");
+  cameraPlaceholder.querySelector("strong").textContent = title;
+  cameraPlaceholder.querySelector("span").textContent = message;
+  cameraRetryButton.hidden = !error;
 }
 
 
@@ -1021,6 +1055,10 @@ function registerRepetition(
 
   if (currentSetTargetReps <= 0) {
     return;
+  }
+
+  if (totalCompletedReps === 0) {
+    effectiveWorkoutStartedAt = new Date();
   }
 
   postureScores.push(score);
@@ -1244,6 +1282,7 @@ function applyPoseStatus(
   }
 
   if (status.pose_valid) {
+    document.body.dataset.coachingState = "active";
     if (repetitionDifference === 0) {
       const movementCue = getMovementCue(status);
       movementState.textContent =
@@ -1310,6 +1349,9 @@ function applyPoseStatus(
 
   postureScoreValue.textContent =
     0;
+  document.body.dataset.coachingState = status.person_valid
+    ? "analysis-waiting"
+    : "person-missing";
 
   postureStatus.textContent =
     status.person_valid
@@ -1600,13 +1642,22 @@ async function startWorkout() {
     workoutRecordSaved = false;
     savedWorkoutResult = null;
     isResultDisplayed = false;
+    lastWorkoutSaveError = null;
+    lastPlanCompletionError = null;
+    planCompletionSucceeded = null;
     isWorkoutPaused = false;
+    effectiveWorkoutStartedAt = null;
+    workoutFinishedAt = null;
+    pauseStartedAt = null;
+    accumulatedPausedMilliseconds = 0;
     restCard.hidden = true;
 
     postureScores = [];
 
     updateCounterDisplay();
 
+    startButton.disabled = true;
+    startButton.setAttribute("aria-busy", "true");
     await createCoachingSession();
     await startCamera();
     await resetCurrentExerciseAnalyzer();
@@ -1618,9 +1669,11 @@ async function startWorkout() {
     isGoalCompleted = false;
 
     document.body.classList.add("coaching-active");
+    document.body.dataset.coachingState = "active";
     document.body.classList.remove("coaching-paused");
     pauseButton.hidden = false;
     pauseButton.textContent = "일시정지";
+    cameraPlaceholder.hidden = true;
 
     startPoseAnalysis();
 
@@ -1641,6 +1694,7 @@ async function startWorkout() {
     speakText(`${selectedExerciseName} 코칭을 시작합니다`);
 
     startButton.disabled = true;
+    startButton.removeAttribute("aria-busy");
     finishButton.disabled = false;
 
     setFreeCoachingInputsDisabled(true);
@@ -1667,15 +1721,18 @@ async function startWorkout() {
     const permissionMessage = error?.name === "NotAllowedError"
       ? "브라우저 설정에서 카메라 권한을 허용한 뒤 다시 시도해 주세요."
       : error.message || "카메라 연결을 확인한 뒤 다시 시도해 주세요.";
-    cameraPlaceholder.style.display = "";
-    cameraPlaceholder.querySelector("strong").textContent =
-      "카메라를 시작하지 못했어요.";
-    cameraPlaceholder.querySelector("span").textContent = permissionMessage;
+    setCameraPlaceholderState(
+      "error",
+      "카메라를 시작하지 못했어요.",
+      permissionMessage,
+      { error: true }
+    );
     feedbackTitle.textContent = "카메라 설정을 확인해 주세요.";
     feedbackText.textContent = permissionMessage;
     movementState.textContent = "카메라 확인 필요";
     postureStatus.textContent = "READY";
     startButton.disabled = false;
+    startButton.removeAttribute("aria-busy");
     startButton.textContent = "카메라 다시 시도";
   }
 }
@@ -1686,13 +1743,20 @@ async function startWorkout() {
 ========================= */
 
 function getWorkoutMinutes() {
-  if (!workoutStartedAt) {
+  if (
+    totalCompletedReps <= 0
+    || !effectiveWorkoutStartedAt
+  ) {
     return 0;
   }
 
+  const effectiveEnd = workoutFinishedAt
+    || pauseStartedAt
+    || new Date();
   const elapsedMilliseconds =
-    Date.now()
-    - workoutStartedAt.getTime();
+    effectiveEnd.getTime()
+    - effectiveWorkoutStartedAt.getTime()
+    - accumulatedPausedMilliseconds;
 
   return Math.max(
     1,
@@ -1701,6 +1765,22 @@ function getWorkoutMinutes() {
       / 60000
     )
   );
+}
+
+function freezeEffectiveWorkoutTime() {
+  if (workoutFinishedAt) {
+    return;
+  }
+
+  const finishedAt = new Date();
+  if (pauseStartedAt) {
+    accumulatedPausedMilliseconds += Math.max(
+      0,
+      finishedAt.getTime() - pauseStartedAt.getTime()
+    );
+    pauseStartedAt = null;
+  }
+  workoutFinishedAt = finishedAt;
 }
 
 
@@ -1867,8 +1947,8 @@ async function saveWorkoutRecord() {
           image_url: null,
 
           started_at:
-            workoutStartedAt
-              ? workoutStartedAt
+            effectiveWorkoutStartedAt
+              ? effectiveWorkoutStartedAt
                   .toISOString()
               : null,
 
@@ -1943,10 +2023,17 @@ async function completeLinkedWorkoutPlan() {
    운동 종료
 ========================= */
 
-function showWorkoutResult(planCompletionError = null) {
-  if (isResultDisplayed) {
-    return;
-  }
+function setResultStatus(element, message, type = "") {
+  element.textContent = message;
+  element.className = type ? `result-status-${type}` : "";
+  element.setAttribute("role", type === "error" ? "alert" : "status");
+}
+
+function showWorkoutResult({
+  saveError = null,
+  planCompletionError = null,
+  noRepetitions = false,
+} = {}) {
   isResultDisplayed = true;
 
   const averageScore = getAveragePostureScore();
@@ -1959,7 +2046,15 @@ function showWorkoutResult(planCompletionError = null) {
   resultSets.textContent = String(currentSets);
   resultPostureScore.textContent = String(averageScore);
   resultWorkoutMinutes.textContent = String(getWorkoutMinutes());
-  if (savedWorkoutResult?.calorie_calculation_status === "WEIGHT_REQUIRED") {
+  if (noRepetitions) {
+    resultCaloriesLine.textContent = "예상 소모 칼로리 0 kcal";
+    resultCaloriesHelp.textContent =
+      "완료된 반복이 없어 소모 칼로리를 계산하지 않았어요.";
+  } else if (saveError) {
+    resultCaloriesLine.textContent = "예상 소모 칼로리 계산되지 않음";
+    resultCaloriesHelp.textContent =
+      "운동 기록 저장에 성공하면 계산 결과를 확인할 수 있어요.";
+  } else if (savedWorkoutResult?.calorie_calculation_status === "WEIGHT_REQUIRED") {
     resultCaloriesLine.textContent =
       "체중을 등록하면 예상 소모 칼로리를 확인할 수 있어요.";
     resultCaloriesHelp.textContent =
@@ -1974,24 +2069,84 @@ function showWorkoutResult(planCompletionError = null) {
     resultCaloriesHelp.textContent =
       "MET 기준과 체중, 운동시간을 바탕으로 계산한 예상값입니다.";
   }
-  resultFeedbackTitle.textContent = planCompletionError
-    ? "운동 기록 저장 완료 · 루틴 완료 처리 실패"
+  resultFeedbackTitle.textContent = noRepetitions
+    ? "완료된 운동이 없어요."
     : savedFeedback.title;
-  resultFeedbackText.textContent = planCompletionError
-    ? `${savedFeedback.text} 운동 기록은 저장되었지만 연결된 루틴 완료 처리는 실패했습니다.`
+  resultFeedbackText.textContent = noRepetitions
+    ? "첫 번째 유효 반복부터 운동시간과 예상 소모 칼로리를 계산해요."
     : savedFeedback.text;
+
+  if (noRepetitions) {
+    setResultStatus(
+      resultRecordStatus,
+      "완료된 반복이 없어 운동 기록을 저장하지 않았어요."
+    );
+  } else if (saveError) {
+    setResultStatus(
+      resultRecordStatus,
+      `운동 기록을 저장하지 못했어요. ${saveError.message || "다시 시도해 주세요."}`,
+      "error"
+    );
+  } else {
+    setResultStatus(resultRecordStatus, "운동 기록을 저장했어요.", "success");
+  }
+
+  if (noRepetitions) {
+    setResultStatus(
+      resultPlanStatus,
+      coachingAssignmentId
+        ? "PT 숙제를 완료 처리하지 않았어요."
+        : coachingWorkoutPlanId
+          ? "루틴을 완료 처리하지 않았어요."
+          : "자유 코칭 결과를 저장하지 않았어요."
+    );
+  } else if (coachingAssignmentId) {
+    setResultStatus(
+      resultPlanStatus,
+      saveError
+        ? "PT 숙제 반영 여부를 확인하지 못했어요."
+        : "PT 숙제 수행 기록으로 반영했어요.",
+      saveError ? "error" : "success"
+    );
+  } else if (!coachingWorkoutPlanId) {
+    setResultStatus(resultPlanStatus, "자유 코칭으로 진행한 운동이에요.");
+  } else if (planCompletionError) {
+    setResultStatus(
+      resultPlanStatus,
+      "루틴 완료 상태는 반영하지 못했어요. 루틴에서 직접 완료할 수 있어요.",
+      "error"
+    );
+  } else if (planCompletionSucceeded) {
+    setResultStatus(resultPlanStatus, "오늘 루틴에 완료로 반영했어요.", "success");
+  } else {
+    setResultStatus(resultPlanStatus, "루틴 완료 상태를 확인하지 못했어요.");
+  }
 
   document.body.classList.remove("coaching-active", "coaching-paused");
   document.body.classList.add("coaching-result-mode");
+  document.body.dataset.coachingState = saveError
+    ? "save-failed"
+    : "save-complete";
   pauseButton.hidden = true;
   coachingResult.hidden = false;
+  resultRetryButton.hidden = !saveError;
+  resultRetryButton.disabled = false;
+  resultDashboardButton.hidden = Boolean(saveError);
+  resultPrimaryButton.textContent = coachingAssignmentId
+    ? "PT 숙제로 돌아가기"
+    : coachingWorkoutPlanId
+      ? "루틴으로 돌아가기"
+      : "대시보드로 이동";
+  resultDashboardButton.textContent = coachingWorkoutPlanId
+    ? "대시보드로 이동"
+    : "기록 보기";
   coachingResult.scrollIntoView({ block: "start" });
+  coachingResultTitle.focus({ preventScroll: true });
 }
 
 async function finishWorkout() {
   if (
-    !isWorkoutActive
-    || !isWorkoutFinished
+    !isWorkoutFinished
     || isSavingWorkout
   ) {
     return;
@@ -1999,11 +2154,28 @@ async function finishWorkout() {
 
   isSavingWorkout = true;
   finishButton.disabled = true;
+  freezeEffectiveWorkoutTime();
 
   stopPoseAnalysis();
 
-  movementState.textContent =
-    "저장 중";
+  movementState.textContent = "결과 저장 중";
+  document.body.dataset.coachingState = "saving";
+  setOverlayMovement("종료 처리 중");
+  setOverlayFeedback("운동 결과를 저장하고 있어요.");
+  lastWorkoutSaveError = null;
+  lastPlanCompletionError = null;
+
+  if (getTotalRepetitions() <= 0) {
+    isWorkoutActive = false;
+    stopCamera();
+    await closeCoachingSession().catch((error) => {
+      console.error("코칭 세션 종료 실패:", error);
+    });
+    clearRestTimer();
+    isSavingWorkout = false;
+    showWorkoutResult({ noRepetitions: true });
+    return;
+  }
 
   try {
     if (!workoutRecordSaved) {
@@ -2016,23 +2188,16 @@ async function finishWorkout() {
       error
     );
 
-    alert(
-      error.message
-      || "운동 기록을 저장하지 못했습니다."
-    );
-
-    isSavingWorkout = false;
-    finishButton.disabled = false;
-    movementState.textContent = "저장 실패";
-    return;
+    lastWorkoutSaveError = error;
   }
 
-  let planCompletionError = null;
-  if (coachingWorkoutPlanId) {
+  if (!lastWorkoutSaveError && coachingWorkoutPlanId) {
     try {
       await completeLinkedWorkoutPlan();
+      planCompletionSucceeded = true;
     } catch (error) {
-      planCompletionError = error;
+      lastPlanCompletionError = error;
+      planCompletionSucceeded = false;
       console.error(
         "운동 기록은 저장되었지만 계획 완료 처리에 실패했습니다:",
         error
@@ -2046,8 +2211,14 @@ async function finishWorkout() {
     console.error("코칭 세션 종료 실패:", error);
   });
   clearRestTimer();
-  clearCoachingPlan();
-  showWorkoutResult(planCompletionError);
+  if (workoutRecordSaved) {
+    clearCoachingPlan();
+  }
+  isSavingWorkout = false;
+  showWorkoutResult({
+    saveError: lastWorkoutSaveError,
+    planCompletionError: lastPlanCompletionError,
+  });
 }
 
 
@@ -2102,6 +2273,7 @@ async function toggleWorkoutPause() {
 
   if (!isWorkoutPaused) {
     isWorkoutPaused = true;
+    pauseStartedAt = new Date();
     stopPoseAnalysis();
     document.body.classList.add("coaching-paused");
     pauseButton.textContent = "운동 재개";
@@ -2115,6 +2287,13 @@ async function toggleWorkoutPause() {
   pauseButton.disabled = true;
   try {
     await resetCurrentExerciseAnalyzer();
+    if (pauseStartedAt) {
+      accumulatedPausedMilliseconds += Math.max(
+        0,
+        Date.now() - pauseStartedAt.getTime()
+      );
+      pauseStartedAt = null;
+    }
     isWorkoutPaused = false;
     document.body.classList.remove("coaching-paused");
     pauseButton.textContent = "일시정지";
@@ -2148,7 +2327,33 @@ voiceToggleButton.addEventListener("click", () => {
 pauseButton.addEventListener("click", toggleWorkoutPause);
 
 resultDashboardButton.addEventListener("click", () => {
-  window.location.href = "/dashboard";
+  window.location.href = coachingWorkoutPlanId ? "/dashboard" : "/records";
+});
+
+resultPrimaryButton.addEventListener("click", () => {
+  window.location.href = coachingAssignmentId
+    ? "/pt/assignments"
+    : coachingWorkoutPlanId
+      ? "/routine"
+      : "/dashboard";
+});
+
+resultRetryButton.addEventListener("click", async () => {
+  if (isSavingWorkout || workoutRecordSaved) {
+    return;
+  }
+  resultRetryButton.disabled = true;
+  setResultStatus(resultRecordStatus, "운동 기록을 다시 저장하고 있어요.");
+  await finishWorkout();
+});
+
+cameraRetryButton.addEventListener("click", async () => {
+  cameraRetryButton.disabled = true;
+  try {
+    await startWorkout();
+  } finally {
+    cameraRetryButton.disabled = false;
+  }
 });
 
 exerciseTabs.forEach(
@@ -2267,18 +2472,21 @@ finishButton.addEventListener("click", async () => {
   }
 
   const shouldExit = window.confirm(
-    "운동을 종료하면 현재 진행 내용은 저장되지 않습니다."
+    "운동을 종료하고 현재까지의 결과를 저장할까요?"
   );
 
   if (!shouldExit) {
     return;
   }
 
-  isWorkoutActive = false;
+  isWorkoutFinished = true;
+  isGoalCompleted = true;
+  isCurrentSetCompleted = true;
   clearRestTimer();
+  stopPoseAnalysis();
   stopCamera();
-  clearCoachingPlan();
-  window.location.href = "/routine";
+  finishButton.disabled = true;
+  await finishWorkout();
 });
 
 

@@ -12,12 +12,13 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models import Exercise, User, WorkoutPlan
-from backend.security import get_current_user
+from backend.security import get_current_user, require_account_type
 from backend.services.coaching_session_service import coaching_session_store
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 
 
 router = APIRouter(prefix="/api/coaching/sessions", tags=["coaching-sessions"])
+require_member = require_account_type("MEMBER")
 
 
 class CoachingSessionCreate(BaseModel):
@@ -87,7 +88,7 @@ def normalize_analysis_status(exercise_code: str, status: dict, analyzer):
 @router.post("")
 def create_coaching_session(
     payload: CoachingSessionCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     if payload.exercise_code not in AI_COACHING_EXERCISE_CODES:
@@ -128,7 +129,7 @@ def create_coaching_session(
 async def analyze_coaching_frame(
     session_id: str,
     image: UploadFile = File(...),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_member),
 ):
     frame = await decode_uploaded_image(image)
 
@@ -150,7 +151,7 @@ async def analyze_coaching_frame(
 @router.post("/{session_id}/reset")
 def reset_coaching_session(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_member),
 ):
     session = coaching_session_store.reset(session_id, user_id=user.user_id)
     count = (
@@ -170,7 +171,7 @@ def reset_coaching_session(
 @router.delete("/{session_id}")
 def delete_coaching_session(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_member),
 ):
     removed = coaching_session_store.delete(session_id, user_id=user.user_id)
     return {"success": True, "removed": removed}

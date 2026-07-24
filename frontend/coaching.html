@@ -24,7 +24,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=13"
+    href="/static/css/coaching.css?v=14"
   >
 
   <script src="/static/js/api_client.js?v=3" defer></script>
@@ -44,7 +44,7 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=14"
+    src="/static/js/coaching.js?v=16"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -217,6 +217,7 @@
           autoplay
           muted
           playsinline
+          aria-label="실시간 운동 자세 촬영 화면"
         ></video>
 
         <canvas
@@ -234,6 +235,9 @@
           <span>
             아래의 운동 시작 버튼을 눌러 주세요.
           </span>
+          <button type="button" id="cameraRetryButton" hidden>
+            카메라 다시 시도
+          </button>
         </div>
 
         <div class="live-badge">
@@ -251,6 +255,10 @@
         </button>
 
         <div class="workout-camera-overlay" aria-live="polite">
+          <div class="workout-overlay-identity">
+            <span><i aria-hidden="true"></i> LIVE</span>
+            <strong id="overlayExerciseName">스쿼트</strong>
+          </div>
           <div class="workout-overlay-top">
             <strong>
               <b id="overlayCurrentSet">1</b>
@@ -355,7 +363,7 @@
             <legend>운동 강도</legend>
             <label><input type="radio" name="exerciseIntensity" value="LOW"> 가벼움</label>
             <label><input type="radio" name="exerciseIntensity" value="MODERATE" checked> 보통</label>
-            <label><input type="radio" name="exerciseIntensity" value="HIGH"> 강함</label>
+            <label><input type="radio" name="exerciseIntensity" value="HIGH"> 강하게</label>
           </fieldset>
           <label class="workout-weight-input">
             <span>사용 중량 <small>선택</small></span>
@@ -383,6 +391,7 @@
           type="button"
           class="secondary-button"
           id="finishButton"
+          aria-label="현재 운동을 종료하고 결과 확인하기"
           disabled
         >
           운동 종료
@@ -392,7 +401,7 @@
       <section class="coaching-result" id="coachingResult" hidden>
         <div class="coaching-result-heading">
           <span>WORKOUT COMPLETE</span>
-          <h2>운동 결과</h2>
+          <h2 id="coachingResultTitle" tabindex="-1">운동 결과</h2>
           <p id="resultExerciseName">스쿼트 코칭을 완료했습니다.</p>
         </div>
 
@@ -425,9 +434,16 @@
           <p id="resultFeedbackText"></p>
         </div>
 
-        <button type="button" id="resultDashboardButton">
-          대시보드로 이동
-        </button>
+        <div class="coaching-result-statuses">
+          <p id="resultRecordStatus" role="status"></p>
+          <p id="resultPlanStatus" role="status"></p>
+        </div>
+
+        <div class="coaching-result-actions">
+          <button type="button" id="resultRetryButton" hidden>기록 저장 다시 시도</button>
+          <button type="button" id="resultPrimaryButton">대시보드로 이동</button>
+          <button type="button" id="resultDashboardButton">기록 보기</button>
+        </div>
       </section>
     </div>
 

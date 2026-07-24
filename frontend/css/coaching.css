@@ -357,6 +357,10 @@ button {
   text-align: center;
 }
 
+.camera-placeholder[hidden] {
+  display: none;
+}
+
 
 .camera-placeholder strong {
   font-size: 16px;
@@ -367,6 +371,17 @@ button {
   color: var(--text-muted);
 
   font-size: 12px;
+}
+
+.camera-placeholder button {
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 18px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+  border-radius: 12px;
+  font-weight: 850;
 }
 
 
@@ -1237,15 +1252,45 @@ body.coaching-paused .camera-card video {
   border: 1px solid rgba(168, 255, 53, 0.24);
   border-radius: 16px;
 }
-.calorie-inputs fieldset { display: flex; gap: 16px; margin: 0 0 14px; padding: 0; border: 0; }
+.calorie-inputs fieldset { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0 0 14px; padding: 0; border: 0; }
 .calorie-inputs legend,
 .workout-weight-input > span:first-child {
-  margin-bottom: 9px; color: #a8ff35; font-size: 13px; font-weight: 800;
+  display: block; margin-bottom: 9px; color: #a8ff35; font-size: 13px; font-weight: 800;
 }
-.calorie-inputs input[type="radio"] { accent-color: #a8ff35; }
-.workout-weight-input { display: flex; align-items: center; justify-content: space-between; }
+.calorie-inputs fieldset label {
+  position: relative;
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  color: var(--text-secondary);
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.calorie-inputs input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.calorie-inputs fieldset label:has(input:checked) {
+  color: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+  background: rgba(168, 255, 53, 0.08);
+}
+.calorie-inputs fieldset label:focus-within {
+  outline: 2px solid var(--gymfit-green);
+  outline-offset: 2px;
+}
+.workout-weight-input { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.workout-weight-input > span:last-child { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .workout-weight-input input {
-  width: 110px; padding: 10px; color: #fff; background: #0d0d0d;
+  width: min(34vw, 120px); min-width: 88px; height: 44px; padding: 0 10px; color: #fff; background: #0d0d0d;
   border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px;
 }
 .result-calories small {
@@ -1295,6 +1340,169 @@ body.coaching-result-mode .rest-card,
 body.coaching-result-mode .camera-card,
 body.coaching-result-mode .coaching-actions {
   display: none !important;
+}
+
+body.coaching-active .live-badge {
+  display: none;
+}
+
+.workout-overlay-identity {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 2px);
+  left: clamp(14px, 4vw, 24px);
+  z-index: 1;
+  min-width: 0;
+  max-width: calc(100% - 140px);
+  display: grid;
+  gap: 5px;
+}
+
+.workout-overlay-identity span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .8px;
+}
+
+.workout-overlay-identity i {
+  width: 7px;
+  height: 7px;
+  background: #ff4d4d;
+  border-radius: 50%;
+}
+
+.workout-overlay-identity strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: clamp(16px, 4.8vw, 22px);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px #000;
+}
+
+body.coaching-active .workout-camera-overlay {
+  padding:
+    calc(max(82px, env(safe-area-inset-top) + 68px))
+    clamp(14px, 4vw, 28px)
+    calc(max(146px, env(safe-area-inset-bottom) + 132px));
+}
+
+body.coaching-active .workout-overlay-top {
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+body.coaching-active .workout-overlay-top strong {
+  padding: 7px 10px;
+  font-size: clamp(13px, 3.8vw, 17px);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+body.coaching-active .workout-overlay-center strong {
+  font-size: clamp(76px, 25vw, 126px);
+}
+
+body.coaching-active .workout-overlay-center span {
+  margin-top: 8px;
+  font-size: clamp(20px, 6vw, 30px);
+}
+
+body.coaching-active .workout-overlay-feedback {
+  min-height: 48px;
+  padding: 10px 14px;
+  overflow: hidden;
+  font-size: clamp(14px, 4vw, 18px);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.coaching-result-statuses {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.coaching-result-statuses p {
+  margin: 0;
+  padding: 11px 13px;
+  color: var(--text-secondary);
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.coaching-result-statuses p.result-status-success {
+  color: var(--gymfit-green);
+  border-color: rgba(168, 255, 53, .22);
+}
+
+.coaching-result-statuses p.result-status-error {
+  color: #ff9b9b;
+  border-color: rgba(255, 123, 123, .24);
+}
+
+.coaching-result-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.coaching-result-actions button {
+  min-height: 52px;
+  padding: 0 10px;
+  border-radius: 15px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#resultPrimaryButton {
+  color: #050505;
+  background: var(--gymfit-green);
+  border: 0;
+}
+
+#resultDashboardButton,
+#resultRetryButton {
+  color: #fff;
+  background: #242424;
+  border: 1px solid rgba(255, 255, 255, .13);
+}
+
+#resultRetryButton {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 340px) {
+  .calorie-inputs { padding: 13px; }
+  .calorie-inputs fieldset { gap: 5px; }
+  .calorie-inputs fieldset label { padding: 0 3px; font-size: 12px; }
+  .workout-weight-input { gap: 8px; }
+  body.coaching-active .voice-toggle-button { right: 12px; min-width: 76px; }
+}
+
+@media (max-height: 620px) {
+  body.coaching-active .workout-camera-overlay {
+    padding-top: 68px;
+    padding-bottom: 124px;
+  }
+  body.coaching-active .workout-overlay-center strong {
+    font-size: 68px;
+  }
+  body.coaching-active .coaching-actions .pause-button,
+  body.coaching-active .secondary-button {
+    min-height: 54px;
+    font-size: 16px;
+  }
 }
 .pt-assignment-context {
   display: flex;

@@ -25,7 +25,7 @@ from backend.services.calorie_service import (
     calculate_for_record, normalize_intensity, safe_decimal, select_met,
     calculate_training_volume,
 )
-from backend.security import get_current_user
+from backend.security import get_current_user, require_account_type
 from backend.workout_session_schemas import (
     WorkoutMediaItem, WorkoutRecordMetricsUpdate, WorkoutSessionCreate, WorkoutSessionDetail,
     WorkoutSessionExerciseItem, WorkoutSessionList, WorkoutSessionSummary, WorkoutSessionUpdate,
@@ -33,6 +33,7 @@ from backend.workout_session_schemas import (
 
 
 router = APIRouter(prefix="/api/workout-sessions", tags=["운동 세션"])
+require_member = require_account_type("MEMBER")
 BASE_DIR = Path(__file__).resolve().parents[2]
 MEDIA_DIR = BASE_DIR / "uploads" / "workout_media"
 THUMBNAIL_DIR = BASE_DIR / "uploads" / "workout_thumbnails"
@@ -222,9 +223,7 @@ def detail_schema(record: WorkoutRecord) -> WorkoutSessionDetail:
 
 
 @router.post("", response_model=WorkoutSessionDetail, status_code=status.HTTP_201_CREATED)
-def create_session(payload: WorkoutSessionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.account_type != "MEMBER":
-        raise HTTPException(status_code=403, detail="회원만 일반 운동 기록을 등록할 수 있습니다.")
+def create_session(payload: WorkoutSessionCreate, user: User = Depends(require_member), db: Session = Depends(get_db)):
     try:
         record = WorkoutRecord(user_id=user.user_id, record_source="MANUAL_SESSION", calories=None)
         apply_summary(record, payload)
@@ -279,7 +278,7 @@ def session_detail(record_id: int, user: User = Depends(get_current_user), db: S
 def update_record_metrics(
     record_id: int,
     raw_payload: dict = Body(...),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     try:
@@ -401,7 +400,7 @@ def update_record_metrics(
 
 
 @router.patch("/{record_id}", response_model=WorkoutSessionDetail)
-def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = Depends(require_member), db: Session = Depends(get_db)):
     try:
         record = get_owned(db, record_id, user, write=True)
         if record.user_id != user.user_id or record.record_type != "WORKOUT": raise HTTPException(status_code=403, detail="PT 기록은 회원이 수정할 수 없습니다.")
@@ -417,7 +416,7 @@ def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = D
 
 
 @router.delete("/{record_id}", status_code=204)
-def delete_session(record_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_session(record_id: int, user: User = Depends(require_member), db: Session = Depends(get_db)):
     try:
         record = get_owned(db, record_id, user, write=True)
         if record.user_id != user.user_id or record.record_type != "WORKOUT":

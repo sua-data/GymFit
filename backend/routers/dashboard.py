@@ -29,6 +29,7 @@ from backend.models.workout_record import WorkoutRecord
 from backend.models.user_exercise import UserExercise
 from backend.models.pt_schedule import PtSchedule
 from backend.services.pt_service import has_active_trainer
+from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 from backend.security import enforce_self, get_current_user
 
 
@@ -97,6 +98,48 @@ def calculate_streak_days(
             break
 
     return streak
+
+
+def select_best_posture_records(
+    records: list[WorkoutRecord],
+) -> dict[int, WorkoutRecord]:
+    best_record_by_exercise: dict[int, WorkoutRecord] = {}
+    for record in records:
+        if record.exercise_id not in best_record_by_exercise:
+            best_record_by_exercise[record.exercise_id] = record
+    return best_record_by_exercise
+
+
+def best_posture_exercises_statement():
+    return (
+        select(Exercise)
+        .where(
+            Exercise.is_active.is_(True),
+            Exercise.exercise_code.in_(AI_COACHING_EXERCISE_CODES),
+        )
+        .order_by(Exercise.exercise_id.asc())
+    )
+
+
+def best_posture_records_statement(user_id: int):
+    return (
+        select(WorkoutRecord)
+        .join(
+            Exercise,
+            Exercise.exercise_id == WorkoutRecord.exercise_id,
+        )
+        .where(
+            WorkoutRecord.user_id == user_id,
+            Exercise.exercise_code.in_(AI_COACHING_EXERCISE_CODES),
+            WorkoutRecord.record_source == "COACHING",
+            WorkoutRecord.best_posture_score.is_not(None),
+        )
+        .order_by(
+            WorkoutRecord.best_posture_score.desc(),
+            WorkoutRecord.started_at.desc(),
+            WorkoutRecord.workout_record_id.desc(),
+        )
+    )
 
 
 @router.get("/{user_id}")
@@ -251,44 +294,16 @@ def get_dashboard(
 
     # 분석 가능한 운동 종목
     exercises = db.scalars(
-        select(Exercise)
-        .where(
-            Exercise.is_active.is_(True)
-        )
-        .order_by(
-            Exercise.exercise_id.asc()
-        )
+        best_posture_exercises_statement()
     ).all()
 
-    # 오늘 운동 기록
-    today_records = db.scalars(
-        select(WorkoutRecord)
-        .where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.started_at
-            >= today_start,
-            WorkoutRecord.started_at
-            < today_end,
-        )
-        .order_by(
-            WorkoutRecord.best_posture_score.desc(),
-            WorkoutRecord.started_at.desc()
-        )
+    posture_records = db.scalars(
+        best_posture_records_statement(user_id)
     ).all()
 
-    best_record_by_exercise: dict[
-        int,
-        WorkoutRecord,
-    ] = {}
-
-    for record in today_records:
-        if (
-            record.exercise_id
-            not in best_record_by_exercise
-        ):
-            best_record_by_exercise[
-                record.exercise_id
-            ] = record
+    best_record_by_exercise = select_best_posture_records(
+        posture_records
+    )
 
     best_postures = []
 
@@ -323,7 +338,7 @@ def get_dashboard(
                 "posture_score": (
                     record.best_posture_score
                     if record
-                    else 0
+                    else None
                 ),
                 "feedback_title": (
                     record.feedback_title
