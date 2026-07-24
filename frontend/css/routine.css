@@ -529,8 +529,48 @@ button {
   cursor: pointer;
 }
 
-#routineForm {
+#routineForm,
+#completionForm {
   margin-top: 23px;
+}
+
+.completion-exercise-name {
+  margin: 0 0 18px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.completion-sheet .routine-field b {
+  color: var(--gymfit-green);
+  font-size: 10px;
+}
+
+.completion-intensity {
+  margin: 16px 0;
+  padding: 14px;
+  display: flex;
+  gap: 16px;
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.completion-intensity legend {
+  width: 100%;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.completion-intensity label {
+  color: #fff;
+  font-size: 13px;
+}
+
+.completion-intensity input {
+  accent-color: #a8ff35;
 }
 
 .routine-field {

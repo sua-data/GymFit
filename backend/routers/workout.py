@@ -43,6 +43,7 @@ from backend.services.notification_service import create_notification
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 from backend.services.calorie_service import (
     calculate_for_record,
+    calculate_set_training_volume,
     calculate_training_volume,
     normalize_intensity,
     select_met,
@@ -149,6 +150,7 @@ class WorkoutRecordCreate(BaseModel):
     started_at: datetime | None = None
 
     assignment_id: int | None = Field(default=None, gt=0)
+    workout_plan_id: int | None = Field(default=None, gt=0)
 
     best_image_data_url: str | None = Field(default=None, max_length=8_000_000)
 
@@ -452,11 +454,18 @@ class WorkoutPlanCompleteRequest(BaseModel):
     user_id: int = Field(
         gt=0
     )
+    completed_sets: int | None = Field(default=None, ge=0, le=100)
+    repetition_count: int | None = Field(default=None, ge=0, le=10000)
+    weight_kg: Decimal | None = Field(default=None, gt=0, le=99999.99)
+    workout_minutes: int = Field(default=0, ge=0, le=1440)
+    exercise_intensity: str | None = Field(default=None, max_length=20)
 
 
 class WorkoutPlanCompleteResponse(BaseModel):
     message: str
     item: TodayWorkoutPlanItem
+    workout_record_id: int
+    record_created: bool
 
 
 class WorkoutPlanDeleteResponse(BaseModel):
@@ -1305,31 +1314,15 @@ def complete_workout_plan(
             detail="사용자를 찾을 수 없습니다.",
         )
 
-    plan_row = db.execute(
-        select(
-            WorkoutPlan,
-            Exercise,
-            UserExercise,
-        )
-        .outerjoin(
-            Exercise,
-            WorkoutPlan.exercise_id
-            == Exercise.exercise_id,
-        )
-        .outerjoin(
-            UserExercise,
-            (WorkoutPlan.user_exercise_id == UserExercise.user_exercise_id)
-            & (WorkoutPlan.user_id == UserExercise.user_id),
-        )
+    workout_plan = db.scalar(
+        select(WorkoutPlan)
         .where(
-            WorkoutPlan.workout_plan_id
-            == workout_plan_id,
-            WorkoutPlan.user_id
-            == request.user_id,
+            WorkoutPlan.workout_plan_id == workout_plan_id,
+            WorkoutPlan.user_id == request.user_id,
         )
-    ).first()
-
-    if not plan_row:
+        .with_for_update()
+    )
+    if not workout_plan:
         raise HTTPException(
             status_code=(
                 status.HTTP_404_NOT_FOUND
@@ -1339,22 +1332,138 @@ def complete_workout_plan(
             ),
         )
 
-    workout_plan, exercise, user_exercise = plan_row
+    exercise = (
+        db.scalar(select(Exercise).where(Exercise.exercise_id == workout_plan.exercise_id))
+        if workout_plan.exercise_id is not None else None
+    )
+    user_exercise = (
+        db.scalar(select(UserExercise).where(
+            UserExercise.user_exercise_id == workout_plan.user_exercise_id,
+            UserExercise.user_id == workout_plan.user_id,
+        ))
+        if workout_plan.user_exercise_id is not None else None
+    )
 
     if (exercise is None) == (user_exercise is None):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="운동 참조가 올바르지 않은 비정상 계획입니다.",
         )
-    workout_plan.is_completed = True
-
     try:
         plan_sets = get_plan_sets(db, workout_plan)
+        existing_record = db.scalar(
+            select(WorkoutRecord).where(
+                WorkoutRecord.workout_plan_id == workout_plan.workout_plan_id
+            )
+        )
+        record_created = existing_record is None
+
+        if existing_record is None:
+            intensity, intensity_is_default = normalize_intensity(
+                request.exercise_intensity
+            )
+            completed_sets = (
+                request.completed_sets
+                if request.completed_sets is not None
+                else len(plan_sets) if plan_sets else workout_plan.set_count
+            )
+            planned_total_reps = (
+                sum(plan_set.repetition_count or 0 for plan_set in plan_sets)
+                if plan_sets
+                else workout_plan.repetition_count * completed_sets
+            )
+            total_repetitions = (
+                request.repetition_count
+                if request.repetition_count is not None
+                else planned_total_reps
+            )
+            training_volume = None
+            record_weight = request.weight_kg
+            if request.weight_kg is not None:
+                training_volume = calculate_training_volume(
+                    request.weight_kg, total_repetitions=total_repetitions
+                )
+            elif plan_sets:
+                training_volume = calculate_set_training_volume(
+                    plan_sets, completed_only=False
+                )
+                if training_volume is not None:
+                    distinct_weights = {
+                        plan_set.weight_kg
+                        for plan_set in plan_sets
+                        if plan_set.weight_kg is not None and plan_set.weight_kg > 0
+                    }
+                    if len(distinct_weights) == 1:
+                        record_weight = next(iter(distinct_weights))
+
+            calories = None
+            met_used = None
+            weight_used = None
+            calculation_status = (
+                "INVALID_DURATION" if request.workout_minutes <= 0 else None
+            )
+            if exercise is not None:
+                met_value = select_met(exercise, intensity)
+                result = calculate_for_record(
+                    met_value,
+                    user.member_profile.weight_kg if user.member_profile else None,
+                    request.workout_minutes,
+                )
+                calories = result.calories
+                met_used = result.met_used
+                weight_used = result.user_weight_used_kg
+                calculation_status = result.status
+
+            completed_at = korea_now_naive()
+            existing_record = WorkoutRecord(
+                user_id=user.user_id,
+                workout_plan_id=workout_plan.workout_plan_id,
+                record_type="WORKOUT",
+                title=f"{exercise.exercise_name if exercise else user_exercise.exercise_name} 운동",
+                workout_date=workout_plan.plan_date,
+                exercise_id=workout_plan.exercise_id,
+                user_exercise_id=workout_plan.user_exercise_id,
+                record_source="ROUTINE_COMPLETE",
+                started_at=completed_at - timedelta(minutes=request.workout_minutes),
+                completed_at=completed_at,
+                completed_sets=completed_sets,
+                repetition_count=total_repetitions,
+                workout_minutes=request.workout_minutes,
+                calories=calories,
+                exercise_intensity=intensity,
+                intensity_is_default=intensity_is_default,
+                met_used=met_used,
+                user_weight_used_kg=weight_used,
+                calorie_calculation_status=calculation_status,
+                weight_kg=record_weight,
+                training_volume_kg=training_volume,
+            )
+            db.add(existing_record)
+            db.flush()
+            db.add(WorkoutRecordDetailItem(
+                record_id=existing_record.workout_record_id,
+                exercise_id=workout_plan.exercise_id,
+                user_exercise_id=workout_plan.user_exercise_id,
+                exercise_name=exercise.exercise_name if exercise else user_exercise.exercise_name,
+                weight_value=record_weight,
+                repetitions=total_repetitions or None,
+                completed_sets=completed_sets or None,
+                workout_minutes=request.workout_minutes or None,
+                display_order=1,
+            ))
+
+        workout_plan.is_completed = True
         for plan_set in plan_sets:
             plan_set.is_completed = True
         db.commit()
         db.refresh(workout_plan)
 
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="이미 이 운동 계획의 기록이 생성되었습니다.",
+        )
     except Exception as error:
         db.rollback()
 
@@ -1379,6 +1488,8 @@ def complete_workout_plan(
             user_exercise,
             plan_sets,
         ),
+        workout_record_id=existing_record.workout_record_id,
+        record_created=record_created,
     )
 
 
@@ -1702,6 +1813,22 @@ def create_workout_record(
         request.weight_kg, total_repetitions=request.repetition_count
     )
 
+    linked_plan = None
+    if request.workout_plan_id is not None:
+        linked_plan = db.scalar(
+            select(WorkoutPlan).where(
+                WorkoutPlan.workout_plan_id == request.workout_plan_id,
+                WorkoutPlan.user_id == request.user_id,
+                WorkoutPlan.exercise_id == exercise.exercise_id,
+            )
+        )
+        if linked_plan is None:
+            raise HTTPException(status_code=404, detail="연결할 운동 계획을 찾을 수 없습니다.")
+        if db.scalar(select(WorkoutRecord.workout_record_id).where(
+            WorkoutRecord.workout_plan_id == request.workout_plan_id
+        )) is not None:
+            raise HTTPException(status_code=409, detail="이미 이 운동 계획의 기록이 생성되었습니다.")
+
     assignment = None
     if request.assignment_id is not None:
         assignment = db.scalar(
@@ -1741,6 +1868,7 @@ def create_workout_record(
     try:
         workout_record = WorkoutRecord(
             user_id=request.user_id,
+            workout_plan_id=request.workout_plan_id,
             record_type="WORKOUT",
             title=f"{exercise.exercise_name} 운동",
             workout_date=started_at.date(),

@@ -4,6 +4,9 @@ const userName =
 const caloriesValue =
   document.querySelector("#caloriesValue");
 
+const caloriesUnit =
+  document.querySelector("#caloriesUnit");
+
 const workoutMinutesValue =
   document.querySelector("#workoutMinutesValue");
 
@@ -213,8 +216,24 @@ function renderSummary(data) {
   userName.textContent =
     data.user?.name || "-";
 
+  const calorieStatus =
+    data.summary?.calorie_calculation_status;
+
+  const calories =
+    data.summary?.calories;
+
+  const displayedCalories =
+    calorieStatus === "CALCULATED"
+    && calories !== null
+    && calories !== undefined
+      ? Number(calories).toFixed(1)
+      : "0";
+
   caloriesValue.textContent =
-    Number(data.summary?.calories ?? 0).toFixed(1);
+    displayedCalories;
+
+  caloriesUnit.textContent =
+    "kcal";
 
   workoutMinutesValue.textContent =
     data.summary?.workout_minutes ?? 0;
@@ -512,6 +531,10 @@ function renderWeeklyData(data) {
       : `${workoutDays} / ${weeklyGoalDays}일`;
 }
 
+function dashboardWorkoutMinutes(minutes) {
+  return Number(minutes) > 0 ? `${Number(minutes)}분` : "운동시간 미입력";
+}
+
 
 /* =========================
    최근 운동 기록
@@ -566,7 +589,7 @@ function renderRecentWorkouts(workouts) {
             workout.workout_date_text
           )}
           ·
-          ${escapeHtml(ptDetail || `${Number(workout.workout_minutes) || 0}분`)}
+          ${escapeHtml(ptDetail || dashboardWorkoutMinutes(workout.workout_minutes))}
         </span>
       </div>
 
@@ -580,7 +603,7 @@ function renderRecentWorkouts(workouts) {
 
         <span>
           ${workout.average_posture_score === null || workout.average_posture_score === undefined
-            ? `${Number(workout.workout_minutes) || 0}분`
+            ? dashboardWorkoutMinutes(workout.workout_minutes)
             : `<strong>${Number(workout.average_posture_score)}</strong>점`}
         </span>
       </div>

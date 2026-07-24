@@ -59,6 +59,13 @@ const recommendationDays = document.querySelector("#recommendationDays");
 const recommendationResultError = document.querySelector("#recommendationResultError");
 const recommendationRegenerate = document.querySelector("#recommendationRegenerate");
 const recommendationApply = document.querySelector("#recommendationApply");
+const completionSheetOverlay = document.querySelector("#completionSheetOverlay");
+const completionSheetClose = document.querySelector("#completionSheetClose");
+const completionCancel = document.querySelector("#completionCancel");
+const completionForm = document.querySelector("#completionForm");
+const completionFormError = document.querySelector("#completionFormError");
+const completionSave = document.querySelector("#completionSave");
+const completionExerciseName = document.querySelector("#completionExerciseName");
 
 let activePlanDate = null;
 let isSavingPlan = false;
@@ -69,6 +76,8 @@ let formMode = "create";
 let editingPlan = null;
 let currentRecommendation = null;
 let recommendationBusy = false;
+let completingItem = null;
+let completionIntensityChanged = false;
 
 function getLoginUserId() {
   const savedUser = sessionStorage.getItem("gymfitUser");
@@ -713,7 +722,7 @@ async function updatePlan(
   return data;
 }
 
-async function completePlan(userId, workoutPlanId) {
+async function completePlan(userId, workoutPlanId, completion = {}) {
   const response = await fetch(
     `/api/workouts/plans/${workoutPlanId}/complete`,
     {
@@ -723,6 +732,7 @@ async function completePlan(userId, workoutPlanId) {
       },
       body: JSON.stringify({
         user_id: userId,
+        ...completion,
       }),
     }
   );
@@ -739,6 +749,129 @@ async function completePlan(userId, workoutPlanId) {
   }
 
   return data;
+}
+
+function plannedCompletionValues(item) {
+  const sets = item.sets || [];
+  return {
+    completedSets: Number(sets.length || item.set_count || 0),
+    repetitions: sets.length
+      ? sets.reduce(
+          (sum, setItem) => sum + Number(setItem.repetition_count || 0),
+          0
+        )
+      : Number(item.repetition_count || 0) * Number(item.set_count || 0),
+  };
+}
+
+function showCompletionError(message) {
+  completionFormError.textContent = message;
+  completionFormError.hidden = false;
+}
+
+function clearCompletionError() {
+  completionFormError.textContent = "";
+  completionFormError.hidden = true;
+}
+
+function openCompletionSheet(item) {
+  const initial = plannedCompletionValues(item);
+  completingItem = item;
+  completionIntensityChanged = false;
+  completionForm.reset();
+  completionExerciseName.textContent = item.exercise_name;
+  completionForm.elements.completed_sets.value = String(initial.completedSets);
+  completionForm.elements.repetition_count.value = String(initial.repetitions);
+  completionForm.elements.exercise_intensity.value = "MODERATE";
+  clearCompletionError();
+  completionSheetOverlay.hidden = false;
+  document.body.classList.add("routine-sheet-open");
+  completionForm.elements.workout_minutes.focus();
+}
+
+function closeCompletionSheet() {
+  if (completingPlanId !== null) {
+    return;
+  }
+  completionSheetOverlay.hidden = true;
+  document.body.classList.remove("routine-sheet-open");
+  completionForm.reset();
+  completingItem = null;
+  completionIntensityChanged = false;
+  clearCompletionError();
+}
+
+async function submitCompletion(event) {
+  event.preventDefault();
+  if (!completingItem || completingPlanId !== null) {
+    return;
+  }
+
+  const minutesText = completionForm.elements.workout_minutes.value.trim();
+  const workoutMinutes = Number(minutesText);
+  if (
+    minutesText === ""
+    || !Number.isInteger(workoutMinutes)
+    || workoutMinutes < 1
+  ) {
+    showCompletionError("운동시간을 1분 이상 입력해주세요.");
+    completionForm.elements.workout_minutes.focus();
+    return;
+  }
+
+  const completedSets = Number(completionForm.elements.completed_sets.value);
+  const repetitionCount = Number(completionForm.elements.repetition_count.value);
+  const weightText = completionForm.elements.weight_kg.value.trim();
+  const weightKg = weightText === "" ? null : Number(weightText);
+  if (
+    !Number.isInteger(completedSets) || completedSets < 0
+    || !Number.isInteger(repetitionCount) || repetitionCount < 0
+    || (weightKg !== null && (!Number.isFinite(weightKg) || weightKg <= 0))
+  ) {
+    showCompletionError("완료 세트, 반복 횟수와 사용 중량을 확인해주세요.");
+    return;
+  }
+
+  const userId = getLoginUserId();
+  if (!userId) {
+    window.location.href = "/login";
+    return;
+  }
+
+  clearCompletionError();
+  completingPlanId = completingItem.workout_plan_id;
+  completionSave.disabled = true;
+  completionSave.textContent = "저장 중";
+
+  try {
+    await completePlan(userId, completingItem.workout_plan_id, {
+      workout_minutes: workoutMinutes,
+      exercise_intensity: completionIntensityChanged
+        ? completionForm.elements.exercise_intensity.value
+        : null,
+      weight_kg: weightKg,
+      completed_sets: completedSets,
+      repetition_count: repetitionCount,
+    });
+    completionSheetOverlay.hidden = true;
+    document.body.classList.remove("routine-sheet-open");
+    completingItem = null;
+    try {
+      await loadPlan(userId, activePlanDate);
+    } catch (refreshError) {
+      console.error("완료 후 루틴 목록 갱신 실패:", refreshError);
+      alert("운동 기록은 저장됐지만 목록을 새로고침하지 못했습니다.");
+    }
+  } catch (error) {
+    console.error("운동 완료 저장 실패:", error);
+    showCompletionError(
+      error.message || "운동 완료 기록을 저장하지 못했습니다."
+    );
+  } finally {
+    completingPlanId = null;
+    completionSave.disabled = false;
+    completionSave.textContent = "운동 완료 저장";
+  }
 }
 
 async function deletePlan(userId, workoutPlanId) {
@@ -915,46 +1048,7 @@ function renderPlan(data) {
     }
 
     if (buttonState.action === "complete") {
-      actionButton.addEventListener("click", async () => {
-        if (
-          !window.confirm(
-            `${item.exercise_name} 운동을 완료 처리할까요?\n`
-            + "운동 기록은 생성되지 않습니다."
-          )
-        ) {
-          return;
-        }
-
-        if (completingPlanId !== null) {
-          return;
-        }
-
-        const userId = getLoginUserId();
-
-        if (!userId) {
-          window.location.href = "/login";
-          return;
-        }
-
-        completingPlanId = item.workout_plan_id;
-        actionButton.disabled = true;
-        actionButton.textContent = "처리 중";
-
-        try {
-          await completePlan(userId, item.workout_plan_id);
-          await loadPlan(userId, activePlanDate);
-        } catch (error) {
-          console.error("운동 계획 완료 처리 실패:", error);
-          alert(
-            error.message
-            || "운동 계획을 완료 처리하지 못했습니다."
-          );
-          actionButton.disabled = false;
-          actionButton.textContent = buttonState.label;
-        } finally {
-          completingPlanId = null;
-        }
-      });
+      actionButton.addEventListener("click", () => openCompletionSheet(item));
     }
 
     const editButton = card.querySelector(".routine-edit-button");
@@ -1025,6 +1119,19 @@ recommendationApply.addEventListener("click", applyRecommendation);
 recommendationResultClose.addEventListener("click", () => {
   recommendationResult.hidden = true;
 });
+completionSheetClose.addEventListener("click", closeCompletionSheet);
+completionCancel.addEventListener("click", closeCompletionSheet);
+completionForm.addEventListener("submit", submitCompletion);
+completionForm.querySelectorAll('input[name="exercise_intensity"]').forEach(
+  (input) => input.addEventListener("change", () => {
+    completionIntensityChanged = true;
+  })
+);
+completionSheetOverlay.addEventListener("click", (event) => {
+  if (event.target === completionSheetOverlay) {
+    closeCompletionSheet();
+  }
+});
 
 routineSheetOverlay.addEventListener("click", (event) => {
   if (event.target === routineSheetOverlay) {
@@ -1033,6 +1140,10 @@ routineSheetOverlay.addEventListener("click", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !completionSheetOverlay.hidden) {
+    closeCompletionSheet();
+    return;
+  }
   if (
     event.key === "Escape"
     && !routineSheetOverlay.hidden

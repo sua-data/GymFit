@@ -6,6 +6,7 @@ import pytest
 from backend.services.calorie_service import (
     calculate_estimated_calories,
     calculate_for_record,
+    calculate_set_training_volume,
     calculate_training_volume,
     normalize_intensity,
     select_met,
@@ -55,6 +56,15 @@ def test_bodyweight_volume_is_null():
 
 def test_weighted_volume_uses_total_completed_repetitions_once():
     assert calculate_training_volume(Decimal("20"), total_repetitions=30) == Decimal("600.00")
+
+
+def test_set_volume_sums_different_weights_and_repetitions():
+    sets = [
+        SimpleNamespace(weight_kg=Decimal("20"), repetition_count=10, is_completed=True),
+        SimpleNamespace(weight_kg=Decimal("25"), repetition_count=8, is_completed=True),
+        SimpleNamespace(weight_kg=Decimal("30"), repetition_count=5, is_completed=False),
+    ]
+    assert calculate_set_training_volume(sets) == Decimal("400.00")
 
 
 def test_decimal_rounding_is_half_up_to_one_decimal():

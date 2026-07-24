@@ -1812,6 +1812,9 @@ async function saveWorkoutRecord() {
           assignment_id:
             coachingAssignmentId,
 
+          workout_plan_id:
+            coachingWorkoutPlanId,
+
           best_image_data_url:
             bestPostureImageDataUrl
         })

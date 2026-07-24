@@ -154,11 +154,14 @@ def get_dashboard(
     # 오늘 요약
     today_summary = db.execute(
         select(
-            func.coalesce(
-                func.sum(
-                    WorkoutRecord.calories
-                ),
-                0,
+            func.sum(
+                case(
+                    (
+                        WorkoutRecord.calorie_calculation_status == "CALCULATED",
+                        WorkoutRecord.calories,
+                    ),
+                    else_=None,
+                )
             ),
             func.coalesce(
                 func.sum(
@@ -166,6 +169,9 @@ def get_dashboard(
                 ),
                 0,
             ),
+            func.sum(case((WorkoutRecord.calorie_calculation_status == "CALCULATED", 1), else_=0)),
+            func.sum(case((WorkoutRecord.calorie_calculation_status == "WEIGHT_REQUIRED", 1), else_=0)),
+            func.sum(case((WorkoutRecord.calorie_calculation_status == "INVALID_DURATION", 1), else_=0)),
             func.coalesce(
                 func.sum(
                     WorkoutRecord.completed_sets
@@ -590,18 +596,30 @@ def get_dashboard(
             "target_url": "/trainer/schedules" if user.account_type == "TRAINER" else "/pt/schedules",
         }
 
+    calorie_status = (
+        "CALCULATED" if (today_summary[2] or 0) > 0
+        else "WEIGHT_REQUIRED" if (today_summary[3] or 0) > 0
+        else "INVALID_DURATION" if (today_summary[4] or 0) > 0
+        else None
+    )
+
     return {
         "user": {
             "user_id": user.user_id,
             "name": user.name,
         },
         "summary": {
-            "calories": round(float(today_summary[0] or 0), 1),
+            "calories": (
+                round(float(today_summary[0]), 1)
+                if calorie_status == "CALCULATED" and today_summary[0] is not None
+                else None
+            ),
+            "calorie_calculation_status": calorie_status,
             "workout_minutes": int(
                 today_summary[1] or 0
             ),
             "completed_sets": int(
-                today_summary[2] or 0
+                today_summary[5] or 0
             ),
             "streak_days": streak_days,
         },

@@ -70,6 +70,13 @@ class WorkoutRecord(Base):
     pt_schedule_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("pt_schedule.schedule_id", ondelete="RESTRICT", onupdate="CASCADE"), nullable=True, unique=True
     )
+    workout_plan_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("workout_plan.workout_plan_id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     memo: Mapped[str | None] = mapped_column(Text, nullable=True)
 

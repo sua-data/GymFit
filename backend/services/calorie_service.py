@@ -84,3 +84,26 @@ def calculate_training_volume(
     if weight is None or weight <= 0 or repetitions is None or repetitions <= 0:
         return None
     return (weight * repetitions).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def calculate_set_training_volume(
+    sets: object, *, completed_only: bool = True,
+) -> Decimal | None:
+    """Sum completed set volume without assuming equal weights or repetitions."""
+    total = Decimal("0")
+    has_volume = False
+    for item in sets:
+        weight = safe_decimal(getattr(item, "weight_kg", None))
+        repetitions = safe_decimal(getattr(item, "repetition_count", None))
+        is_completed = getattr(item, "is_completed", True)
+        if (
+            (is_completed or not completed_only)
+            and weight is not None and weight > 0
+            and repetitions is not None and repetitions > 0
+        ):
+            total += weight * repetitions
+            has_volume = True
+    return (
+        total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if has_volume else None
+    )
