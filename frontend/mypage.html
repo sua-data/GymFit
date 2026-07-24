@@ -4,17 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GYMFIT | 마이 페이지</title>
-  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common.css?v=2">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/mypage.css?v=11">
+  <link rel="stylesheet" href="/static/css/mypage.css?v=13">
   <link rel="stylesheet" href="/static/css/employment_status.css?v=1">
   <script src="/static/js/api_client.js?v=3" defer></script>
-  <script src="/static/js/common_layout.js?v=19" defer></script>
+  <script src="/static/js/common_layout.js?v=21" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/gym_search.js?v=2" defer></script>
   <script src="/static/js/employment_status.js?v=1" defer></script>
-  <script src="/static/js/mypage.js?v=13" defer></script>
+  <script src="/static/js/mypage.js?v=15" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -27,9 +27,9 @@
     <div class="mypage-container">
       <div id="topHeaderContainer"></div>
 
-      <section class="page-state" id="profileLoading">사용자 정보를 불러오고 있습니다.</section>
-      <section class="page-state error" id="profileError" hidden>
-        <strong>사용자 정보를 불러오지 못했습니다.</strong>
+      <section class="page-state gymfit-state" id="profileLoading" role="status" aria-live="polite">사용자 정보를 불러오고 있습니다.</section>
+      <section class="page-state gymfit-state error" id="profileError" hidden role="alert">
+        <strong>사용자 정보를 불러오지 못했어요.</strong>
         <p id="profileErrorMessage">잠시 후 다시 시도해 주세요.</p>
         <button type="button" id="profileRetryButton">다시 시도</button>
       </section>
@@ -45,7 +45,7 @@
           <button type="button" class="profile-edit-shortcut" id="profileEditShortcut" aria-label="프로필 수정">수정</button>
         </section>
 
-        <section class="profile-info-card" aria-labelledby="profileInfoTitle">
+        <section class="profile-info-card" id="fitnessProfileCard" aria-labelledby="profileInfoTitle">
           <div class="section-heading">
             <span>MY FITNESS</span>
             <h2 id="profileInfoTitle">운동 프로필</h2>
@@ -57,7 +57,11 @@
           <dl class="profile-facts">
             <div id="profileGoalsRow"><dt>운동 목표</dt><dd id="profileGoals">-</dd></div>
             <div id="profileLevelRow"><dt>운동 수준</dt><dd id="profileLevel">-</dd></div>
+            <div id="profileHeightRow"><dt>키</dt><dd id="profileHeight">-</dd></div>
+            <div id="profileWeightRow"><dt>몸무게</dt><dd id="profileWeight">-</dd></div>
+            <div id="profilePtRow"><dt>PT 연결 상태</dt><dd id="profilePtStatus">-</dd></div>
             <div><dt>회원 유형</dt><dd id="profileAccountType">-</dd></div>
+            <div><dt>생년월일</dt><dd id="profileBirthDate">-</dd></div>
             <div id="profileGymRow" hidden><dt>소속 헬스장</dt><dd id="profileGym">-</dd></div>
             <div><dt id="profileDateLabel">가입일</dt><dd id="profileDate">-</dd></div>
           </dl>
@@ -98,9 +102,14 @@
           <div id="memberEditFields">
             <fieldset><legend>운동 목표</legend><div class="choice-grid" id="profileGoalChoices"></div><p class="field-error" id="profileGoalError" hidden>운동 목표를 하나 이상 선택해 주세요.</p></fieldset>
             <label>운동 수준<select id="profileLevelSelect" data-gymfit-select required><option value="BEGINNER">초급</option><option value="INTERMEDIATE">중급</option><option value="ADVANCED">고급</option></select></label>
+            <div class="profile-body-grid">
+              <label>키 <small>선택</small><span class="profile-unit-field"><input id="profileHeightInput" type="number" min="100" max="250" step="0.1" inputmode="decimal"><b>cm</b></span></label>
+              <label>몸무게 <small>선택</small><span class="profile-unit-field"><input id="profileWeightInput" type="number" min="30" max="300" step="0.1" inputmode="decimal"><b>kg</b></span></label>
+            </div>
+            <p class="profile-body-help">몸무게는 예상 소모 칼로리를 계산하는 데 사용해요. 키는 선택 프로필 정보이며 칼로리 계산에는 사용하지 않아요.</p>
           </div>
           <p class="form-message" id="profileFormMessage" hidden></p>
-          <button type="submit" class="save-profile-button" id="profileSaveButton">저장하기</button>
+          <button type="submit" class="save-profile-button" id="profileSaveButton">변경사항 저장</button>
         </form>
       </section>
     </div>

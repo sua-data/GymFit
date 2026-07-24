@@ -5,7 +5,7 @@
   <title>GYMFIT | 운동 기록</title>
   <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3"><link rel="stylesheet" href="/static/css/records.css?v=4">
-  <script src="/static/js/api_client.js?v=3" defer></script><script src="/static/js/common_layout.js?v=19" defer></script><script src="/static/js/common_dropdown.js?v=2" defer></script>
+  <script src="/static/js/api_client.js?v=3" defer></script><script src="/static/js/common_layout.js?v=21" defer></script><script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/records.js?v=6" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
@@ -19,9 +19,9 @@
     <section class="records-summary"><div><span>WORKOUT HISTORY</span><h1>나의 운동 기록</h1></div><strong><b id="recordTotalCount">0</b>회</strong></section>
     <button id="openRecordForm" class="record-create-button" type="button">+ 운동 기록 추가</button>
     <nav class="record-filters" aria-label="기록 기간 필터"><button type="button" class="active" data-period="all">전체</button><button type="button" data-period="today">오늘</button><button type="button" data-period="7d">최근 7일</button><button type="button" data-period="30d">최근 30일</button></nav>
-    <section class="records-state" id="recordsLoading">운동 기록을 불러오고 있습니다.</section>
-    <section class="records-state" id="recordsEmpty" hidden><strong>아직 저장된 운동 기록이 없어요.</strong><p>오늘 수행한 운동을 하나의 기록으로 남겨 보세요.</p></section>
-    <section class="records-state error" id="recordsError" hidden><strong>운동 기록을 불러오지 못했습니다.</strong><p id="recordsErrorMessage"></p><button type="button" id="recordsRetryButton">다시 시도</button></section>
+    <section class="records-state gymfit-state" id="recordsLoading" role="status" aria-live="polite">운동 기록을 불러오고 있습니다.</section>
+    <section class="records-state gymfit-state" id="recordsEmpty" hidden><strong>아직 저장된 운동 기록이 없어요.</strong><p>첫 운동을 시작하고 기록을 남겨보세요.</p><a class="gymfit-state-action" href="/routine">운동 시작하기</a></section>
+    <section class="records-state gymfit-state error" id="recordsError" hidden role="alert"><strong>운동 기록을 불러오지 못했어요.</strong><p id="recordsErrorMessage">네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p><button type="button" id="recordsRetryButton">다시 시도</button></section>
     <section class="records-list" id="recordsList" hidden></section>
   </div>
 
@@ -35,13 +35,13 @@
   <div class="record-detail-overlay" id="recordMetricsOverlay" hidden><button type="button" class="record-detail-backdrop" id="recordMetricsBackdrop" aria-label="수정 닫기"></button>
     <section class="record-detail-sheet record-form-sheet" role="dialog" aria-modal="true" aria-labelledby="recordMetricsTitle"><header><div><span>EDIT WORKOUT</span><h2 id="recordMetricsTitle">운동 기록 수정</h2></div><button type="button" id="recordMetricsClose" class="sheet-icon-close" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
       <form id="recordMetricsForm" class="record-form">
-        <label><span>운동시간(분)</span><input name="workout_minutes" type="number" min="1" max="1440" step="1" required></label>
+        <label><span>운동시간</span><span class="record-input-unit"><input name="workout_minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" required><b>분</b></span></label>
         <fieldset class="record-metrics-intensity"><legend>운동 강도</legend><label><input type="radio" name="exercise_intensity" value="LOW"> 가벼움</label><label><input type="radio" name="exercise_intensity" value="MODERATE"> 보통</label><label><input type="radio" name="exercise_intensity" value="HIGH"> 강함</label></fieldset>
-        <label><span>사용 중량(kg) <small>선택</small></span><input name="weight_kg" type="number" min="0.01" max="99999.99" step="0.01"></label>
+        <label><span>사용 중량 <small>선택</small></span><span class="record-input-unit"><input name="weight_kg" type="number" min="0.01" max="99999.99" step="0.01" inputmode="decimal"><b>kg</b></span></label>
         <div class="record-form-grid"><label><span>완료 세트</span><input name="completed_sets" type="number" min="0" max="100" step="1" required></label><label><span>총 반복 횟수</span><input name="repetition_count" type="number" min="0" max="10000" step="1" required></label></div>
         <p id="recordMetricsNotice" class="record-edit-notice"></p>
         <p id="recordMetricsMessage" class="record-form-message" role="alert"></p>
-        <button id="recordMetricsSave" class="record-save-button" type="submit">수정 저장</button>
+        <button id="recordMetricsSave" class="record-save-button" type="submit">변경사항 저장</button>
       </form>
     </section>
   </div>

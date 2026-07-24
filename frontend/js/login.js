@@ -30,6 +30,8 @@ const googleLoginButton =
 const errorMessage = document.querySelector(
   "#errorMessage"
 );
+const emailError = document.querySelector("#emailError");
+const passwordError = document.querySelector("#passwordError");
 
 const googleClientIdMeta =
   document.querySelector(
@@ -76,9 +78,16 @@ function showError(
   message,
   inputElement = null
 ) {
-  errorMessage.textContent = message;
+  clearError();
+  const fieldError = inputElement === emailInput
+    ? emailError
+    : inputElement === passwordInput
+      ? passwordError
+      : errorMessage;
+  fieldError.textContent = message;
 
   if (inputElement) {
+    inputElement.setAttribute("aria-invalid", "true");
     inputElement.focus();
   }
 }
@@ -86,6 +95,10 @@ function showError(
 
 function clearError() {
   errorMessage.textContent = "";
+  emailError.textContent = "";
+  passwordError.textContent = "";
+  emailInput.removeAttribute("aria-invalid");
+  passwordInput.removeAttribute("aria-invalid");
 }
 
 
@@ -309,9 +322,12 @@ function moveAfterLogin() {
   } catch {
     accountType = "";
   }
-  window.location.replace(
-    accountType === "ADMIN" ? "/admin/dashboard" : "/dashboard"
-  );
+  const target = accountType === "ADMIN"
+    ? "/admin/dashboard"
+    : accountType === "TRAINER"
+      ? "/trainer/members"
+      : "/dashboard";
+  window.location.replace(target);
 }
 
 
@@ -403,7 +419,7 @@ loginForm.addEventListener(
 
       showError(
         error.message ||
-          "로그인 중 오류가 발생했습니다."
+          "로그인 정보를 확인한 뒤 다시 시도해 주세요."
       );
 
     } finally {

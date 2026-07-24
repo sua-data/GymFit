@@ -109,7 +109,7 @@
     state.hidden = items.length > 0;
     list.hidden = items.length === 0;
     if (!items.length) {
-      state.textContent = "등록된 PT 숙제가 없습니다.";
+      state.innerHTML = "<strong>예정된 PT 숙제가 없어요.</strong><p>새 숙제가 등록되면 여기에서 확인할 수 있어요.</p>";
       return;
     }
     items.forEach(item => {
@@ -131,7 +131,7 @@
       if (["ASSIGNED", "IN_PROGRESS"].includes(item.status)) {
         const actions = document.createElement("div");
         actions.className = "assignment-actions";
-        actions.append(button(item.ai_coaching_supported ? "운동 시작" : "운동 기록 입력", () => startAssignment(item)));
+        actions.append(button(item.ai_coaching_supported ? "숙제 운동 시작" : "숙제 기록 입력", () => startAssignment(item)));
         card.append(actions);
       }
       list.append(card);
@@ -146,14 +146,21 @@
       const query = statusFilter ? `?status=${statusFilter}` : "";
       render((await api(`/api/pt/assignments/member${query}`)).items);
     } catch (error) {
-      state.textContent = error.message;
+      state.innerHTML = "<strong>PT 숙제를 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      const retryButton = button("다시 시도", load);
+      retryButton.className = "gymfit-state-action";
+      state.append(retryButton);
     }
   }
 
   document.querySelector("#assignmentFilters")?.addEventListener("click", event => {
     const selected = event.target.closest("button[data-status]");
     if (!selected) return;
-    document.querySelectorAll("#assignmentFilters button").forEach(item => item.classList.toggle("active", item === selected));
+    document.querySelectorAll("#assignmentFilters button").forEach(item => {
+      const isSelected = item === selected;
+      item.classList.toggle("active", isSelected);
+      item.setAttribute("aria-selected", String(isSelected));
+    });
     statusFilter = selected.dataset.status;
     load();
   });

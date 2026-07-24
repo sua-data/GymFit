@@ -207,7 +207,9 @@
       if (error.status === 409) {
         elements.gymRequired.hidden = false;
       } else {
-        elements.machineErrorMessage.textContent = error.message;
+        console.error("머신 목록 조회 실패:", error);
+        elements.machineErrorMessage.textContent =
+          "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
         elements.machineError.hidden = false;
       }
     } finally {

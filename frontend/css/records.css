@@ -469,3 +469,15 @@ body.detail-open {
     transform: translateY(-50%);
   }
 }
+.record-input-unit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.record-input-unit b {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  white-space: nowrap;
+}

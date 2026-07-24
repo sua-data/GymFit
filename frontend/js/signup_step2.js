@@ -169,12 +169,14 @@ selectButtons.forEach(
             item.classList.remove(
               "active"
             );
+            item.setAttribute("aria-pressed", "false");
           }
         );
 
         button.classList.add(
           "active"
         );
+        button.setAttribute("aria-pressed", "true");
 
         if (group === "gender") {
           selectedGender = value;
@@ -870,7 +872,7 @@ profileForm.addEventListener(
         false;
 
       completeButton.textContent =
-        "가입 완료";
+        "운동 설정 완료";
 
       skipButton.disabled =
         false;

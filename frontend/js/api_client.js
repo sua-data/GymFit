@@ -197,7 +197,11 @@
     if (window.location.pathname === "/login") {
       const user = JSON.parse(sessionStorage.getItem(USER_KEY) || "{}");
       window.location.replace(
-        user.account_type === "ADMIN" ? "/admin/dashboard" : "/dashboard"
+        user.account_type === "ADMIN"
+          ? "/admin/dashboard"
+          : user.account_type === "TRAINER"
+            ? "/trainer/members"
+            : "/dashboard"
       );
       return;
     }
@@ -251,7 +255,11 @@
       sessionStorage.setItem(USER_KEY, JSON.stringify({ ...previous, ...user }));
       if (window.location.pathname === "/login") {
         window.location.replace(
-          user.account_type === "ADMIN" ? "/admin/dashboard" : "/dashboard"
+          user.account_type === "ADMIN"
+            ? "/admin/dashboard"
+            : user.account_type === "TRAINER"
+              ? "/trainer/members"
+              : "/dashboard"
         );
         return;
       }

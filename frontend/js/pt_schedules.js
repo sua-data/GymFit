@@ -51,7 +51,12 @@
   function renderList() {
     const items = filteredItems();
     list.replaceChildren(); list.hidden = !items.length; stateBox.hidden = !!items.length;
-    if (!items.length) { stateBox.textContent = selectedMemberId || !isTrainerPage ? "선택한 조건에 해당하는 PT 일정이 없습니다." : "회원을 선택해 주세요."; return; }
+    if (!items.length) {
+      stateBox.innerHTML = selectedMemberId || !isTrainerPage
+        ? "<strong>예정된 PT 일정이 없어요.</strong><p>다른 일정 구분을 선택해 확인해보세요.</p>"
+        : "<strong>담당 회원을 선택해 주세요.</strong><p>회원을 선택하면 PT 일정을 확인하고 등록할 수 있어요.</p>";
+      return;
+    }
     items.forEach(item => {
       const card = document.createElement("article");
       card.id = `schedule-${item.schedule_id}`;
@@ -84,7 +89,7 @@
     const box = document.querySelector("#nextSchedule"); if (!box) return;
     const item = schedules.filter(isUpcoming).sort((a,b) => timeValue(a.start_at)-timeValue(b.start_at))[0];
     box.replaceChildren();
-    if (!item) { box.textContent = "예정된 PT 일정이 없습니다."; return; }
+    if (!item) { box.textContent = "예정된 PT 일정이 없어요."; return; }
     const content = makeText("div", "", "next-schedule-content");
     content.append(makeText("strong", dateTime(item.start_at)), makeText("p", `${item.trainer_name} 트레이너 · ${timeOnly(item.start_at)} ~ ${timeOnly(item.end_at)}${item.memo ? `\n${item.memo}` : ""}`));
     box.append(content);
@@ -107,12 +112,25 @@
         renderMembers();
       } else schedules = (await api("/api/pt/schedules/member")).items || [];
       renderNext(); renderList();
-    } catch (error) { stateBox.hidden = false; stateBox.textContent = error.message; }
+    } catch (error) {
+      stateBox.hidden = false;
+      stateBox.innerHTML = "<strong>PT 일정을 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      const retryButton = makeText("button", "다시 시도", "gymfit-state-action");
+      retryButton.type = "button";
+      retryButton.addEventListener("click", load);
+      stateBox.append(retryButton);
+    }
   }
 
   tabs.addEventListener("click", event => {
     const button = event.target.closest("button[data-filter]"); if (!button) return;
-    filter = button.dataset.filter; tabs.querySelectorAll("button").forEach(item => item.classList.toggle("active", item === button)); renderList();
+    filter = button.dataset.filter;
+    tabs.querySelectorAll("button").forEach(item => {
+      const isSelected = item === button;
+      item.classList.toggle("active", isSelected);
+      item.setAttribute("aria-selected", String(isSelected));
+    });
+    renderList();
   });
 
   if (isTrainerPage) {
@@ -128,7 +146,7 @@
       document.querySelector("#scheduleEnd").value = item ? localInput(item.end_at) : localInput(new Date(base.getTime()+3600000));
       document.querySelector("#scheduleMemo").value = item?.memo || "";
       document.querySelector("#scheduleFormTitle").textContent = item ? "PT 일정 수정" : "새 PT 일정";
-      document.querySelector("#scheduleSave").textContent = item ? "수정 완료" : "일정 등록";
+      document.querySelector("#scheduleSave").textContent = item ? "변경사항 저장" : "PT 일정 저장";
       overlay.hidden = false; document.body.classList.add("schedule-sheet-open");
     }
     cancelSchedule = async function (item) {

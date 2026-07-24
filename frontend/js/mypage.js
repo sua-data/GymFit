@@ -10,7 +10,7 @@ function installExtendedProfileUI() {
   document.querySelector("#profileLevel")?.closest("div")?.insertAdjacentHTML("afterend", '<div id="profileWeeklyRow"><dt>주간 운동 목표</dt><dd id="profileWeekly">-</dd></div>');
   document.querySelector("#profileLevelSelect")?.closest("label")?.insertAdjacentHTML("afterend", '<label>주간 운동 횟수<select id="profileWeeklySelect" data-gymfit-select required><option value="">선택</option><option value="1">주 1회</option><option value="2">주 2회</option><option value="3">주 3회</option><option value="4">주 4회</option><option value="5">주 5회</option><option value="6">주 6회</option><option value="7">매일</option></select></label>');
   document.querySelector(".profile-info-card")?.insertAdjacentHTML("afterend", '<section class="profile-info-card gym-card"><div class="section-heading"><span>MY GYM</span><h2>내 헬스장</h2></div><div class="gym-current"><div><strong id="currentGymName">소속 헬스장 없음</strong><p id="currentGymAddress">헬스장을 연결하면 이곳에 표시됩니다.</p></div><button type="button" id="openGymSheetButton">등록</button></div><div class="gym-link-grid" id="gymLinkGrid" hidden><a class="gym-detail-link" href="/my-gym">상세보기</a><a class="gym-detail-link secondary" href="/machines">헬스장 머신</a></div><div class="employment-status-row" id="gymEmploymentStatusRow" hidden><span class="employment-status-label">소속 승인 상태</span><span class="employment-status-badge none" id="gymEmploymentStatusBadge">미등록</span><div class="employment-info-wrap"><button class="employment-info-button" type="button" data-employment-info aria-label="헬스장 변경 안내" aria-expanded="false">ⓘ</button><aside class="employment-info-popover" data-employment-popover hidden><h3>헬스장 변경 안내</h3><p>승인 후에도 소속 헬스장을 변경할 수 있습니다. 변경 시 재직·소속 증빙을 다시 제출해야 하며, 관리자 승인 전까지 헬스장 관리 기능이 제한됩니다.</p></aside></div></div></section>');
-  document.querySelector("#profileEditOverlay")?.insertAdjacentHTML("afterend", '<div class="sheet-overlay" id="gymEditOverlay" hidden><button class="sheet-backdrop" id="gymEditBackdrop" type="button" aria-label="헬스장 변경 닫기"></button><section class="profile-sheet" role="dialog" aria-modal="true"><header><div><span>GYM SEARCH</span><h2>헬스장 변경</h2></div><button type="button" id="gymEditClose" aria-label="닫기">×</button></header><div class="gym-search" data-gym-search><div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div><p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p><div class="gym-search-results" data-gym-results hidden></div><div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div></div><p class="form-message" id="gymSaveMessage" hidden></p><button type="button" class="save-profile-button" id="gymSaveButton">선택한 헬스장 저장</button></section></div>');
+  document.querySelector("#profileEditOverlay")?.insertAdjacentHTML("afterend", '<div class="sheet-overlay" id="gymEditOverlay" hidden><button class="sheet-backdrop" id="gymEditBackdrop" type="button" aria-label="헬스장 변경 닫기"></button><section class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="gymEditTitle"><header><div><span>GYM SEARCH</span><h2 id="gymEditTitle">헬스장 변경</h2></div><button type="button" id="gymEditClose" aria-label="닫기">×</button></header><div class="gym-search" data-gym-search><div class="gym-search-row"><input type="search" data-gym-query placeholder="헬스장명 또는 주소" aria-label="헬스장명 또는 주소"><button type="button" data-gym-search-button>검색</button></div><p data-gym-status>헬스장을 검색하고 결과에서 선택해 주세요.</p><div class="gym-search-results" data-gym-results hidden></div><div class="selected-gym" data-selected-gym hidden><strong data-selected-gym-name></strong><span data-selected-gym-address></span><button type="button" data-clear-gym>선택 해제</button></div></div><p class="form-message" id="gymSaveMessage" role="alert" hidden></p><button type="button" class="save-profile-button" id="gymSaveButton">내 헬스장으로 등록</button></section></div>');
 }
 
 installExtendedProfileUI();
@@ -30,6 +30,8 @@ const profileGoalError = document.querySelector("#profileGoalError");
 const profileFormMessage = document.querySelector("#profileFormMessage");
 const profileSaveButton = document.querySelector("#profileSaveButton");
 const profileWeeklySelect = document.querySelector("#profileWeeklySelect");
+const profileHeightInput = document.querySelector("#profileHeightInput");
+const profileWeightInput = document.querySelector("#profileWeightInput");
 const logoutOverlay = document.querySelector("#logoutOverlay");
 const mypageToast = document.querySelector("#mypageToast");
 const passwordChangeOverlay = document.querySelector("#passwordChangeOverlay");
@@ -179,15 +181,31 @@ function renderConfiguredFitnessProfile(user, state) {
 function renderFitnessProfile(user) {
   currentUser = user;
   const name = getDisplayName(currentUser);
+  const isMember = String(currentUser.account_type || "").toUpperCase() === "MEMBER";
   const fitnessState = getFitnessProfileState(currentUser);
   document.querySelector("#profileAvatar").textContent = Array.from(name)[0]?.toUpperCase() || "G";
   document.querySelector("#profileName").textContent = name;
   document.querySelector("#profileEmail").textContent = currentUser.email || "이메일 정보 없음";
   document.querySelector("#profileRole").textContent = getRoleLabel(currentUser);
-  if (!fitnessState.hasGoals && !fitnessState.hasLevel && !fitnessState.hasWeeklyGoal) {
-    renderUnsetFitnessProfileState();
-  } else {
-    renderConfiguredFitnessProfile(currentUser, fitnessState);
+  document.querySelector("#fitnessProfileCard").hidden = !isMember;
+  if (isMember) {
+    if (!fitnessState.hasGoals && !fitnessState.hasLevel && !fitnessState.hasWeeklyGoal) {
+      renderUnsetFitnessProfileState();
+    } else {
+      renderConfiguredFitnessProfile(currentUser, fitnessState);
+    }
+    document.querySelector("#profileHeight").textContent =
+      currentUser.height_cm == null ? "미등록" : `${Number(currentUser.height_cm)} cm`;
+    document.querySelector("#profileWeight").textContent =
+      currentUser.weight_kg == null ? "미등록" : `${Number(currentUser.weight_kg)} kg`;
+    document.querySelector("#profileWeight").classList.toggle(
+      "fitness-value-unset",
+      currentUser.weight_kg == null
+    );
+    document.querySelector("#profilePtStatus").textContent =
+      currentUser.has_active_trainer === true ? "트레이너 연결됨" : "연결된 트레이너 없음";
+    document.querySelector("#profileBirthDate").textContent =
+      currentUser.birth_date || "미등록";
   }
   document.querySelector("#profileAccountType").textContent = getRoleLabel(currentUser);
   const gymRow = document.querySelector("#profileGymRow");
@@ -309,14 +327,18 @@ function renderGoalChoices() {
 
 function openEditSheet() {
   if (!currentUser) return;
+  const isMember = String(currentUser.account_type || "").toUpperCase() === "MEMBER";
   profileNameInput.value = currentUser.name || getDisplayName(currentUser);
   profileEmailInput.value = currentUser.email || "";
   profileLevelSelect.value = currentUser.exercise_level || "BEGINNER";
   profileWeeklySelect.value = currentUser.weekly_workout_days ? String(currentUser.weekly_workout_days) : "";
+  profileHeightInput.value = currentUser.height_cm ?? "";
+  profileWeightInput.value = currentUser.weight_kg ?? "";
   window.GymfitDropdown?.refresh(profileLevelSelect);
   window.GymfitDropdown?.refresh(profileWeeklySelect);
-  document.querySelector("#memberEditFields").hidden = false;
-  renderGoalChoices();
+  document.querySelector("#memberEditFields").hidden = !isMember;
+  if (isMember) renderGoalChoices();
+  profileEditForm.dataset.dirty = "false";
   profileGoalError.hidden = true;
   profileFormMessage.hidden = true;
   profileEditOverlay.hidden = false;
@@ -326,10 +348,17 @@ function openEditSheet() {
 
 function closeEditSheet() {
   if (isSaving) return;
+  if (
+    profileEditForm.dataset.dirty === "true"
+    && !window.confirm("변경사항을 저장하지 않고 닫을까요?")
+  ) {
+    return;
+  }
   window.GymfitDropdown?.closeAll();
   profileEditOverlay.hidden = true;
   profileEditForm.reset();
   profileFormMessage.hidden = true;
+  profileEditForm.dataset.dirty = "false";
   document.body.classList.remove("modal-open");
 }
 
@@ -349,6 +378,9 @@ function updateSessionUser(user) {
     exercise_level: user.exercise_level,
     goals: user.goals,
     weekly_workout_days: user.weekly_workout_days,
+    height_cm: user.height_cm,
+    weight_kg: user.weight_kg,
+    birth_date: user.birth_date,
     has_active_trainer: user.has_active_trainer === true,
     pending_pt_request_count: Math.max(
       0,
@@ -368,21 +400,42 @@ async function submitProfile(event) {
   const name = profileNameInput.value.trim();
   if (!name) { profileNameInput.setCustomValidity("이름을 입력해 주세요."); profileNameInput.reportValidity(); return; }
   profileNameInput.setCustomValidity("");
-  const selectedGoals = [...profileEditForm.querySelectorAll('input[name="goals"]:checked')].map((input) => input.value);
-  if (selectedGoals.length === 0) { profileGoalError.hidden = false; return; }
-  if (!profileWeeklySelect.value) {
-    profileWeeklySelect.setCustomValidity("주간 운동 횟수를 선택해 주세요.");
-    profileWeeklySelect.reportValidity();
-    return;
+  const isMember = String(currentUser.account_type || "").toUpperCase() === "MEMBER";
+  const payload = { name };
+  if (isMember) {
+    const heightValue = profileHeightInput.value.trim();
+    const weightValue = profileWeightInput.value.trim();
+    const heightNumber = heightValue === "" ? null : Number(heightValue);
+    const weightNumber = weightValue === "" ? null : Number(weightValue);
+    if (heightNumber !== null && (!Number.isFinite(heightNumber) || heightNumber < 100 || heightNumber > 250)) {
+      profileHeightInput.setCustomValidity("키는 100~250cm 범위로 입력해주세요.");
+      profileHeightInput.reportValidity();
+      return;
+    }
+    profileHeightInput.setCustomValidity("");
+    if (weightNumber !== null && (!Number.isFinite(weightNumber) || weightNumber < 30 || weightNumber > 300)) {
+      profileWeightInput.setCustomValidity("몸무게는 30~300kg 범위로 입력해주세요.");
+      profileWeightInput.reportValidity();
+      return;
+    }
+    profileWeightInput.setCustomValidity("");
+    const selectedGoals = [...profileEditForm.querySelectorAll('input[name="goals"]:checked')].map((input) => input.value);
+    if (selectedGoals.length === 0) { profileGoalError.hidden = false; return; }
+    if (!profileWeeklySelect.value) {
+      profileWeeklySelect.setCustomValidity("주간 운동 횟수를 선택해 주세요.");
+      profileWeeklySelect.reportValidity();
+      return;
+    }
+    profileWeeklySelect.setCustomValidity("");
+    profileGoalError.hidden = true;
+    Object.assign(payload, {
+      exercise_level: profileLevelSelect.value,
+      goals: selectedGoals,
+      weekly_workout_days: Number(profileWeeklySelect.value),
+      height_cm: heightNumber,
+      weight_kg: weightNumber,
+    });
   }
-  profileWeeklySelect.setCustomValidity("");
-  profileGoalError.hidden = true;
-  const payload = {
-    name,
-    exercise_level: profileLevelSelect.value,
-    goals: selectedGoals,
-    weekly_workout_days: Number(profileWeeklySelect.value),
-  };
   isSaving = true;
   profileSaveButton.disabled = true;
   profileSaveButton.textContent = "저장 중...";
@@ -404,7 +457,7 @@ async function submitProfile(event) {
   } finally {
     isSaving = false;
     profileSaveButton.disabled = false;
-    profileSaveButton.textContent = "저장하기";
+    profileSaveButton.textContent = "변경사항 저장";
   }
 }
 
@@ -594,6 +647,12 @@ document.querySelector("#fitnessProfileAction").addEventListener("click", openEd
 document.querySelector("#profileEditClose").addEventListener("click", closeEditSheet);
 document.querySelector("#profileEditBackdrop").addEventListener("click", closeEditSheet);
 profileEditForm.addEventListener("submit", submitProfile);
+profileEditForm.addEventListener("input", () => {
+  if (!profileEditOverlay.hidden) profileEditForm.dataset.dirty = "true";
+});
+profileEditForm.addEventListener("change", () => {
+  if (!profileEditOverlay.hidden) profileEditForm.dataset.dirty = "true";
+});
 document.querySelector("#logoutCancelButton").addEventListener("click", closeLogoutDialog);
 document.querySelector("#logoutConfirmButton").addEventListener("click", logout);
 document.querySelector("#passwordChangeClose").addEventListener("click", closePasswordChangeSheet);

@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>PT 일정 관리 | GYMFIT</title>
-  <link rel="stylesheet" href="/static/css/common.css"><link rel="stylesheet" href="/static/css/common_layout.css?v=3">
+  <link rel="stylesheet" href="/static/css/common.css?v=2"><link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
   <link rel="stylesheet" href="/static/css/pt_schedules.css?v=5">
   <script src="/static/js/api_client.js?v=3" defer></script>
-  <script src="/static/js/common_layout.js?v=19" defer></script>
+  <script src="/static/js/common_layout.js?v=21" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
-  <script src="/static/js/pt_schedules.js?v=5" defer></script>
+  <script src="/static/js/pt_schedules.js?v=6" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -26,11 +26,11 @@
         <label for="scheduleMember">연결 회원</label><select id="scheduleMember" data-gymfit-select><option value="">회원 선택</option></select>
         <button type="button" id="openScheduleForm" class="schedule-primary" disabled>새 일정 등록</button>
       </section>
-      <nav class="schedule-tabs" id="scheduleTabs" aria-label="일정 상태 필터">
-        <button type="button" class="active" data-filter="all">전체</button><button type="button" data-filter="upcoming">예정</button>
-        <button type="button" data-filter="past">지난 일정</button><button type="button" data-filter="cancelled">취소</button>
+      <nav class="schedule-tabs" id="scheduleTabs" aria-label="일정 상태 필터" role="tablist">
+        <button type="button" class="active" data-filter="all" role="tab" aria-selected="true">전체</button><button type="button" data-filter="upcoming" role="tab" aria-selected="false">예정</button>
+        <button type="button" data-filter="past" role="tab" aria-selected="false">지난 일정</button><button type="button" data-filter="cancelled" role="tab" aria-selected="false">취소</button>
       </nav>
-      <section><div id="scheduleState" class="schedule-state">일정을 불러오고 있습니다.</div><div id="scheduleList" class="schedule-list" hidden></div></section>
+      <section><div id="scheduleState" class="schedule-state gymfit-state" role="status" aria-live="polite">일정을 불러오고 있습니다.</div><div id="scheduleList" class="schedule-list" hidden></div></section>
       </div>
     </div>
     <div id="scheduleFormOverlay" class="schedule-sheet-overlay" hidden>
@@ -42,7 +42,7 @@
           <label>종료 일시<input id="scheduleEnd" type="datetime-local" required></label>
           <label>메모<textarea id="scheduleMemo" maxlength="2000" rows="3" placeholder="준비물이나 전달 사항"></textarea></label>
           <p id="scheduleFormMessage" class="schedule-form-message" role="alert"></p>
-          <button type="submit" id="scheduleSave" class="schedule-primary">일정 등록</button>
+          <button type="submit" id="scheduleSave" class="schedule-primary">PT 일정 저장</button>
         </form>
       </section>
     </div>

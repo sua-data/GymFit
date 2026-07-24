@@ -8,13 +8,13 @@
         >
         <title>GYMFIT | PT 숙제</title>
 
-        <link rel="stylesheet" href="/static/css/common.css">
+        <link rel="stylesheet" href="/static/css/common.css?v=2">
         <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
         <link rel="stylesheet" href="/static/css/pt_assignments.css?v=6">
 
         <script src="/static/js/api_client.js?v=3" defer></script>
-        <script src="/static/js/common_layout.js?v=19" defer></script>
-        <script src="/static/js/pt_assignments.js?v=3" defer></script>
+        <script src="/static/js/common_layout.js?v=21" defer></script>
+        <script src="/static/js/pt_assignments.js?v=4" defer></script>
       <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -35,16 +35,20 @@
                 <div
                     id="assignmentFilters"
                     class="assignment-filter"
+                    role="tablist"
+                    aria-label="PT 숙제 상태"
                 >
-                    <button class="active" data-status="">전체</button>
-                    <button data-status="ASSIGNED">진행 전</button>
-                    <button data-status="IN_PROGRESS">진행 중</button>
-                    <button data-status="COMPLETED">완료</button>
+                    <button type="button" class="active" data-status="" role="tab" aria-selected="true">전체</button>
+                    <button type="button" data-status="ASSIGNED" role="tab" aria-selected="false">진행 전</button>
+                    <button type="button" data-status="IN_PROGRESS" role="tab" aria-selected="false">진행 중</button>
+                    <button type="button" data-status="COMPLETED" role="tab" aria-selected="false">완료</button>
                 </div>
 
                 <section
                     id="assignmentState"
-                    class="assignment-state"
+                    class="assignment-state gymfit-state"
+                    role="status"
+                    aria-live="polite"
                 >
                     숙제를 불러오고 있습니다.
                 </section>
@@ -122,7 +126,7 @@
                         </div>
 
                         <label>
-                            <span>예상 소모 칼로리는 체중·MET·운동시간으로 자동 계산됩니다</span>
+                            <span>예상 소모 칼로리</span>
                             <input
                                 id="manualCalories"
                                 type="number"
@@ -131,6 +135,7 @@
                                 inputmode="numeric"
                                 placeholder="자동 계산"
                             >
+                            <small>체중·MET·운동시간을 기준으로 저장할 때 계산됩니다.</small>
                         </label>
 
                         <label>
@@ -145,6 +150,7 @@
                         <p
                             id="manualRecordError"
                             class="assignment-form-message"
+                            role="alert"
                         ></p>
 
                         <div class="manual-record-actions">

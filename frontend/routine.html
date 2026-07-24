@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="/static/css/routine.css?v=7">
 
   <script src="/static/js/api_client.js?v=3" defer></script>
-  <script src="/static/js/common_layout.js?v=19" defer></script>
+  <script src="/static/js/common_layout.js?v=21" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/coaching_plan.js?v=1" defer></script>
   <script src="/static/js/routine.js?v=11" defer></script>
@@ -156,12 +156,13 @@
 
         <form id="completionForm">
           <p class="completion-exercise-name" id="completionExerciseName"></p>
-          <label class="routine-field">
-            <span>운동시간(분) <b>필수</b></span>
+          <label class="routine-field" for="completionWorkoutMinutes">
+            <span>운동시간 <b>필수</b></span>
             <div class="routine-input-unit">
-              <input type="number" name="workout_minutes" min="1" max="1440" step="1" inputmode="numeric" required>
+              <input id="completionWorkoutMinutes" type="number" name="workout_minutes" min="1" max="1440" step="1" inputmode="numeric" required aria-describedby="completionMinutesHelp">
               <span>분</span>
             </div>
+            <small id="completionMinutesHelp">실제로 운동한 시간을 1분 이상 입력해 주세요.</small>
           </label>
           <fieldset class="completion-intensity">
             <legend>운동 강도</legend>
@@ -169,18 +170,21 @@
             <label><input type="radio" name="exercise_intensity" value="MODERATE" checked> 보통</label>
             <label><input type="radio" name="exercise_intensity" value="HIGH"> 강함</label>
           </fieldset>
-          <label class="routine-field">
-            <span>사용 중량(kg) <small>선택</small></span>
-            <input type="number" name="weight_kg" min="0.01" max="99999.99" step="0.01" inputmode="decimal">
+          <label class="routine-field" for="completionWeightKg">
+            <span>사용 중량 <small>선택</small></span>
+            <div class="weight-field">
+              <input id="completionWeightKg" type="number" name="weight_kg" min="0.01" max="99999.99" step="0.01" inputmode="decimal" placeholder="예: 20">
+              <span class="weight-field-unit" aria-hidden="true">kg</span>
+            </div>
           </label>
           <div class="routine-field-grid">
             <label class="routine-field">
               <span>완료 세트</span>
-              <input type="number" name="completed_sets" min="0" max="100" step="1" inputmode="numeric" required>
+              <input type="number" name="completed_sets" min="0" max="100" step="1" inputmode="numeric" required aria-label="완료 세트">
             </label>
             <label class="routine-field">
               <span>총 반복 횟수</span>
-              <input type="number" name="repetition_count" min="0" max="10000" step="1" inputmode="numeric" required>
+              <input type="number" name="repetition_count" min="0" max="10000" step="1" inputmode="numeric" required aria-label="총 반복 횟수">
             </label>
           </div>
           <p class="routine-form-error" id="completionFormError" role="alert" hidden></p>
@@ -408,7 +412,7 @@
               id="routineSaveButton"
               disabled
             >
-              저장
+              루틴 저장
             </button>
           </div>
         </form>

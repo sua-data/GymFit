@@ -28,12 +28,12 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/dashboard.css?v=10"
+    href="/static/css/dashboard.css?v=11"
   >
 
   <script src="/static/js/api_client.js?v=3" defer></script>
   <script
-    src="/static/js/common_layout.js?v=19"
+    src="/static/js/common_layout.js?v=21"
     defer
   ></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
@@ -44,7 +44,7 @@
   ></script>
 
   <script
-    src="/static/js/dashboard.js?v=15"
+    src="/static/js/dashboard.js?v=16"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -68,11 +68,8 @@
 
       <!-- 인사말 -->
       <section class="welcome-section">
-        <h1>
-          <span class="welcome-text">
-            안녕하세요,
-            <span id="userName">-</span>님!
-          </span>
+        <h1 id="welcomeGreeting">
+          <span class="welcome-text">안녕하세요.</span>
 
           <img
             class="welcome-icon"

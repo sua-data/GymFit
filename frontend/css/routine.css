@@ -649,8 +649,9 @@ button {
 .completion-intensity {
   margin: 16px 0;
   padding: 14px;
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
@@ -665,12 +666,51 @@ button {
 }
 
 .completion-intensity label {
+  min-height: 44px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   color: #fff;
+  background: #202020;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
   font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .completion-intensity input {
+  width: 18px;
+  height: 18px;
   accent-color: #a8ff35;
+}
+
+.completion-intensity label:has(input:checked) {
+  color: var(--gymfit-green);
+  background: rgba(168, 255, 53, 0.1);
+  border-color: rgba(168, 255, 53, 0.56);
+}
+
+.weight-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.weight-field-unit {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.routine-field > small {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .routine-field {

@@ -1,5 +1,5 @@
-const userName =
-  document.querySelector("#userName");
+const welcomeGreeting =
+  document.querySelector("#welcomeGreeting");
 
 const caloriesValue =
   document.querySelector("#caloriesValue");
@@ -181,8 +181,18 @@ function getLoginUserId() {
 ========================= */
 
 function renderSummary(data) {
-  userName.textContent =
-    data.user?.name || "-";
+  const accountType = String(data.account_type || "").toUpperCase();
+  const roleLabel = accountType === "TRAINER" ? "트레이너" : "회원";
+  const normalizedName = String(data.user?.name || "")
+    .trim()
+    .replace(/(?:님)+$/u, "")
+    .trim();
+  const greetingText = normalizedName
+    ? `안녕하세요, ${normalizedName} ${roleLabel}님`
+    : `안녕하세요, ${roleLabel}님`;
+  const greetingCopy = welcomeGreeting.querySelector(".welcome-text");
+  greetingCopy.textContent = greetingText;
+  welcomeGreeting.setAttribute("aria-label", greetingText);
 
   const calorieStatus =
     data.summary?.calorie_calculation_status;
@@ -384,7 +394,9 @@ function renderWorkoutPlan(planData) {
   if (items.length === 0) {
     workoutPlanList.innerHTML = `
       <li class="empty-message">
-        오늘 등록된 운동 계획이 없습니다.
+        <strong>오늘 예정된 운동이 없어요.</strong>
+        <span>루틴을 추가하거나 맞춤 추천을 받아보세요.</span>
+        <a href="/routine">루틴 확인하기</a>
       </li>
     `;
 
@@ -514,7 +526,9 @@ function renderRecentWorkouts(workouts) {
   if (!workouts?.length) {
     recentWorkoutList.innerHTML = `
       <div class="empty-message">
-        최근 운동 기록이 없습니다.
+        <strong>아직 저장된 운동 기록이 없어요.</strong>
+        <span>첫 운동을 시작해보세요.</span>
+        <a href="/routine">운동 시작하기</a>
       </div>
     `;
 

@@ -10,14 +10,14 @@
 
   <title>GYMFIT | 회원가입 2단계</title>
 
-  <link rel="stylesheet" href="/static/css/common.css">
-  <link rel="stylesheet" href="/static/css/signup_step2.css">
+  <link rel="stylesheet" href="/static/css/common.css?v=2">
+  <link rel="stylesheet" href="/static/css/signup_step2.css?v=2">
   <link rel="stylesheet" href="/static/css/birth_date_input.css?v=1">
   <link rel="stylesheet" href="/static/css/agreement_modal.css?v=1">
 
   <script src="/static/js/agreement_modal.js?v=1" defer></script>
   <script src="/static/js/birth_date_input.js?v=2" defer></script>
-  <script src="/static/js/signup_step2.js?v=4" defer></script>
+  <script src="/static/js/signup_step2.js?v=5" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -75,7 +75,7 @@
         </h1>
 
         <p id="pageDescription">
-          운동 정보를 입력해 주세요.
+          맞춤 루틴 추천에 사용할 운동 정보를 알려주세요.
         </p>
       </div>
 
@@ -203,6 +203,7 @@
         <!-- 운동 목표 -->
         <section class="form-section goal-section">
           <h2>운동 목표</h2>
+          <p class="section-help">지금 가장 이루고 싶은 목표를 하나 선택해 주세요.</p>
 
           <div
             class="goal-grid"
@@ -278,6 +279,7 @@
         <!-- 운동 수준 -->
         <section class="form-section level-section">
           <h2>운동 수준</h2>
+          <p class="section-help">초급은 기본 동작을 익히는 단계, 중급은 세트와 중량을 조절할 수 있는 단계예요.</p>
 
           <div
             class="option-row"
@@ -315,6 +317,7 @@
 
         <section class="form-section weekly-section">
           <h2>주간 운동 횟수</h2>
+          <p class="section-help">일주일에 현실적으로 운동할 수 있는 횟수를 선택해 주세요.</p>
           <div class="weekly-grid" role="radiogroup" aria-label="주간 운동 횟수">
             <button type="button" class="select-button" data-group="weekly" data-value="1">주 1회</button>
             <button type="button" class="select-button" data-group="weekly" data-value="2">주 2회</button>
@@ -436,7 +439,7 @@
           class="complete-button"
           id="completeButton"
         >
-          가입 완료
+          운동 설정 완료
         </button>
 
         <!-- 나중에 설정 -->

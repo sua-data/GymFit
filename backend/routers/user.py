@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -40,38 +41,60 @@ EXERCISE_LEVELS = {"BEGINNER", "INTERMEDIATE", "ADVANCED"}
 
 
 class UserProfileUpdate(BaseModel):
-    name: str = Field(min_length=1, max_length=50)
-    exercise_level: str | None = None
-    goals: list[str] | None = None
-    weekly_workout_days: int | None = Field(default=None, ge=1, le=7)
+    name: str | None = None
+    goal: str | None = None
+    level: str | None = None
+    weekly_workout_days: int | None = Field(
+        default=None,
+        ge=1,
+        le=7,
+    )
 
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("이름을 입력해 주세요.")
-        return cleaned
+    height_cm: Decimal | None = Field(
+        default=None,
+        ge=Decimal("100"),
+        le=Decimal("250"),
+    )
 
-    @field_validator("exercise_level")
+    weight_kg: Decimal | None = Field(
+        default=None,
+        ge=Decimal("30"),
+        le=Decimal("300"),
+    )
+
+    @field_validator(
+        "height_cm",
+        "weight_kg",
+        mode="before",
+    )
     @classmethod
-    def validate_level(cls, value: str | None) -> str | None:
+    def normalize_optional_decimal(
+        cls,
+        value,
+    ):
+        if value in ("", None):
+            return None
+
+        return value
+
+    @field_validator(
+        "height_cm",
+        "weight_kg",
+    )
+    @classmethod
+    def limit_decimal_places(
+        cls,
+        value: Decimal | None,
+    ) -> Decimal | None:
         if value is None:
             return None
-        normalized = value.strip().upper()
-        if normalized not in EXERCISE_LEVELS:
-            raise ValueError("지원하지 않는 운동 수준입니다.")
-        return normalized
 
-    @field_validator("goals")
-    @classmethod
-    def validate_goals(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return None
-        normalized = list(dict.fromkeys(item.strip().upper() for item in value))
-        if not normalized or any(item not in GOAL_NAMES for item in normalized):
-            raise ValueError("지원하지 않는 운동 목표입니다.")
-        return normalized
+        if value.as_tuple().exponent < -2:
+            raise ValueError(
+                "소수점은 둘째 자리까지만 입력할 수 있습니다."
+            )
+
+        return value
 
 
 def get_active_user(db: Session, user_id: int) -> User:
@@ -106,7 +129,11 @@ def serialize_user(user: User, db: Session) -> dict:
         "account_type": user.account_type,
         "name": user.name,
         "email": user.email,
+        "gender": user.gender,
+        "birth_date": user.birth_date,
         "login_provider": user.login_provider,
+        "height_cm": float(profile.height_cm) if profile and profile.height_cm is not None else None,
+        "weight_kg": float(profile.weight_kg) if profile and profile.weight_kg is not None else None,
         "exercise_level": profile.exercise_level if profile else None,
         "weekly_workout_days": profile.weekly_workout_days if profile else None,
         "goals": [
@@ -313,16 +340,41 @@ def update_user_profile(
 
     try:
         user.name = payload.name
+        member_fields = {
+            "exercise_level",
+            "weekly_workout_days",
+            "goals",
+            "height_cm",
+            "weight_kg",
+        }
+        if (
+            user.account_type != "MEMBER"
+            and member_fields.intersection(payload.model_fields_set)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="회원 운동 프로필은 일반 회원만 수정할 수 있습니다.",
+            )
 
         if user.member_profile is None and (
             payload.exercise_level is not None
             or payload.weekly_workout_days is not None
+            or payload.height_cm is not None
+            or payload.weight_kg is not None
         ):
             user.member_profile = MemberProfile(user_id=user.user_id)
         if payload.exercise_level is not None:
             user.member_profile.exercise_level = payload.exercise_level
         if payload.weekly_workout_days is not None:
             user.member_profile.weekly_workout_days = payload.weekly_workout_days
+        if "height_cm" in payload.model_fields_set:
+            if user.member_profile is None:
+                user.member_profile = MemberProfile(user_id=user.user_id)
+            user.member_profile.height_cm = payload.height_cm
+        if "weight_kg" in payload.model_fields_set:
+            if user.member_profile is None:
+                user.member_profile = MemberProfile(user_id=user.user_id)
+            user.member_profile.weight_kg = payload.weight_kg
         if payload.goals is not None:
             db.execute(
                 delete(MemberGoal).where(MemberGoal.user_id == user.user_id)
@@ -339,6 +391,9 @@ def update_user_profile(
         db.commit()
         db.expire(user)
         return serialize_user(get_active_user(db, user_id), db)
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception:
         db.rollback()
         raise HTTPException(

@@ -11,12 +11,16 @@ const memberServiceMenuItems = [
 
 const trainerServiceMenuItems = [
   {
-    label: "내 헬스장",
+    label: "소속 헬스장",
     path: "/my-gym"
   },
   {
     label: "보유 머신 관리",
     path: "/machines"
+  },
+  {
+    label: "자격증 관리",
+    path: "/trainer/certifications"
   }
 ];
 
@@ -41,11 +45,11 @@ const trainerMenuItems = [
     path: "/trainer/members"
   },
   {
-    label: "PT 숙제",
+    label: "PT 숙제 관리",
     path: "/trainer/assignments"
   },
   {
-    label: "PT 일정",
+    label: "PT 일정 관리",
     path: "/trainer/schedules"
   }
 ];
@@ -86,18 +90,36 @@ function getUserRoleLabel(user) {
 
 window.getUserRoleLabel = getUserRoleLabel;
 
+const trainerRestrictedMemberPaths = new Set([
+  "/dashboard",
+  "/routine",
+  "/coaching",
+  "/records",
+  "/pt",
+  "/pt/assignments",
+  "/pt/feedback",
+  "/pt/schedules",
+]);
+
+function redirectForAccountType(user) {
+  const accountType = String(
+    user?.account_type ?? user?.accountType ?? ""
+  ).toUpperCase();
+  const path = window.location.pathname;
+  if (accountType === "ADMIN" && !path.startsWith("/admin/")) {
+    window.location.replace("/admin/dashboard");
+    return true;
+  }
+  if (accountType === "TRAINER" && trainerRestrictedMemberPaths.has(path)) {
+    window.location.replace("/trainer/members");
+    return true;
+  }
+  return false;
+}
+
 window.addEventListener("pageshow", () => {
   const currentUser = getLoginUser();
-  const accountType = String(
-    currentUser?.account_type
-    ?? currentUser?.accountType
-    ?? ""
-  ).toUpperCase();
-  if (
-    accountType === "ADMIN"
-    && !window.location.pathname.startsWith("/admin/")
-  ) {
-    window.location.replace("/admin/dashboard");
+  if (redirectForAccountType(currentUser)) {
     return;
   }
   const withdrawn = sessionStorage.getItem("gymfitAccountWithdrawn") === "1";
@@ -275,6 +297,14 @@ function createMenuSection(
 
     if (item.path) {
       menuItem.href = item.path;
+      const itemPath = new URL(item.path, window.location.origin).pathname;
+      const currentPath = window.location.pathname;
+      if (
+        itemPath === currentPath
+        || (itemPath !== "/" && currentPath.startsWith(`${itemPath}/`))
+      ) {
+        menuItem.setAttribute("aria-current", "page");
+      }
     } else {
       menuItem.type = "button";
       menuItem.addEventListener("click", () => {
@@ -285,6 +315,7 @@ function createMenuSection(
     const label =
       document.createElement("span");
 
+    label.className = "side-menu-item__label";
     label.textContent =
       item.label;
 
@@ -353,8 +384,11 @@ function renderSideMenu() {
 
   menuList.innerHTML = "";
 
-  userName.textContent =
-    `${user.name || "사용자"}님`;
+  const normalizedName = String(user.name || "사용자")
+    .trim()
+    .replace(/(?:님)+$/u, "")
+    .trim();
+  userName.textContent = `${normalizedName || "사용자"}님`;
 
   const accountType = String(
     user.account_type
@@ -374,6 +408,7 @@ function renderSideMenu() {
     const logoutButton = document.createElement("button");
     logoutButton.type = "button";
     logoutButton.className = "side-menu-item";
+    logoutButton.classList.add("side-menu-logout");
     logoutButton.dataset.gymfitLogout = "true";
     logoutButton.id = "sideMenuLogoutButton";
     const label = document.createElement("span");
@@ -400,11 +435,11 @@ function renderSideMenu() {
         ? trainerServiceMenuItems
         : [
             ...memberServiceMenuItems,
-            {
-              label: "PT 요청",
+            ...(!hasActiveTrainer ? [{
+              label: "PT 연결 요청",
               path: "/pt/requests",
               badgeCount: user.pending_pt_request_count,
-            },
+            }] : []),
           ]
     )
   );
@@ -461,7 +496,24 @@ function setupSideMenu() {
     return;
   }
 
+  let previouslyFocusedElement = null;
+  let isOpeningSideMenu = false;
+
+  function getFocusableMenuElements() {
+    return Array.from(
+      menu.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => !element.hidden);
+  }
+
   async function openSideMenu() {
+    if (isOpeningSideMenu || menu.classList.contains("open")) {
+      return;
+    }
+    isOpeningSideMenu = true;
+    previouslyFocusedElement = document.activeElement;
+
     try {
       await refreshGymfitCurrentUser();
     } catch (error) {
@@ -475,6 +527,9 @@ function setupSideMenu() {
       menu.classList.add(
         "open"
       );
+      isOpeningSideMenu = false;
+      const focusableElements = getFocusableMenuElements();
+      (focusableElements[0] || menu).focus();
     });
 
     menu.setAttribute(
@@ -490,9 +545,14 @@ function setupSideMenu() {
     document.body.classList.add(
       "side-menu-open"
     );
+
   }
 
   function closeSideMenu() {
+    if (!menu.classList.contains("open")) {
+      return;
+    }
+
     menu.classList.remove(
       "open"
     );
@@ -511,9 +571,19 @@ function setupSideMenu() {
       "side-menu-open"
     );
 
-    window.setTimeout(() => {
+    const hideOverlay = () => {
       overlay.hidden = true;
-    }, 250);
+    };
+    menu.addEventListener("transitionend", hideOverlay, { once: true });
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      hideOverlay();
+    }
+
+    if (previouslyFocusedElement?.isConnected) {
+      previouslyFocusedElement.focus();
+    } else {
+      openButton.focus();
+    }
   }
 
   openButton.addEventListener(
@@ -541,6 +611,29 @@ function setupSideMenu() {
         )
       ) {
         closeSideMenu();
+        return;
+      }
+
+      if (
+        event.key === "Tab"
+        && menu.classList.contains("open")
+      ) {
+        const focusableElements = getFocusableMenuElements();
+        if (!focusableElements.length) {
+          event.preventDefault();
+          menu.focus();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
       }
     }
   );
@@ -555,6 +648,48 @@ window.addEventListener(
 
 
 function setupBottomNavigation() {
+  const user = getLoginUser();
+  const accountType = String(
+    user?.account_type ?? user?.accountType ?? ""
+  ).toUpperCase();
+  const navigation = document.querySelector(".bottom-navigation");
+  if (accountType === "TRAINER" && navigation) {
+    const originalItems = Array.from(navigation.querySelectorAll(".nav-item"));
+    const trainerItems = [
+      {
+        item: originalItems[0],
+        path: "/trainer/members",
+        label: "회원",
+        page: "trainer-members",
+      },
+      {
+        item: originalItems[1],
+        path: "/trainer/assignments",
+        label: "숙제",
+        page: "trainer-assignments",
+      },
+      {
+        item: originalItems[2],
+        path: "/trainer/schedules",
+        label: "일정",
+        page: "trainer-schedules",
+      },
+      {
+        item: originalItems[4],
+        path: "/mypage",
+        label: "마이",
+        page: "mypage",
+      },
+    ];
+    navigation.replaceChildren(...trainerItems.map(({ item, path, label, page }) => {
+      item.href = path;
+      item.dataset.navPage = page;
+      item.querySelector("span:last-child").textContent = label;
+      return item;
+    }));
+    navigation.classList.add("trainer-navigation");
+  }
+
   const currentPath =
     window.location.pathname;
 
@@ -683,6 +818,112 @@ function setupNotificationButton() {
   refreshNotificationBadge();
 }
 
+function setupAccessibleDialogs() {
+  const focusHistory = new WeakMap();
+
+  function getDialog(container) {
+    if (container.matches?.('[role="dialog"], [role="alertdialog"]')) {
+      return container;
+    }
+    return container.querySelector?.(
+      '[role="dialog"], [role="alertdialog"]'
+    ) || null;
+  }
+
+  function getFocusableElements(dialog) {
+    return Array.from(dialog.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), '
+      + 'select:not([disabled]), textarea:not([disabled]), '
+      + '[tabindex]:not([tabindex="-1"])'
+    )).filter((element) => (
+      !element.hidden
+      && element.getAttribute("aria-hidden") !== "true"
+    ));
+  }
+
+  function handleVisibilityChange(container) {
+    const dialog = getDialog(container);
+    if (!dialog) return;
+
+    if (!container.hidden) {
+      if (!focusHistory.has(container)) {
+        focusHistory.set(container, document.activeElement);
+      }
+      if (!dialog.hasAttribute("tabindex")) {
+        dialog.setAttribute("tabindex", "-1");
+      }
+      requestAnimationFrame(() => {
+        const focusableElements = getFocusableElements(dialog);
+        (focusableElements[0] || dialog).focus();
+      });
+      return;
+    }
+
+    const previousFocus = focusHistory.get(container);
+    focusHistory.delete(container);
+    if (previousFocus?.isConnected) {
+      previousFocus.focus();
+    }
+  }
+
+  const dialogContainers = document.querySelectorAll(
+    '[hidden]:has([role="dialog"]), [hidden]:has([role="alertdialog"])'
+  );
+  dialogContainers.forEach((container) => {
+    const observer = new MutationObserver(() => {
+      handleVisibilityChange(container);
+    });
+    observer.observe(container, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+
+    const openDialogs = Array.from(document.querySelectorAll(
+      '[role="dialog"], [role="alertdialog"]'
+    )).filter((dialog) => (
+      !dialog.closest("[hidden]")
+      && dialog.getAttribute("aria-hidden") !== "true"
+    ));
+    const dialog = openDialogs.at(-1);
+    if (!dialog) return;
+
+    const focusableElements = getFocusableElements(dialog);
+    if (!focusableElements.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements.at(-1);
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  });
+}
+
+function setupVisualViewport() {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+
+  const syncViewportHeight = () => {
+    document.documentElement.style.setProperty(
+      "--visual-viewport-height",
+      `${Math.round(viewport.height)}px`
+    );
+  };
+  syncViewportHeight();
+  viewport.addEventListener("resize", syncViewportHeight);
+}
+
 
 window.addEventListener("gymfitNotificationsUpdated", refreshNotificationBadge);
 
@@ -702,7 +943,7 @@ window.addEventListener(
         ),
 
         loadCommonComponent(
-          "#bottomNavigationContainer",
+          "#bottomNavigationContainer, #bottomNavContainer",
           "/static/components/bottom_nav.html"
         )
       ]);
@@ -711,9 +952,14 @@ window.addEventListener(
       setupSideMenu();
       setupBottomNavigation();
       setupNotificationButton();
+      setupAccessibleDialogs();
+      setupVisualViewport();
 
       try {
-        await refreshGymfitCurrentUser();
+        const currentUser = await refreshGymfitCurrentUser();
+        if (redirectForAccountType(currentUser)) {
+          return;
+        }
       } catch (error) {
         console.error("사용자 프로필 동기화 실패:", error);
       }

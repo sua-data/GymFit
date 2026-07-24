@@ -116,6 +116,9 @@ select {
 
 .welcome-text {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .welcome-icon {
@@ -845,6 +848,7 @@ select {
 
 .workout-plan-list li.empty-message {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
 
@@ -853,7 +857,8 @@ select {
 
   color: var(--text-muted);
 
-  font-size: 12px;
+  gap: 7px;
+  font-size: 13px;
   line-height: 1.6;
   text-align: center;
   word-break: keep-all;
@@ -1333,10 +1338,34 @@ span:last-child strong {
 
   color: var(--text-muted);
 
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   text-align: center;
   word-break: keep-all;
+}
+
+.empty-message strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.empty-message span {
+  display: block;
+}
+
+.empty-message a {
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #050505;
+  background: var(--gymfit-green);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 #recentWorkoutList {

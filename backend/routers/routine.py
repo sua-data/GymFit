@@ -28,6 +28,14 @@ from backend.security import enforce_self, get_current_user
 router = APIRouter(prefix="/api/routine", tags=["맞춤 루틴 추천"])
 
 
+def require_member(user: User) -> None:
+    if user.account_type != "MEMBER":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="회원 전용 기능입니다.",
+        )
+
+
 def recommendation_plan_skip_reason(plan: WorkoutPlan) -> str:
     if plan.is_completed:
         return "COMPLETED_PLAN_EXISTS"
@@ -169,6 +177,7 @@ def recommend(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_member(current_user)
     enforce_self(current_user, payload.user_id)
     return _generate(payload, db, False)
 
@@ -179,6 +188,7 @@ def latest(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_member(current_user)
     enforce_self(current_user, user_id)
     recommendation = db.scalar(
         select(RoutineRecommendation)
@@ -197,6 +207,7 @@ def regenerate(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_member(current_user)
     enforce_self(current_user, payload.user_id)
     return _generate(payload, db, True)
 
@@ -211,6 +222,7 @@ def apply_recommendation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_member(current_user)
     recommendation = db.scalar(
         select(RoutineRecommendation)
         .options(

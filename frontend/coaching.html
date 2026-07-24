@@ -14,7 +14,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/common.css"
+    href="/static/css/common.css?v=2"
   >
 
   <link
@@ -24,12 +24,12 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=12"
+    href="/static/css/coaching.css?v=13"
   >
 
   <script src="/static/js/api_client.js?v=3" defer></script>
   <script
-    src="/static/js/common_layout.js?v=19"
+    src="/static/js/common_layout.js?v=21"
     defer
   ></script>
 
@@ -44,7 +44,7 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=13"
+    src="/static/js/coaching.js?v=14"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -100,6 +100,14 @@
       <p class="pose-initial-notice" id="poseInitialNotice" hidden>
         초기 테스트 기능입니다. 실제 촬영 환경에 따라 자세 판정이 달라질 수 있습니다.
       </p>
+
+      <section class="camera-preparation" aria-labelledby="cameraPreparationTitle">
+        <div aria-hidden="true">01</div>
+        <div>
+          <h2 id="cameraPreparationTitle">카메라 준비</h2>
+          <p>카메라에 전신이 보이도록 기기에서 2~3m 떨어져 주세요. 몸 전체가 화면에 들어오면 운동을 시작할 수 있어요.</p>
+        </div>
+      </section>
 
       <!-- 코칭 시작 설정 -->
       <section class="coaching-mode-loading" id="coachingModeLoading">
@@ -218,11 +226,13 @@
         <div
           class="camera-placeholder"
           id="cameraPlaceholder"
+          role="status"
+          aria-live="polite"
         >
           <strong>카메라 준비 중</strong>
 
           <span>
-            운동 시작 버튼을 눌러주세요.
+            아래의 운동 시작 버튼을 눌러 주세요.
           </span>
         </div>
 
@@ -375,7 +385,7 @@
           id="finishButton"
           disabled
         >
-          종료 및 기록 저장
+          운동 종료
         </button>
       </section>
 

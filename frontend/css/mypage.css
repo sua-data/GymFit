@@ -77,6 +77,12 @@ button { cursor: pointer; }
 .profile-sheet .gymfit-select { margin-top: 8px; }
 .profile-sheet input:focus, .profile-sheet select:focus { border-color: var(--my-green); }
 .profile-sheet input:disabled { color: var(--my-muted); }
+.profile-body-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.profile-body-grid > label { min-width: 0; color: rgba(255,255,255,.62); font-size: 13px; font-weight: 700; }
+.profile-unit-field { position: relative; margin-top: 8px; }
+.profile-unit-field input { margin-top: 0; padding-right: 44px; }
+.profile-unit-field b { position: absolute; top: 50%; right: 14px; color: var(--my-muted); font-size: 13px; font-weight: 600; transform: translateY(-50%); pointer-events: none; }
+.profile-body-help { margin: 8px 0 0; color: var(--my-muted); font-size: 12px; line-height: 1.5; }
 .profile-sheet small { display: block; margin-top: 6px; color: var(--my-muted); font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: normal; }
 .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
 .goal-choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -98,4 +104,5 @@ button { cursor: pointer; }
 body.modal-open { overflow: hidden; }
 .trainer-approval-message{margin:14px 0;padding:12px 13px;color:rgba(255,255,255,.7);background:#202020;border:1px solid rgba(168,255,53,.12);border-radius:12px;font-size:12px;line-height:1.55}
 @media (min-width: 700px) { .mypage-container { padding-top: 28px; } .profile-sheet { bottom: 24px; border-radius: 24px; } }
+@media (max-width: 340px) { .profile-body-grid { grid-template-columns: 1fr; } }
 .sheet-icon-close{display:grid!important;place-items:center;padding:0!important;background:transparent!important;border:0!important}.sheet-icon-close img{width:21px;height:21px;display:block}.account-sheet{max-height:90dvh}.account-sheet form{padding-bottom:4px}.account-provider-notice,.withdraw-warning{margin:18px 0 0;padding:15px;color:var(--my-muted);background:#202020;border:1px solid rgba(255,255,255,.08);border-radius:14px;font-size:12px;line-height:1.6}.withdraw-warning{border-color:rgba(255,105,105,.2);background:rgba(255,105,105,.06)}.withdraw-warning strong{display:block;color:#ff9b9b;font-size:14px}.withdraw-warning p{margin:7px 0 0}.withdraw-sheet label small b{color:#fff}.withdraw-submit-button{width:100%;min-height:52px;margin-top:22px;color:#fff;background:#b62e2e;border:0;border-radius:15px;font-size:15px;font-weight:900}.withdraw-submit-button:disabled{opacity:.5;cursor:wait}.account-sheet .form-message{min-height:18px}.account-sheet input:invalid:not(:placeholder-shown){border-color:rgba(255,133,133,.55)}

@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GYMFIT | 헬스장 머신</title>
-  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/common.css?v=2">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
   <link rel="stylesheet" href="/static/css/machines.css?v=1">
   <script src="/static/js/api_client.js?v=3" defer></script>
-  <script src="/static/js/common_layout.js?v=19" defer></script>
+  <script src="/static/js/common_layout.js?v=21" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
-  <script src="/static/js/machines.js?v=4" defer></script>
+  <script src="/static/js/machines.js?v=5" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="shortcut icon" href="/static/favicon.ico?v=1">
   <meta name="theme-color" content="#000000">
@@ -21,13 +21,13 @@
     <div class="machines-container">
       <div id="topHeaderContainer"></div>
 
-      <section class="machine-state" id="machineLoading">머신 목록을 불러오고 있어요.</section>
-      <section class="machine-state error" id="machineError" hidden>
+      <section class="machine-state gymfit-state" id="machineLoading" role="status" aria-live="polite">머신 목록을 불러오고 있어요.</section>
+      <section class="machine-state gymfit-state error" id="machineError" hidden role="alert">
         <strong>머신 목록을 불러오지 못했어요.</strong>
         <p id="machineErrorMessage"></p>
         <button type="button" id="machineRetry">다시 시도</button>
       </section>
-      <section class="machine-state" id="gymRequired" hidden>
+      <section class="machine-state gymfit-state" id="gymRequired" hidden>
         <strong>등록된 헬스장이 없어요.</strong>
         <p>내 헬스장을 먼저 등록하면 보유 머신을 확인할 수 있어요.</p>
         <a href="/my-gym">내 헬스장 등록</a>
@@ -75,7 +75,7 @@
           <label>대표 이미지 <small>JPG, PNG, WebP · 최대 5MB</small><input id="machineImageInput" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"></label>
           <div class="image-preview" id="machineImagePreview" hidden><img id="machineImagePreviewImg" alt="선택한 머신 이미지 미리보기"><button type="button" id="machineImageRemove">이미지 제거</button></div>
           <p class="form-message" id="machineFormMessage" role="alert" hidden></p>
-          <button class="form-submit" id="machineFormSubmit" type="submit">저장</button>
+          <button class="form-submit" id="machineFormSubmit" type="submit">머신 정보 저장</button>
         </form>
       </section>
     </div>

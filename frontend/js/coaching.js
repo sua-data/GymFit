@@ -1664,10 +1664,19 @@ async function startWorkout() {
     stopCamera();
     await closeCoachingSession().catch(() => {});
 
-    alert(
-      error.message
-      || "카메라를 실행하지 못했습니다."
-    );
+    const permissionMessage = error?.name === "NotAllowedError"
+      ? "브라우저 설정에서 카메라 권한을 허용한 뒤 다시 시도해 주세요."
+      : error.message || "카메라 연결을 확인한 뒤 다시 시도해 주세요.";
+    cameraPlaceholder.style.display = "";
+    cameraPlaceholder.querySelector("strong").textContent =
+      "카메라를 시작하지 못했어요.";
+    cameraPlaceholder.querySelector("span").textContent = permissionMessage;
+    feedbackTitle.textContent = "카메라 설정을 확인해 주세요.";
+    feedbackText.textContent = permissionMessage;
+    movementState.textContent = "카메라 확인 필요";
+    postureStatus.textContent = "READY";
+    startButton.disabled = false;
+    startButton.textContent = "카메라 다시 시도";
   }
 }
 

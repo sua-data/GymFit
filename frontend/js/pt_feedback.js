@@ -54,8 +54,9 @@
             list.hidden = !data.items.length;
 
             if (!data.items.length) {
-                state.textContent =
-                    "받은 트레이너 피드백이 없습니다.";
+                state.innerHTML =
+                    "<strong>아직 등록된 피드백이 없어요.</strong>"
+                    + "<p>운동을 완료하면 트레이너 피드백을 확인할 수 있어요.</p>";
                 return;
             }
 
@@ -121,7 +122,16 @@
             });
         } catch (error) {
             state.hidden = false;
-            state.textContent = error.message;
+            list.hidden = true;
+            state.innerHTML =
+                "<strong>피드백을 불러오지 못했어요.</strong>"
+                + "<p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+            const retryButton = document.createElement("button");
+            retryButton.type = "button";
+            retryButton.className = "gymfit-state-action";
+            retryButton.textContent = "다시 시도";
+            retryButton.addEventListener("click", load);
+            state.append(retryButton);
         }
     }
 

@@ -159,14 +159,16 @@
     if (!selectedMemberId) {
       state.hidden = false;
       list.hidden = true;
-      state.textContent = members.length ? "회원을 선택해 주세요." : "현재 연결된 PT 회원이 없습니다.";
+      state.innerHTML = members.length
+        ? "<strong>담당 회원을 선택해 주세요.</strong><p>회원을 선택하면 숙제와 수행 상태를 확인할 수 있어요.</p>"
+        : "<strong>아직 연결된 담당 회원이 없어요.</strong><p>회원 연결 요청이 승인되면 이곳에서 관리할 수 있어요.</p>";
       return;
     }
     const items = filteredAssignments();
     state.hidden = items.length > 0;
     list.hidden = items.length === 0;
     if (!items.length) {
-      state.textContent = "선택한 조건에 해당하는 숙제가 없습니다.";
+      state.innerHTML = "<strong>선택한 상태의 숙제가 없어요.</strong><p>다른 상태를 선택하거나 새 PT 숙제를 등록해 주세요.</p>";
       return;
     }
     items.forEach(item => {
@@ -238,8 +240,11 @@
       renderMemberSummary();
       renderAssignments();
     } catch (error) {
+      console.error("PT 숙제 관리 정보 조회 실패:", error);
       state.hidden = false;
-      state.textContent = error.message;
+      state.innerHTML = "<strong>담당 회원과 숙제를 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      const retryButton = actionButton("다시 시도", loadData, "gymfit-state-action");
+      state.append(retryButton);
     }
   }
 
@@ -448,7 +453,11 @@
   document.querySelector("#assignmentFilters").addEventListener("click", event => {
     const selected = event.target.closest("button[data-status]");
     if (!selected) return;
-    document.querySelectorAll("#assignmentFilters button").forEach(button => button.classList.toggle("active", button === selected));
+    document.querySelectorAll("#assignmentFilters button").forEach(button => {
+      const isSelected = button === selected;
+      button.classList.toggle("active", isSelected);
+      button.setAttribute("aria-selected", String(isSelected));
+    });
     statusFilter = selected.dataset.status;
     renderAssignments();
   });

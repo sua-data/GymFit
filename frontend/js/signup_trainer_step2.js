@@ -1215,7 +1215,7 @@ trainerProfileForm.addEventListener(
         false;
 
       completeButton.textContent =
-        "가입 완료";
+        "회원가입 완료";
 
       skipButton.disabled =
         false;

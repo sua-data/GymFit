@@ -152,10 +152,12 @@
       await renderGym();
       await loadEmployment();
     } catch (error) {
+      console.error("헬스장 정보 조회 실패:", error);
       elements.gymLoading.hidden = true;
       elements.gymContent.hidden = true;
       elements.gymEmpty.hidden = true;
-      elements.gymErrorMessage.textContent = error instanceof Error ? error.message : "잠시 후 다시 시도해 주세요.";
+      elements.gymErrorMessage.textContent =
+        "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
       elements.gymError.hidden = false;
     }
   }
