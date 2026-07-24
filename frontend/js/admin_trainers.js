@@ -121,7 +121,7 @@
     finally { submitting = false; $("reviewConfirm").disabled = false; }
   }
   document.querySelectorAll("[data-status]").forEach((button) => button.addEventListener("click", () => { filter = button.dataset.status; history.replaceState(null, "", `/admin/trainers?status=${filter}`); load(); }));
-  $("adminRetry").addEventListener("click", load); $("adminLogout").addEventListener("click", () => { sessionStorage.clear(); location.replace("/login"); });
+  $("adminRetry").addEventListener("click", load); $("adminLogout").addEventListener("click", (event) => window.logoutGymfit(event));
   [["detailClose", "detailOverlay"], ["detailBackdrop", "detailOverlay"], ["reviewClose", "reviewOverlay"], ["reviewBackdrop", "reviewOverlay"], ["reviewCancel", "reviewOverlay"]].forEach(([button, overlay]) => $(button).addEventListener("click", () => closeSheet($(overlay))));
   $("reviewConfirm").addEventListener("click", submitReview); $("reviewReason").addEventListener("input", (event) => { $("reasonCount").textContent = String(event.target.value.length); });
   window.addEventListener("keydown", (event) => { if (event.key !== "Escape") return; if (!$("reviewOverlay").hidden) closeSheet($("reviewOverlay")); else if (!$("detailOverlay").hidden) closeSheet($("detailOverlay")); });

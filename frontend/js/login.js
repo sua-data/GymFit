@@ -37,6 +37,7 @@ const googleClientIdMeta =
   );
 
 let googleCodeClient = null;
+let loginNavigationStarted = false;
 
 
 /* =========================
@@ -228,7 +229,11 @@ function saveLoginUser(data) {
   if (!data.access_token) {
     throw new Error("로그인 응답에 액세스 토큰이 없습니다.");
   }
-  sessionStorage.setItem("gymfitAccessToken", data.access_token);
+  if (window.gymfitApi?.setAccessToken) {
+    window.gymfitApi.setAccessToken(data.access_token);
+  } else {
+    sessionStorage.setItem("gymfitAccessToken", data.access_token);
+  }
   const loginUser = {
     user_id: data.user_id,
     account_type: data.account_type,
@@ -292,6 +297,10 @@ function clearSignupSession() {
 ========================= */
 
 function moveAfterLogin() {
+  if (loginNavigationStarted) {
+    return;
+  }
+  loginNavigationStarted = true;
   let accountType = "";
   try {
     accountType = String(
@@ -300,8 +309,9 @@ function moveAfterLogin() {
   } catch {
     accountType = "";
   }
-  window.location.href =
-    accountType === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+  window.location.replace(
+    accountType === "ADMIN" ? "/admin/dashboard" : "/dashboard"
+  );
 }
 
 
@@ -313,6 +323,10 @@ loginForm.addEventListener(
   "submit",
   async (event) => {
     event.preventDefault();
+
+    if (loginForm.dataset.submitting === "true") {
+      return;
+    }
 
     clearError();
 
@@ -358,6 +372,8 @@ loginForm.addEventListener(
       return;
     }
 
+    loginForm.dataset.submitting = "true";
+    loginForm.setAttribute("aria-busy", "true");
     loginButton.disabled = true;
     loginButton.textContent =
       "로그인 중...";
@@ -372,8 +388,7 @@ loginForm.addEventListener(
       saveLoginUser(data);
 
       if (data.must_change_password) {
-        window.location.href =
-          "/dashboard";
+        moveAfterLogin();
 
         return;
       }
@@ -391,9 +406,14 @@ loginForm.addEventListener(
           "로그인 중 오류가 발생했습니다."
       );
 
-      loginButton.disabled = false;
-      loginButton.textContent =
-        "로그인";
+    } finally {
+      delete loginForm.dataset.submitting;
+      loginForm.removeAttribute("aria-busy");
+      if (!loginNavigationStarted) {
+        loginButton.disabled = false;
+        loginButton.textContent =
+          "로그인";
+      }
     }
   }
 );

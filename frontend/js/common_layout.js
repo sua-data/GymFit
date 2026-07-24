@@ -114,6 +114,9 @@ window.addEventListener("pageshow", () => {
 
 
 function updateGymfitStoredUser(profile) {
+  if (window.gymfitApi?.isLoggingOut?.()) {
+    return null;
+  }
   const previousUser = getLoginUser() || {};
   const hasServerTrainerState = Object.prototype.hasOwnProperty.call(
     profile || {},
@@ -159,6 +162,9 @@ async function refreshGymfitCurrentUser(force = false) {
       headers: { "X-User-Id": String(userId) },
     });
     const profile = await response.json().catch(() => null);
+    if (window.gymfitApi?.isLoggingOut?.()) {
+      return null;
+    }
     if (!response.ok) {
       throw new Error(
         typeof profile?.detail === "string"
@@ -364,6 +370,18 @@ function renderSideMenu() {
 
   userType.textContent = getUserRoleLabel(user);
 
+  const appendLogoutButton = () => {
+    const logoutButton = document.createElement("button");
+    logoutButton.type = "button";
+    logoutButton.className = "side-menu-item";
+    logoutButton.dataset.gymfitLogout = "true";
+    logoutButton.id = "sideMenuLogoutButton";
+    const label = document.createElement("span");
+    label.textContent = "로그아웃";
+    logoutButton.appendChild(label);
+    menuList.appendChild(logoutButton);
+  };
+
   if (isAdmin) {
     menuList.appendChild(
       createMenuSection(
@@ -371,6 +389,7 @@ function renderSideMenu() {
         adminMenuItems
       )
     );
+    appendLogoutButton();
     return;
   }
 
@@ -407,6 +426,8 @@ function renderSideMenu() {
       )
     );
   }
+
+  appendLogoutButton();
 }
 
 

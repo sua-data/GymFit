@@ -575,9 +575,16 @@ async function saveSelectedGym() {
     message.hidden = false;
   } finally { button.disabled = false; }
 }
-function logout() {
-  ["gymfitUser", "gymfitCoachingPlan", "gymfitCoachingRestSeconds", "gymfitFreeCoachingSets", "gymfitCoachingVoiceEnabled"].forEach((key) => sessionStorage.removeItem(key));
+function logout(event) {
   window.speechSynthesis?.cancel();
+  if (typeof window.logoutGymfit === "function") {
+    window.logoutGymfit(event);
+    return;
+  }
+  event?.preventDefault?.();
+  sessionStorage.removeItem("gymfitAccessToken");
+  sessionStorage.removeItem("gymfitUser");
+  sessionStorage.removeItem("gymfitCoachingSessionId");
   window.location.replace("/login");
 }
 

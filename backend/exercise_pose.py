@@ -520,6 +520,21 @@ def create_pose_analyzers(model_path: str = "yolo11n-pose.pt"):
     }
 
 
+def create_pose_analyzer(exercise_code: str, model_path: str = "yolo11n-pose.pt"):
+    """세션 하나에 사용할 독립 상태 분석기를 생성한다."""
+    from backend.squat_pose import SquatAnalyzer
+
+    normalized = str(exercise_code or "").strip().upper()
+    squat = SquatAnalyzer(model_path)
+    if normalized == "SQUAT":
+        return squat
+    if normalized == "PUSHUP":
+        return PushUpAnalyzer(squat.model)
+    if normalized == "SHOULDER_PRESS":
+        return ShoulderPressAnalyzer(squat.model)
+    raise KeyError(normalized)
+
+
 def get_pose_analyzer(analyzers: dict, exercise_code: str):
     """운동 코드에 맞는 분석기를 선택한다."""
     normalized = str(exercise_code or "").strip().upper()

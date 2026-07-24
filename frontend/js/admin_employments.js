@@ -108,7 +108,7 @@
   }
   document.querySelectorAll("[data-status]").forEach((button) => button.addEventListener("click", () => { filter = button.dataset.status; history.replaceState(null, "", `/admin/employments?status=${filter}`); load(); }));
   ["employmentClose", "employmentBackdrop"].forEach((id) => $(id).addEventListener("click", closeSheet));
-  $("adminLogout").addEventListener("click", () => { sessionStorage.clear(); location.replace("/login"); });
+  $("adminLogout").addEventListener("click", (event) => window.logoutGymfit(event));
   window.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("employmentOverlay").hidden) closeSheet(); });
   window.addEventListener("beforeunload", () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }); load();
 })();

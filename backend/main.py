@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pathlib import Path
 
 import cv2
@@ -8,16 +9,11 @@ from fastapi import (
     FastAPI,
     File,
     HTTPException,
-    UploadFile
+    UploadFile,
 )
 
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
-from backend.exercise_pose import (
-    create_pose_analyzers,
-    get_pose_analyzer,
-)
 
 from backend.database import (
     Base,
@@ -51,6 +47,8 @@ from backend.routers.pt_feedback import router as pt_feedback_router
 from backend.routers.pt_schedule import router as pt_schedule_router
 from backend.routers.workout_session import router as workout_session_router
 from backend.routers.routine import router as routine_router
+from backend.routers.coaching import router as coaching_router
+from backend.services.coaching_session_service import coaching_session_store
 
 # 모든 모델을 SQLAlchemy에 등록
 import backend.models
@@ -68,16 +66,40 @@ app = FastAPI(
     version="1.0.0",
 )
 
-exercise_analyzers = create_pose_analyzers()
-squat_analyzer = exercise_analyzers["SQUAT"]
-
-COACHING_PATH_TO_CODE = {
-    "squat": "SQUAT",
-    "pushup": "PUSHUP",
-    "push-up": "PUSHUP",
-    "shoulder-press": "SHOULDER_PRESS",
-    "shoulder_press": "SHOULDER_PRESS",
+PROTECTED_PAGE_PATHS = {
+    "/dashboard",
+    "/coaching",
+    "/routine",
+    "/records",
+    "/mypage",
+    "/my-gym",
+    "/machines",
+    "/notifications",
+    "/pt",
 }
+PROTECTED_PAGE_PREFIXES = (
+    "/records/",
+    "/admin/",
+    "/trainer/",
+    "/pt/",
+)
+
+
+@app.middleware("http")
+async def disable_protected_page_cache(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if (
+        path in PROTECTED_PAGE_PATHS
+        or path.startswith(PROTECTED_PAGE_PREFIXES)
+    ):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
+coaching_cleanup_task: asyncio.Task | None = None
 
 @app.on_event("startup")
 def startup_event():
@@ -86,6 +108,34 @@ def startup_event():
     Base.metadata.create_all(
         bind=engine
     )
+
+
+async def cleanup_coaching_sessions():
+    interval_seconds = max(
+        60,
+        int(os.getenv("COACHING_SESSION_CLEANUP_INTERVAL_MINUTES", "5")) * 60,
+    )
+    while True:
+        await asyncio.sleep(interval_seconds)
+        coaching_session_store.cleanup_expired()
+
+
+@app.on_event("startup")
+async def start_coaching_cleanup():
+    global coaching_cleanup_task
+    coaching_cleanup_task = asyncio.create_task(cleanup_coaching_sessions())
+
+
+@app.on_event("shutdown")
+async def stop_coaching_cleanup():
+    global coaching_cleanup_task
+    if coaching_cleanup_task is not None:
+        coaching_cleanup_task.cancel()
+        try:
+            await coaching_cleanup_task
+        except asyncio.CancelledError:
+            pass
+        coaching_cleanup_task = None
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
@@ -103,6 +153,7 @@ app.include_router(pt_feedback_router)
 app.include_router(pt_schedule_router)
 app.include_router(workout_session_router)
 app.include_router(routine_router)
+app.include_router(coaching_router)
 
 # frontend 폴더 전체를 /static 경로로 연결
 app.mount(
@@ -288,63 +339,38 @@ def health_check():
 
 @app.get("/api/coaching/squat/status")
 def get_squat_status():
-    return {
-        "count": squat_analyzer.squat_count,
-        "stage": squat_analyzer.stage,
-        "stage_text": (
-            "내려감"
-            if squat_analyzer.stage == "DOWN"
-            else "일어섬"
-        ),
-        "last_depth": (
-            round(squat_analyzer.last_squat_depth, 1)
-            if squat_analyzer.last_squat_depth is not None
-            else None
-        ),
-        "feedback": squat_analyzer.feedback,
-    }
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
+    )
 
 
 @app.post("/api/coaching/squat/reset")
 def reset_squat_status():
-    squat_analyzer.reset()
-
-    return {
-        "success": True,
-        "message": "스쿼트 기록이 초기화되었습니다.",
-        "count": squat_analyzer.squat_count,
-        "stage": squat_analyzer.stage,
-        "feedback": squat_analyzer.feedback,
-    }
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
+    )
 
 @app.post("/api/coaching/squat/analyze")
 async def analyze_squat_frame(
     image: UploadFile = File(...),
 ):
-    frame = await decode_uploaded_image(image)
-    _, status = squat_analyzer.process_frame(frame)
-
-    return {
-        "success": True,
-        **normalize_analysis_status("SQUAT", status),
-    }
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
+    )
 
 
 def get_exercise_analyzer(exercise_path: str):
-    exercise_code = COACHING_PATH_TO_CODE.get(
-        exercise_path.strip().lower()
+    del exercise_path
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
     )
-    try:
-        analyzer = get_pose_analyzer(exercise_analyzers, exercise_code)
-    except KeyError:
-        raise HTTPException(
-            status_code=404,
-            detail="지원하지 않는 코칭 운동입니다.",
-        ) from None
-    return exercise_code, analyzer
 
 
-def normalize_analysis_status(exercise_code: str, status: dict):
+def normalize_analysis_status(exercise_code: str, status: dict, analyzer=None):
     posture_score = status.get("posture_score")
     if posture_score is None and exercise_code == "SQUAT":
         depth = status.get("last_depth") or status.get("average_angle")
@@ -400,11 +426,13 @@ def normalize_analysis_status(exercise_code: str, status: dict):
                 "debug",
                 {
                     "selected_side": selected_side,
-                    "stable_frames": max(
-                        squat_analyzer.down_frames,
-                        squat_analyzer.up_frames,
+                    "stable_frames": (
+                        max(analyzer.down_frames, analyzer.up_frames)
+                        if analyzer is not None else 0
                     ),
-                    "missing_frames": squat_analyzer.missing_frames,
+                    "missing_frames": (
+                        analyzer.missing_frames if analyzer is not None else 0
+                    ),
                 },
             )
     return normalized
@@ -443,21 +471,10 @@ async def decode_uploaded_image(image: UploadFile):
 
 @app.post("/api/coaching/{exercise_path}/reset")
 def reset_exercise_status(exercise_path: str):
-    exercise_code, analyzer = get_exercise_analyzer(exercise_path)
-    analyzer.reset()
-    count = (
-        analyzer.squat_count
-        if exercise_code == "SQUAT"
-        else analyzer.count
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
     )
-    return {
-        "success": True,
-        "exercise_code": exercise_code,
-        "message": "운동 분석 상태가 초기화되었습니다.",
-        "count": count,
-        "stage": analyzer.stage,
-        "feedback": analyzer.feedback,
-    }
 
 
 @app.post("/api/coaching/{exercise_path}/analyze")
@@ -465,10 +482,7 @@ async def analyze_exercise_frame(
     exercise_path: str,
     image: UploadFile = File(...),
 ):
-    exercise_code, analyzer = get_exercise_analyzer(exercise_path)
-    frame = await decode_uploaded_image(image)
-    _, status = analyzer.process_frame(frame)
-    return {
-        "success": True,
-        **normalize_analysis_status(exercise_code, status),
-    }
+    raise HTTPException(
+        status_code=410,
+        detail="세션 기반 코칭 API를 사용해주세요.",
+    )

@@ -55,6 +55,6 @@
     } finally { $("dashboardLoading").hidden = true; }
   }
   $("dashboardRetry").addEventListener("click", load);
-  $("adminLogout").addEventListener("click", () => { sessionStorage.clear(); location.replace("/login"); });
+  $("adminLogout").addEventListener("click", (event) => window.logoutGymfit(event));
   load();
 })();

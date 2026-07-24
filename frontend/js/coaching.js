@@ -176,6 +176,9 @@ let selectedExerciseCode =
 let selectedExerciseName =
   "스쿼트";
 
+const COACHING_SESSION_STORAGE_KEY = "gymfitCoachingSessionId";
+let coachingSessionId = null;
+
 let targetReps = 10;
 let targetSets = 3;
 
@@ -854,9 +857,9 @@ async function changeSelectedExercise(exerciseCode) {
     `${selectedExerciseName}의 오늘 계획을 확인하고 있습니다.`;
 
   try {
-    await resetCurrentExerciseAnalyzer();
+    await closeCoachingSession();
   } catch (error) {
-    console.error(`${selectedExerciseName} 상태 초기화 실패:`, error);
+    console.error("기존 코칭 세션 종료 실패:", error);
   }
 
   const result = await fetchTodayCoachingPlans();
@@ -1336,6 +1339,7 @@ async function sendFrameForAnalysis() {
     !isWorkoutActive
     || isWorkoutPaused
     || analysisInProgress
+    || !coachingSessionId
     || !cameraVideo.videoWidth
     || !cameraVideo.videoHeight
   ) {
@@ -1400,14 +1404,9 @@ async function sendFrameForAnalysis() {
       `${selectedExerciseCode.toLowerCase()}-frame.jpg`
     );
 
-    const analyzer = getExerciseAnalyzer(selectedExerciseCode);
-    if (!analyzer) {
-      throw new Error("지원하지 않는 코칭 운동입니다.");
-    }
-
     const response =
       await fetch(
-        `/api/coaching/${analyzer.apiPath}/analyze`,
+        `/api/coaching/sessions/${encodeURIComponent(coachingSessionId)}/analyze`,
         {
           method: "POST",
           body: formData
@@ -1418,6 +1417,16 @@ async function sendFrameForAnalysis() {
       await response.json();
 
     if (!response.ok) {
+      if (response.status === 404 || response.status === 410) {
+        coachingSessionId = null;
+        sessionStorage.removeItem(COACHING_SESSION_STORAGE_KEY);
+        stopPoseAnalysis();
+        movementState.textContent = "세션 만료";
+        feedbackText.textContent =
+          "코칭 세션이 만료되었습니다. 다시 시작해주세요.";
+        setOverlayFeedback(feedbackText.textContent);
+        throw new Error("코칭 세션이 만료되었습니다. 다시 시작해주세요.");
+      }
       throw new Error(
         data.detail
         || "자세 분석에 실패했습니다."
@@ -1463,14 +1472,13 @@ function stopPoseAnalysis() {
 
 
 async function resetCurrentExerciseAnalyzer() {
-  const analyzer = getExerciseAnalyzer(selectedExerciseCode);
-  if (!analyzer) {
-    throw new Error("지원하지 않는 코칭 운동입니다.");
+  if (!coachingSessionId) {
+    throw new Error("분석 세션을 찾을 수 없습니다.");
   }
 
   const response =
     await fetch(
-      `/api/coaching/${analyzer.apiPath}/reset`,
+      `/api/coaching/sessions/${encodeURIComponent(coachingSessionId)}/reset`,
       {
         method: "POST"
       }
@@ -1480,6 +1488,10 @@ async function resetCurrentExerciseAnalyzer() {
     await response.json();
 
   if (!response.ok) {
+    if (response.status === 404 || response.status === 410) {
+      coachingSessionId = null;
+      sessionStorage.removeItem(COACHING_SESSION_STORAGE_KEY);
+    }
     throw new Error(
       data.detail
       || `${selectedExerciseName} 분석 상태를 초기화하지 못했습니다.`
@@ -1487,6 +1499,46 @@ async function resetCurrentExerciseAnalyzer() {
   }
 
   lastServerCount = 0;
+}
+
+
+async function createCoachingSession() {
+  await closeCoachingSession();
+  const response = await fetch("/api/coaching/sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      exercise_code: selectedExerciseCode,
+      target_reps: targetReps,
+      target_sets: targetSets,
+      workout_plan_id: coachingWorkoutPlanId || null,
+    }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.coaching_session_id) {
+    throw new Error(data?.detail || "코칭을 시작하지 못했습니다.");
+  }
+  coachingSessionId = data.coaching_session_id;
+  sessionStorage.setItem(COACHING_SESSION_STORAGE_KEY, coachingSessionId);
+}
+
+
+async function closeCoachingSession({ keepalive = false } = {}) {
+  const sessionId = coachingSessionId
+    || sessionStorage.getItem(COACHING_SESSION_STORAGE_KEY);
+  coachingSessionId = null;
+  sessionStorage.removeItem(COACHING_SESSION_STORAGE_KEY);
+  if (!sessionId) {
+    return;
+  }
+  const response = await fetch(
+    `/api/coaching/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE", keepalive }
+  );
+  if (!response.ok && response.status !== 404) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.detail || "코칭 세션을 종료하지 못했습니다.");
+  }
 }
 
 
@@ -1555,6 +1607,7 @@ async function startWorkout() {
 
     updateCounterDisplay();
 
+    await createCoachingSession();
     await startCamera();
     await resetCurrentExerciseAnalyzer();
 
@@ -1609,6 +1662,7 @@ async function startWorkout() {
     );
 
     stopCamera();
+    await closeCoachingSession().catch(() => {});
 
     alert(
       error.message
@@ -1979,6 +2033,9 @@ async function finishWorkout() {
 
   isWorkoutActive = false;
   stopCamera();
+  await closeCoachingSession().catch((error) => {
+    console.error("코칭 세션 종료 실패:", error);
+  });
   clearRestTimer();
   clearCoachingPlan();
   showWorkoutResult(planCompletionError);
@@ -2221,6 +2278,7 @@ window.addEventListener(
   (event) => {
     clearRestTimer();
     stopCamera();
+    closeCoachingSession({ keepalive: true }).catch(() => {});
 
     if (!isWorkoutActive) {
       return;
