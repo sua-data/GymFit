@@ -66,6 +66,39 @@ button { cursor: pointer; }
 .profile-sheet { position: absolute; right: 0; bottom: 0; left: 0; box-sizing: border-box; width: min(100%, 430px); min-width: 0; max-width: 100%; max-height: 88dvh; margin: auto; padding: 22px 20px calc(24px + env(safe-area-inset-bottom)); overflow-x: clip; overflow-y: auto; background: #151515; border: 1px solid rgba(255,255,255,.1); border-radius: 24px 24px 0 0; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; }
 .profile-sheet *, .profile-sheet *::before, .profile-sheet *::after { box-sizing: border-box; }
 .profile-sheet input, .profile-sheet textarea, .profile-sheet select, .profile-sheet button { font-family: inherit; letter-spacing: inherit; }
+#profileLevelSelect,
+#profileWeeklySelect,
+#profileLevelSelect option,
+#profileWeeklySelect option {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#profileLevelSelect,
+#profileWeeklySelect {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#profileLevelSelect option,
+#profileWeeklySelect option {
+  font-size: 15px;
+  font-weight: 500;
+}
+#profileLevelSelect + .gymfit-select .gymfit-select-trigger,
+#profileWeeklySelect + .gymfit-select .gymfit-select-trigger,
+#profileLevelSelect + .gymfit-select .gymfit-select-value,
+#profileWeeklySelect + .gymfit-select .gymfit-select-value {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+body[data-page="mypage"] .gymfit-select-portal .gymfit-select-option {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+}
 .profile-sheet form, .profile-sheet form > label, .profile-sheet fieldset, #memberEditFields, .choice-grid, .gym-search, .gym-search-row { width: 100%; min-width: 0; max-width: 100%; }
 .profile-sheet header { display: flex; align-items: center; justify-content: space-between; }
 .profile-sheet header span { color: var(--my-green); font-size: 9px; font-weight: 900; letter-spacing: 1px; }

@@ -118,7 +118,16 @@
       const title = document.createElement("h3");
       title.textContent = item.title;
       card.append(title);
-      [item.exercise_name, `트레이너 ${item.trainer_name}`, `목표 ${targetText(item)}`, `${item.assigned_date} ~ ${item.due_date || "기한 없음"}`, item.description]
+      [
+        item.exercise_name,
+        `트레이너 ${item.trainer_name}`,
+        `목표 ${targetText(item)}`,
+        item.weight_kg != null
+          ? `사용 중량 ${Number(item.weight_kg)}kg`
+          : "맨몸 또는 중량 없음",
+        `${item.assigned_date} ~ ${item.due_date || "기한 없음"}`,
+        item.description,
+      ]
         .filter(Boolean).forEach(text => {
           const paragraph = document.createElement("p");
           paragraph.textContent = text;

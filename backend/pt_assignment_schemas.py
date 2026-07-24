@@ -1,10 +1,26 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class PtAssignmentCreate(BaseModel):
+class PtAssignmentWeightMixin(BaseModel):
+    weight_kg: Decimal | None = Field(default=None, gt=0, le=9999.99)
+
+    @field_validator("weight_kg", mode="before")
+    @classmethod
+    def normalize_zero_weight(cls, value):
+        if value is None or value == "":
+            return None
+        try:
+            if Decimal(str(value)) == 0:
+                return None
+        except (ValueError, ArithmeticError):
+            return value
+        return value
+
+
+class PtAssignmentCreate(PtAssignmentWeightMixin):
     member_id: int = Field(gt=0)
     exercise_id: int | None = Field(default=None, gt=0)
     user_exercise_id: int | None = Field(default=None, gt=0)
@@ -27,7 +43,7 @@ class PtAssignmentCreate(BaseModel):
         return self
 
 
-class PtAssignmentUpdate(BaseModel):
+class PtAssignmentUpdate(PtAssignmentWeightMixin):
     exercise_id: int | None = Field(default=None, gt=0)
     user_exercise_id: int | None = Field(default=None, gt=0)
     description: str | None = Field(default=None, max_length=5000)
@@ -61,6 +77,7 @@ class PtAssignmentItem(BaseModel):
     target_sets: int | None
     target_reps: int | None
     target_minutes: int | None
+    weight_kg: Decimal | None
     status: str
     is_overdue: bool
     completed_at: datetime | None

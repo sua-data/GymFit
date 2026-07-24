@@ -50,6 +50,15 @@
 
   const inputValue = selector => document.querySelector(selector).value.trim();
   const numberOrNull = selector => inputValue(selector) ? Number(inputValue(selector)) : null;
+  const optionalWeightKg = () => {
+    const rawValue = inputValue("#assignmentWeightKg");
+    if (!rawValue) return null;
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < 0 || value > 9999.99) {
+      throw new Error("사용 중량은 0kg 이상 9999.99kg 이하로 입력해 주세요.");
+    }
+    return value === 0 ? null : value;
+  };
   const activeStatuses = new Set(["ASSIGNED", "IN_PROGRESS"]);
   const statusName = value => ({ ASSIGNED: "진행 전", IN_PROGRESS: "진행 중", COMPLETED: "완료", CANCELLED: "취소" }[value] || value);
   const dateValue = value => value ? new Date(value).getTime() || 0 : 0;
@@ -196,9 +205,14 @@
       const targetLine = document.createElement("strong");
       targetLine.className = "trainer-assignment-target";
       targetLine.textContent = target || "목표 미설정";
+      const weightLine = document.createElement("p");
+      weightLine.className = "trainer-assignment-weight";
+      weightLine.textContent = item.weight_kg != null
+        ? `사용 중량 ${Number(item.weight_kg)}kg`
+        : "맨몸 또는 중량 없음";
       const schedule = document.createElement("p");
       schedule.textContent = `${item.assigned_date} 배정 · ${item.due_date ? `${item.due_date} 마감` : "마감일 없음"}`;
-      card.append(heading, targetLine, schedule);
+      card.append(heading, targetLine, weightLine, schedule);
       if (item.description) {
         const description = document.createElement("p");
         description.className = "trainer-assignment-description";
@@ -363,6 +377,7 @@
     document.querySelector("#targetSets").value = item.target_sets || "";
     document.querySelector("#targetReps").value = item.target_reps || "";
     document.querySelector("#targetMinutes").value = item.target_minutes || "";
+    document.querySelector("#assignmentWeightKg").value = item.weight_kg ?? "";
     document.querySelector("#assignmentFormTitle").textContent = `${item.exercise_name} 숙제 수정`;
     saveButton.textContent = "수정 완료";
     cancelEditButton.hidden = false;
@@ -430,6 +445,13 @@
   form.addEventListener("submit", event => {
     event.preventDefault();
     message.textContent = "";
+    let weightKg;
+    try {
+      weightKg = optionalWeightKg();
+    } catch (error) {
+      message.textContent = error.message;
+      return;
+    }
     const targetValues = {
       target_sets: numberOrNull("#targetSets"),
       target_reps: numberOrNull("#targetReps"),
@@ -444,6 +466,7 @@
       description: inputValue("#assignmentDescription") || null,
       assigned_date: inputValue("#assignmentDate"),
       due_date: inputValue("#assignmentDueDate") || null,
+      weight_kg: weightKg,
       ...targetValues,
     };
     if (editingId) mutate(`/api/pt/assignments/${editingId}`, payload);

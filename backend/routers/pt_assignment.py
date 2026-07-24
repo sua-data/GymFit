@@ -11,7 +11,7 @@ from backend.pt_assignment_schemas import PtAssignmentComplete, PtAssignmentCrea
 from backend.services.exercise_catalog import is_coaching_supported
 from backend.routers.pt import get_current_user, require_role
 from backend.services.notification_service import create_notification
-from backend.services.calorie_service import calculate_for_record, select_met
+from backend.services.calorie_service import calculate_for_record, calculate_training_volume, select_met
 
 router = APIRouter(prefix="/api/pt/assignments", tags=["pt-assignments"])
 KST = ZoneInfo("Asia/Seoul")
@@ -68,7 +68,7 @@ def serialize_assignment(item: PtAssignment) -> PtAssignmentItem:
         exercise_code=item.exercise.exercise_code if item.exercise_id is not None else None,
         title=item.title, description=item.description, assigned_date=item.assigned_date,
         due_date=item.due_date, target_sets=item.target_sets, target_reps=item.target_reps,
-        target_minutes=item.target_minutes, status=item.status,
+        target_minutes=item.target_minutes, weight_kg=item.weight_kg, status=item.status,
         is_overdue=item.status in MUTABLE_STATUSES and item.due_date is not None and item.due_date < date.today(),
         completed_at=item.completed_at, workout_record_id=item.workout_record_id,
         created_at=item.created_at, updated_at=item.updated_at,
@@ -126,7 +126,7 @@ def create_assignment(payload: PtAssignmentCreate, current_user: User = Depends(
             member_id=payload.member_id, exercise_id=payload.exercise_id, user_exercise_id=payload.user_exercise_id,
             title=exercise_name, description=payload.description, assigned_date=payload.assigned_date,
             due_date=payload.due_date, target_sets=payload.target_sets, target_reps=payload.target_reps,
-            target_minutes=payload.target_minutes)
+            target_minutes=payload.target_minutes, weight_kg=payload.weight_kg)
         db.add(item); db.flush()
         create_notification(db, user_id=item.member_id, title="새 PT 숙제가 도착했어요",
             message=f"{current_user.name} 트레이너가 '{item.title}' 숙제를 등록했습니다.",
@@ -303,6 +303,11 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
             met_used=calorie_result.met_used if calorie_result else None,
             user_weight_used_kg=calorie_result.user_weight_used_kg if calorie_result else None,
             calorie_calculation_status=calorie_result.status if calorie_result else None,
+            weight_kg=item.weight_kg,
+            training_volume_kg=calculate_training_volume(
+                item.weight_kg,
+                total_repetitions=payload.repetition_count,
+            ),
             average_posture_score=None,
             best_posture_score=None,
             feedback_title=None,

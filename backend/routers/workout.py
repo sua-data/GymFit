@@ -1993,8 +1993,9 @@ def create_workout_record(
     member_weight = user.member_profile.weight_kg if user.member_profile else None
     calorie_result = calculate_for_record(met_used, member_weight, request.workout_minutes)
     calculated_calories = calorie_result.calories
+    record_weight_kg = request.weight_kg
     training_volume = calculate_training_volume(
-        request.weight_kg, total_repetitions=request.repetition_count
+        record_weight_kg, total_repetitions=request.repetition_count
     )
 
     linked_plan = None
@@ -2043,6 +2044,11 @@ def create_workout_record(
         if active_relationship is None:
             db.rollback()
             raise HTTPException(status_code=403, detail="활성 PT 연결 관계가 필요합니다.")
+        record_weight_kg = assignment.weight_kg
+        training_volume = calculate_training_volume(
+            record_weight_kg,
+            total_repetitions=request.repetition_count,
+        )
 
     capture_url, capture_path = save_representative_capture(
         request.best_image_data_url,
@@ -2076,7 +2082,7 @@ def create_workout_record(
             met_used=calorie_result.met_used,
             user_weight_used_kg=calorie_result.user_weight_used_kg,
             calorie_calculation_status=calorie_result.status,
-            weight_kg=request.weight_kg,
+            weight_kg=record_weight_kg,
             training_volume_kg=training_volume,
             average_posture_score=(
                 request.average_posture_score
@@ -2097,7 +2103,7 @@ def create_workout_record(
             record_id=workout_record.workout_record_id,
             exercise_id=exercise.exercise_id,
             exercise_name=exercise.exercise_name,
-            weight_value=request.weight_kg,
+            weight_value=record_weight_kg,
             repetitions=request.repetition_count or None,
             completed_sets=request.completed_sets or None,
             workout_minutes=request.workout_minutes or None,

@@ -172,6 +172,38 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.assignment-weight-target {
+  grid-column: 1 / -1;
+}
+
+.assignment-weight-target > span:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.assignment-weight-target small {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+}
+
+.assignment-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assignment-weight-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assignment-weight-row b {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+}
+
 .assignment-form button,
 .assignment-actions button,
 .assignment-item > button {

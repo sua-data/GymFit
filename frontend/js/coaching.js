@@ -161,8 +161,18 @@ const resultCaloriesLine =
   document.querySelector("#resultCaloriesLine");
 const resultCaloriesHelp =
   document.querySelector("#resultCaloriesHelp");
-const workoutWeightKg =
-  document.querySelector("#workoutWeightKg");
+const workoutIntensityStep =
+  document.querySelector("#workoutIntensityStep");
+const workoutIntensityTitle =
+  document.querySelector("#workoutIntensityTitle");
+const workoutIntensitySummary =
+  document.querySelector("#workoutIntensitySummary");
+const workoutIntensityMessage =
+  document.querySelector("#workoutIntensityMessage");
+const workoutIntensityChoices =
+  document.querySelector("#workoutIntensityChoices");
+const saveWorkoutButton =
+  document.querySelector("#saveWorkoutButton");
 const resultFeedbackTitle =
   document.querySelector("#resultFeedbackTitle");
 const resultFeedbackText =
@@ -207,6 +217,10 @@ let isResting = false;
 let isWorkoutFinished = false;
 let isSavingWorkout = false;
 let workoutRecordSaved = false;
+let selectedWorkoutIntensity = null;
+let isAwaitingIntensity = false;
+let isWorkoutMeasurementFinalized = false;
+let workoutMeasurementFinalizationPromise = null;
 let savedWorkoutResult = null;
 let isResultDisplayed = false;
 let lastWorkoutSaveError = null;
@@ -219,6 +233,12 @@ let coachingWorkoutPlanId = null;
 let coachingAssignmentId = null;
 let coachingAssignment = null;
 let isPlanCoaching = false;
+const COACHING_CONTEXT = Object.freeze({
+  FREE: "FREE",
+  ROUTINE: "ROUTINE",
+  PT_ASSIGNMENT: "PT_ASSIGNMENT",
+});
+let coachingContext = COACHING_CONTEXT.FREE;
 let coachingEstimatedMinutes = 0;
 let freeCoachingRows = [];
 let todayCoachingPlans = [];
@@ -679,6 +699,27 @@ function renderRoutineCoachingSets() {
     .join("");
 }
 
+function normalizeRecordWeightKg(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const weight = Number(value);
+  return Number.isFinite(weight) && weight > 0 ? weight : null;
+}
+
+function getWorkoutRecordWeightKg() {
+  if (coachingContext === COACHING_CONTEXT.ROUTINE) {
+    return normalizeRecordWeightKg(coachingSets[0]?.weight_kg);
+  }
+
+  if (coachingContext === COACHING_CONTEXT.PT_ASSIGNMENT) {
+    return normalizeRecordWeightKg(coachingAssignment?.weight_kg);
+  }
+
+  return normalizeRecordWeightKg(coachingSets[0]?.weight_kg);
+}
+
 function applyDetailedCoachingPlan(plan) {
   const validPlan = getValidCoachingPlan(
     plan,
@@ -693,6 +734,9 @@ function applyDetailedCoachingPlan(plan) {
   coachingWorkoutPlanId = validPlan.workout_plan_id;
   coachingEstimatedMinutes = Number(validPlan.estimated_minutes || 0);
   isPlanCoaching = coachingWorkoutPlanId !== null;
+  coachingContext = COACHING_CONTEXT.ROUTINE;
+  coachingAssignmentId = null;
+  coachingAssignment = null;
   selectedExerciseCode = validPlan.exercise_code;
   selectedExerciseName = validPlan.exercise_name
     || getExerciseAnalyzer(selectedExerciseCode)?.displayName
@@ -727,8 +771,11 @@ function prepareFreeCoaching() {
     duration_seconds: null,
   }));
   coachingWorkoutPlanId = null;
+  coachingAssignmentId = null;
+  coachingAssignment = null;
   coachingEstimatedMinutes = 0;
   isPlanCoaching = false;
+  coachingContext = COACHING_CONTEXT.FREE;
   freeCoachingSettings.hidden = false;
   renderFreeCoachingRows();
   coachingSettingsEyebrow.textContent = "FREE COACHING";
@@ -1640,6 +1687,10 @@ async function startWorkout() {
     isWorkoutFinished = false;
     isSavingWorkout = false;
     workoutRecordSaved = false;
+    selectedWorkoutIntensity = null;
+    isAwaitingIntensity = false;
+    isWorkoutMeasurementFinalized = false;
+    workoutMeasurementFinalizationPromise = null;
     savedWorkoutResult = null;
     isResultDisplayed = false;
     lastWorkoutSaveError = null;
@@ -1651,6 +1702,17 @@ async function startWorkout() {
     pauseStartedAt = null;
     accumulatedPausedMilliseconds = 0;
     restCard.hidden = true;
+    workoutIntensityStep.hidden = true;
+    workoutIntensityMessage.textContent = "";
+    saveWorkoutButton.disabled = true;
+    saveWorkoutButton.removeAttribute("aria-busy");
+    workoutIntensityChoices.querySelectorAll("input").forEach((input) => {
+      input.checked = false;
+    });
+    document.body.classList.remove(
+      "coaching-intensity-mode",
+      "coaching-result-mode"
+    );
 
     postureScores = [];
 
@@ -1900,6 +1962,10 @@ async function saveWorkoutRecord() {
       bestScore
     );
 
+  if (!["LOW", "MODERATE", "HIGH"].includes(selectedWorkoutIntensity)) {
+    throw new Error("체감 운동 강도를 선택해 주세요.");
+  }
+
   const response =
     await fetch(
       "/api/workouts",
@@ -1928,9 +1994,9 @@ async function saveWorkoutRecord() {
 
           calories: null,
           exercise_intensity:
-            document.querySelector('input[name="exerciseIntensity"]:checked')?.value || "MODERATE",
+            selectedWorkoutIntensity,
           weight_kg:
-            workoutWeightKg?.value ? Number(workoutWeightKg.value) : null,
+            getWorkoutRecordWeightKg(),
 
           average_posture_score:
             averageScore,
@@ -2122,12 +2188,17 @@ function showWorkoutResult({
     setResultStatus(resultPlanStatus, "루틴 완료 상태를 확인하지 못했어요.");
   }
 
-  document.body.classList.remove("coaching-active", "coaching-paused");
+  document.body.classList.remove(
+    "coaching-active",
+    "coaching-paused",
+    "coaching-intensity-mode"
+  );
   document.body.classList.add("coaching-result-mode");
   document.body.dataset.coachingState = saveError
     ? "save-failed"
     : "save-complete";
   pauseButton.hidden = true;
+  workoutIntensityStep.hidden = true;
   coachingResult.hidden = false;
   resultRetryButton.hidden = !saveError;
   resultRetryButton.disabled = false;
@@ -2144,38 +2215,101 @@ function showWorkoutResult({
   coachingResultTitle.focus({ preventScroll: true });
 }
 
-async function finishWorkout() {
-  if (
-    !isWorkoutFinished
-    || isSavingWorkout
-  ) {
+async function finalizeWorkoutMeasurement() {
+  if (isWorkoutMeasurementFinalized) {
     return;
   }
 
-  isSavingWorkout = true;
-  finishButton.disabled = true;
-  freezeEffectiveWorkoutTime();
+  if (workoutMeasurementFinalizationPromise) {
+    await workoutMeasurementFinalizationPromise;
+    return;
+  }
 
-  stopPoseAnalysis();
-
-  movementState.textContent = "결과 저장 중";
-  document.body.dataset.coachingState = "saving";
-  setOverlayMovement("종료 처리 중");
-  setOverlayFeedback("운동 결과를 저장하고 있어요.");
-  lastWorkoutSaveError = null;
-  lastPlanCompletionError = null;
-
-  if (getTotalRepetitions() <= 0) {
+  workoutMeasurementFinalizationPromise = (async () => {
+    freezeEffectiveWorkoutTime();
+    stopPoseAnalysis();
     isWorkoutActive = false;
     stopCamera();
     await closeCoachingSession().catch((error) => {
       console.error("코칭 세션 종료 실패:", error);
     });
     clearRestTimer();
+    isWorkoutMeasurementFinalized = true;
+  })();
+
+  try {
+    await workoutMeasurementFinalizationPromise;
+  } finally {
+    workoutMeasurementFinalizationPromise = null;
+  }
+}
+
+function showWorkoutIntensityStep() {
+  isAwaitingIntensity = true;
+  workoutIntensityMessage.textContent = "";
+  workoutIntensitySummary.textContent =
+    `${getTotalRepetitions()}회 · ${currentSets}세트 · ${getWorkoutMinutes()}분 운동을 완료했어요.`;
+  document.body.classList.remove(
+    "coaching-active",
+    "coaching-paused",
+    "coaching-result-mode"
+  );
+  document.body.classList.add("coaching-intensity-mode");
+  document.body.dataset.coachingState = "awaiting-intensity";
+  pauseButton.hidden = true;
+  coachingResult.hidden = true;
+  workoutIntensityStep.hidden = false;
+  saveWorkoutButton.disabled = selectedWorkoutIntensity === null;
+  workoutIntensityStep.scrollIntoView({ block: "start" });
+  workoutIntensityTitle.focus({ preventScroll: true });
+}
+
+async function finishWorkout() {
+  if (
+    !isWorkoutFinished
+    || isSavingWorkout
+    || (isResultDisplayed && !lastWorkoutSaveError)
+  ) {
+    return;
+  }
+
+  finishButton.disabled = true;
+  lastWorkoutSaveError = null;
+  lastPlanCompletionError = null;
+
+  if (getTotalRepetitions() <= 0) {
+    isSavingWorkout = true;
+    movementState.textContent = "종료 처리 중";
+    document.body.dataset.coachingState = "finishing";
+    await finalizeWorkoutMeasurement();
     isSavingWorkout = false;
     showWorkoutResult({ noRepetitions: true });
     return;
   }
+
+  if (!selectedWorkoutIntensity) {
+    if (isAwaitingIntensity) {
+      return;
+    }
+    isSavingWorkout = true;
+    movementState.textContent = "운동 결과 확정 중";
+    document.body.dataset.coachingState = "finishing";
+    setOverlayMovement("종료 처리 중");
+    setOverlayFeedback("운동 결과를 확정하고 있어요.");
+    await finalizeWorkoutMeasurement();
+    isSavingWorkout = false;
+    showWorkoutIntensityStep();
+    return;
+  }
+
+  isSavingWorkout = true;
+  isAwaitingIntensity = false;
+  saveWorkoutButton.disabled = true;
+  saveWorkoutButton.setAttribute("aria-busy", "true");
+  movementState.textContent = "결과 저장 중";
+  document.body.dataset.coachingState = "saving";
+
+  await finalizeWorkoutMeasurement();
 
   try {
     if (!workoutRecordSaved) {
@@ -2205,16 +2339,11 @@ async function finishWorkout() {
     }
   }
 
-  isWorkoutActive = false;
-  stopCamera();
-  await closeCoachingSession().catch((error) => {
-    console.error("코칭 세션 종료 실패:", error);
-  });
-  clearRestTimer();
   if (workoutRecordSaved) {
     clearCoachingPlan();
   }
   isSavingWorkout = false;
+  saveWorkoutButton.removeAttribute("aria-busy");
   showWorkoutResult({
     saveError: lastWorkoutSaveError,
     planCompletionError: lastPlanCompletionError,
@@ -2325,6 +2454,34 @@ voiceToggleButton.addEventListener("click", () => {
 });
 
 pauseButton.addEventListener("click", toggleWorkoutPause);
+
+workoutIntensityChoices.addEventListener("change", (event) => {
+  const input = event.target.closest(
+    'input[name="completedExerciseIntensity"]'
+  );
+  if (!input || !["LOW", "MODERATE", "HIGH"].includes(input.value)) {
+    return;
+  }
+  selectedWorkoutIntensity = input.value;
+  workoutIntensityMessage.textContent = "";
+  saveWorkoutButton.disabled = false;
+});
+
+saveWorkoutButton.addEventListener("click", async () => {
+  if (
+    isSavingWorkout
+    || workoutRecordSaved
+  ) {
+    return;
+  }
+  if (!selectedWorkoutIntensity) {
+    workoutIntensityMessage.textContent =
+      "체감 운동 강도를 선택해 주세요.";
+    saveWorkoutButton.disabled = true;
+    return;
+  }
+  await finishWorkout();
+});
 
 resultDashboardButton.addEventListener("click", () => {
   window.location.href = coachingWorkoutPlanId ? "/dashboard" : "/records";
@@ -2565,11 +2722,13 @@ async function initializeCoachingTargets() {
       coachingAssignmentId = assignment.assignment_id;
       coachingAssignment = assignment;
       coachingWorkoutPlanId = null;
+      coachingContext = COACHING_CONTEXT.PT_ASSIGNMENT;
+      clearCoachingPlan();
       coachingSets = Array.from({ length: setCount }, (_, index) => ({
         set_order: index + 1,
         repetition_count: repetitions,
         duration_seconds: null,
-        weight_kg: null,
+        weight_kg: normalizeRecordWeightKg(assignment.weight_kg),
       }));
       targetSets = setCount;
       targetReps = repetitions;

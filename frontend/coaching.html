@@ -24,7 +24,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=15"
+    href="/static/css/coaching.css?v=18"
   >
 
   <script src="/static/js/api_client.js?v=3" defer></script>
@@ -44,7 +44,7 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=16"
+    src="/static/js/coaching.js?v=19"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -358,21 +358,6 @@
 
       <!-- 운동 준비 설정 -->
       <section class="coaching-prepare-controls">
-        <div class="calorie-inputs" id="calorieInputs">
-          <fieldset>
-            <legend>운동 강도</legend>
-            <label><input type="radio" name="exerciseIntensity" value="LOW"> 가벼움</label>
-            <label><input type="radio" name="exerciseIntensity" value="MODERATE" checked> 보통</label>
-            <label><input type="radio" name="exerciseIntensity" value="HIGH"> 강하게</label>
-          </fieldset>
-          <label class="workout-weight-input">
-            <span>사용 중량 <small>선택</small></span>
-            <span>
-              <input id="workoutWeightKg" type="number" min="0.1" max="99999.99" step="0.1" inputmode="decimal">
-              <b>kg</b>
-            </span>
-          </label>
-        </div>
         <button
           type="button"
           class="primary-button"
@@ -402,6 +387,27 @@
         >
           운동 종료
         </button>
+      </section>
+
+      <section
+        class="coaching-intensity-step"
+        id="workoutIntensityStep"
+        aria-labelledby="workoutIntensityTitle"
+        hidden
+      >
+        <div class="coaching-intensity-heading">
+          <span>WORKOUT COMPLETE</span>
+          <h2 id="workoutIntensityTitle" tabindex="-1">체감 운동 강도를 선택해 주세요</h2>
+          <p id="workoutIntensitySummary">완료한 운동 결과를 저장하기 전에 실제 체감 강도를 알려주세요.</p>
+        </div>
+        <fieldset id="workoutIntensityChoices">
+          <legend class="sr-only">체감 운동 강도</legend>
+          <label><input type="radio" name="completedExerciseIntensity" value="LOW">가볍게</label>
+          <label><input type="radio" name="completedExerciseIntensity" value="MODERATE">보통</label>
+          <label><input type="radio" name="completedExerciseIntensity" value="HIGH">강하게</label>
+        </fieldset>
+        <p class="coaching-intensity-message" id="workoutIntensityMessage" role="alert"></p>
+        <button type="button" id="saveWorkoutButton" disabled>운동 기록 저장</button>
       </section>
 
       <section class="coaching-result" id="coachingResult" hidden>
