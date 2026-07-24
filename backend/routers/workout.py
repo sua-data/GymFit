@@ -41,6 +41,12 @@ from backend.models import (
 )
 from backend.services.notification_service import create_notification
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
+from backend.services.calorie_service import (
+    calculate_for_record,
+    calculate_training_volume,
+    normalize_intensity,
+    select_met,
+)
 
 router = APIRouter(
     prefix="/api/workouts",
@@ -113,6 +119,9 @@ class WorkoutRecordCreate(BaseModel):
         ge=0,
     )
 
+    exercise_intensity: str | None = Field(default=None, max_length=20)
+    weight_kg: Decimal | None = Field(default=None, gt=0, le=99999.99)
+
     average_posture_score: int = Field(
         default=0,
         ge=0,
@@ -180,7 +189,14 @@ class WorkoutRecordCreateResponse(BaseModel):
     workout_id: int
     exercise_code: str
     exercise_name: str
-    calories: int
+    calories: Decimal | None
+    exercise_intensity: str | None
+    intensity_is_default: bool | None
+    met_used: Decimal | None
+    user_weight_used_kg: Decimal | None
+    calorie_calculation_status: str | None
+    weight_kg: Decimal | None
+    training_volume_kg: Decimal | None
     workout_minutes: int
     average_posture_score: int
     best_posture_score: int
@@ -198,7 +214,14 @@ class WorkoutRecordItem(BaseModel):
     completed_sets: int
     repetition_count: int
     workout_minutes: int
-    calories: int
+    calories: Decimal | None
+    exercise_intensity: str | None
+    intensity_is_default: bool | None
+    met_used: Decimal | None
+    user_weight_used_kg: Decimal | None
+    calorie_calculation_status: str | None
+    weight_kg: Decimal | None
+    training_volume_kg: Decimal | None
     posture_score: float | None
     best_posture_score: float | None
     feedback_title: str | None
@@ -1453,6 +1476,13 @@ def create_workout_record_item(
         repetition_count=record.repetition_count,
         workout_minutes=record.workout_minutes,
         calories=record.calories,
+        exercise_intensity=record.exercise_intensity,
+        intensity_is_default=record.intensity_is_default,
+        met_used=record.met_used,
+        user_weight_used_kg=record.user_weight_used_kg,
+        calorie_calculation_status=record.calorie_calculation_status,
+        weight_kg=record.weight_kg,
+        training_volume_kg=record.training_volume_kg,
         posture_score=(
             float(record.average_posture_score)
             if record.average_posture_score is not None
@@ -1660,18 +1690,17 @@ def create_workout_record(
             ),
         )
 
-    if request.calories is None:
-        calculated_calories = round(
-            float(
-                exercise
-                .calories_per_minute
-            )
-            * request.workout_minutes
-        )
-    else:
-        calculated_calories = (
-            request.calories
-        )
+    try:
+        intensity, intensity_is_default = normalize_intensity(request.exercise_intensity)
+        met_used = select_met(exercise, intensity)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    member_weight = user.member_profile.weight_kg if user.member_profile else None
+    calorie_result = calculate_for_record(met_used, member_weight, request.workout_minutes)
+    calculated_calories = calorie_result.calories
+    training_volume = calculate_training_volume(
+        request.weight_kg, total_repetitions=request.repetition_count
+    )
 
     assignment = None
     if request.assignment_id is not None:
@@ -1730,6 +1759,13 @@ def create_workout_record(
                 request.workout_minutes
             ),
             calories=calculated_calories,
+            exercise_intensity=intensity,
+            intensity_is_default=intensity_is_default,
+            met_used=calorie_result.met_used,
+            user_weight_used_kg=calorie_result.user_weight_used_kg,
+            calorie_calculation_status=calorie_result.status,
+            weight_kg=request.weight_kg,
+            training_volume_kg=training_volume,
             average_posture_score=(
                 request.average_posture_score
             ),
@@ -1749,6 +1785,7 @@ def create_workout_record(
             record_id=workout_record.workout_record_id,
             exercise_id=exercise.exercise_id,
             exercise_name=exercise.exercise_name,
+            weight_value=request.weight_kg,
             repetitions=request.repetition_count or None,
             completed_sets=request.completed_sets or None,
             workout_minutes=request.workout_minutes or None,
@@ -1792,6 +1829,13 @@ def create_workout_record(
             calories=(
                 workout_record.calories
             ),
+            exercise_intensity=workout_record.exercise_intensity,
+            intensity_is_default=workout_record.intensity_is_default,
+            met_used=workout_record.met_used,
+            user_weight_used_kg=workout_record.user_weight_used_kg,
+            calorie_calculation_status=workout_record.calorie_calculation_status,
+            weight_kg=workout_record.weight_kg,
+            training_volume_kg=workout_record.training_volume_kg,
 
             workout_minutes=(
                 workout_record.workout_minutes

@@ -596,9 +596,7 @@ def get_dashboard(
             "name": user.name,
         },
         "summary": {
-            "calories": int(
-                today_summary[0] or 0
-            ),
+            "calories": round(float(today_summary[0] or 0), 1),
             "workout_minutes": int(
                 today_summary[1] or 0
             ),

@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,6 +19,9 @@ from backend.models import (
     WorkoutRecordDetailItem, WorkoutRecordMedia,
 )
 from backend.routers.workout import korea_now_naive
+from backend.services.calorie_service import (
+    calculate_for_record, normalize_intensity, safe_decimal, select_met,
+)
 from backend.workout_session_schemas import (
     WorkoutMediaItem, WorkoutSessionCreate, WorkoutSessionDetail,
     WorkoutSessionExerciseItem, WorkoutSessionList, WorkoutSessionSummary, WorkoutSessionUpdate,
@@ -102,6 +106,56 @@ def apply_summary(record: WorkoutRecord, payload, record_type: str = "WORKOUT") 
     record.repetition_count = sum((item.repetitions or 0) * (item.completed_sets or 1) for item in payload.items)
 
 
+def apply_met_calculation(
+    db: Session, record: WorkoutRecord, payload: WorkoutSessionCreate, user: User
+) -> None:
+    intensity, is_default = normalize_intensity(payload.exercise_intensity)
+    exercise_ids = {item.exercise_id for item in payload.items if item.exercise_id is not None}
+    exercises = {
+        exercise.exercise_id: exercise
+        for exercise in db.scalars(select(Exercise).where(Exercise.exercise_id.in_(exercise_ids))).all()
+    } if exercise_ids else {}
+    weighted_met = Decimal("0")
+    met_minutes = Decimal("0")
+    fallback_mets = []
+    volume = Decimal("0")
+    has_volume = False
+    for item in payload.items:
+        exercise = exercises.get(item.exercise_id)
+        if exercise is not None:
+            met = select_met(exercise, intensity)
+            minutes = safe_decimal(item.workout_minutes)
+            if minutes is not None and minutes > 0:
+                weighted_met += met * minutes
+                met_minutes += minutes
+            fallback_mets.append(met)
+        weight = safe_decimal(item.weight_value)
+        reps = safe_decimal(item.repetitions)
+        sets = safe_decimal(item.completed_sets)
+        if weight and weight > 0 and reps and reps > 0 and sets and sets > 0:
+            volume += weight * reps * sets
+            has_volume = True
+    if not fallback_mets:
+        record.calories = None
+        return
+    met_used = (
+        weighted_met / met_minutes
+        if met_minutes > 0
+        else sum(fallback_mets, Decimal("0")) / Decimal(len(fallback_mets))
+    ).quantize(Decimal("0.1"))
+    result = calculate_for_record(
+        met_used, user.member_profile.weight_kg if user.member_profile else None,
+        record.workout_minutes,
+    )
+    record.exercise_intensity = intensity
+    record.intensity_is_default = is_default
+    record.met_used = result.met_used
+    record.user_weight_used_kg = result.user_weight_used_kg
+    record.calorie_calculation_status = result.status
+    record.calories = result.calories
+    record.training_volume_kg = volume.quantize(Decimal("0.01")) if has_volume else None
+
+
 def can_read(db: Session, record: WorkoutRecord, user: User) -> bool:
     if record.user_id == user.user_id:
         return True
@@ -143,6 +197,11 @@ def media_schema(media: WorkoutRecordMedia) -> WorkoutMediaItem:
 def detail_schema(record: WorkoutRecord) -> WorkoutSessionDetail:
     base = summary(record, list(record.items))
     return WorkoutSessionDetail(**base.model_dump(), calories=record.calories if record.record_type == "WORKOUT" else None,
+        exercise_intensity=record.exercise_intensity,
+        intensity_is_default=record.intensity_is_default,
+        met_used=record.met_used, user_weight_used_kg=record.user_weight_used_kg,
+        calorie_calculation_status=record.calorie_calculation_status,
+        weight_kg=record.weight_kg, training_volume_kg=record.training_volume_kg,
         best_posture_score=record.best_posture_score if record.record_type == "WORKOUT" else None,
         feedback_title=record.feedback_title if record.record_type == "WORKOUT" else None,
         feedback=record.feedback if record.record_type == "WORKOUT" else None,
@@ -162,8 +221,9 @@ def create_session(payload: WorkoutSessionCreate, user: User = Depends(current_u
     if user.account_type != "MEMBER":
         raise HTTPException(status_code=403, detail="회원만 일반 운동 기록을 등록할 수 있습니다.")
     try:
-        record = WorkoutRecord(user_id=user.user_id, record_source="MANUAL_SESSION", calories=0)
+        record = WorkoutRecord(user_id=user.user_id, record_source="MANUAL_SESSION", calories=None)
         apply_summary(record, payload)
+        apply_met_calculation(db, record, payload, user)
         db.add(record); db.flush(); add_items(db, record, payload.items)
         db.commit()
         record = db.scalar(select(WorkoutRecord).options(joinedload(WorkoutRecord.trainer), selectinload(WorkoutRecord.items).selectinload(WorkoutRecordDetailItem.media)).where(WorkoutRecord.workout_record_id == record.workout_record_id))
@@ -216,7 +276,7 @@ def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = D
         record = get_owned(db, record_id, user, write=True)
         if record.user_id != user.user_id or record.record_type != "WORKOUT": raise HTTPException(status_code=403, detail="PT 기록은 회원이 수정할 수 없습니다.")
         old_paths = [Path(path) for item in record.items for media in item.media for path in (media.storage_path, media.thumbnail_storage_path) if path]
-        record.items.clear(); db.flush(); apply_summary(record, payload); add_items(db, record, payload.items); db.commit()
+        record.items.clear(); db.flush(); apply_summary(record, payload); apply_met_calculation(db, record, payload, user); add_items(db, record, payload.items); db.commit()
         for path in old_paths:
             try: path.unlink(missing_ok=True)
             except OSError: pass

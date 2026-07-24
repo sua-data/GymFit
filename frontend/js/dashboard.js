@@ -214,7 +214,7 @@ function renderSummary(data) {
     data.user?.name || "-";
 
   caloriesValue.textContent =
-    data.summary?.calories ?? 0;
+    Number(data.summary?.calories ?? 0).toFixed(1);
 
   workoutMinutesValue.textContent =
     data.summary?.workout_minutes ?? 0;

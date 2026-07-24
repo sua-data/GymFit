@@ -11,6 +11,7 @@ from backend.pt_assignment_schemas import PtAssignmentComplete, PtAssignmentCrea
 from backend.services.exercise_catalog import is_coaching_supported
 from backend.routers.pt import get_current_user, require_role
 from backend.services.notification_service import create_notification
+from backend.services.calorie_service import calculate_for_record, select_met
 
 router = APIRouter(prefix="/api/pt/assignments", tags=["pt-assignments"])
 KST = ZoneInfo("Asia/Seoul")
@@ -277,9 +278,12 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
             raise HTTPException(status_code=409, detail="이미 운동 기록이 연결된 PT 숙제입니다.")
         if item.exercise_id is not None and is_coaching_supported(item.exercise.exercise_code):
             raise HTTPException(status_code=400, detail="실시간 코칭 지원 운동은 코칭 완료 후 저장해 주세요.")
-        calories = payload.calories
-        if calories is None:
-            calories = round(float(item.exercise.calories_per_minute) * payload.workout_minutes) if item.exercise else 0
+        calorie_result = None
+        if item.exercise is not None:
+            met_used = select_met(item.exercise, "MODERATE")
+            member_weight = current_user.member_profile.weight_kg if current_user.member_profile else None
+            calorie_result = calculate_for_record(met_used, member_weight, payload.workout_minutes)
+        calories = calorie_result.calories if calorie_result else None
         completed_at = now_kst()
         record = WorkoutRecord(
             user_id=current_user.user_id,
@@ -294,6 +298,11 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
             repetition_count=payload.repetition_count,
             workout_minutes=payload.workout_minutes,
             calories=calories,
+            exercise_intensity="MODERATE" if calorie_result else None,
+            intensity_is_default=True if calorie_result else None,
+            met_used=calorie_result.met_used if calorie_result else None,
+            user_weight_used_kg=calorie_result.user_weight_used_kg if calorie_result else None,
+            calorie_calculation_status=calorie_result.status if calorie_result else None,
             average_posture_score=None,
             best_posture_score=None,
             feedback_title=None,

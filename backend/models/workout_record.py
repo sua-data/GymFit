@@ -1,9 +1,11 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     Date,
     DateTime,
+    DECIMAL,
     Enum,
     ForeignKey,
     Integer,
@@ -122,11 +124,9 @@ class WorkoutRecord(Base):
         comment="운동 시간",
     )
 
-    calories: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        default=0,
-        server_default="0",
+    calories: Mapped[Decimal | None] = mapped_column(
+        DECIMAL(10, 1),
+        nullable=True,
         comment="소모 칼로리",
     )
 
@@ -166,6 +166,19 @@ class WorkoutRecord(Base):
         server_default=func.now(),
         comment="기록 생성 일시",
     )
+
+    exercise_intensity: Mapped[str | None] = mapped_column(
+        Enum("LOW", "MODERATE", "HIGH", native_enum=True), nullable=True
+    )
+    intensity_is_default: Mapped[bool | None] = mapped_column(nullable=True)
+    met_used: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1), nullable=True)
+    user_weight_used_kg: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    calorie_calculation_status: Mapped[str | None] = mapped_column(
+        Enum("CALCULATED", "WEIGHT_REQUIRED", "INVALID_DURATION", native_enum=True),
+        nullable=True,
+    )
+    weight_kg: Mapped[Decimal | None] = mapped_column(DECIMAL(7, 2), nullable=True)
+    training_volume_kg: Mapped[Decimal | None] = mapped_column(DECIMAL(12, 2), nullable=True)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()

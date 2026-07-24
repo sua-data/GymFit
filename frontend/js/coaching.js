@@ -153,6 +153,12 @@ const resultWorkoutMinutes =
   document.querySelector("#resultWorkoutMinutes");
 const resultCalories =
   document.querySelector("#resultCalories");
+const resultCaloriesLine =
+  document.querySelector("#resultCaloriesLine");
+const resultCaloriesHelp =
+  document.querySelector("#resultCaloriesHelp");
+const workoutWeightKg =
+  document.querySelector("#workoutWeightKg");
 const resultFeedbackTitle =
   document.querySelector("#resultFeedbackTitle");
 const resultFeedbackText =
@@ -1778,6 +1784,10 @@ async function saveWorkoutRecord() {
             getWorkoutMinutes(),
 
           calories: null,
+          exercise_intensity:
+            document.querySelector('input[name="exerciseIntensity"]:checked')?.value || "MODERATE",
+          weight_kg:
+            workoutWeightKg?.value ? Number(workoutWeightKg.value) : null,
 
           average_posture_score:
             averageScore,
@@ -1883,7 +1893,21 @@ function showWorkoutResult(planCompletionError = null) {
   resultSets.textContent = String(currentSets);
   resultPostureScore.textContent = String(averageScore);
   resultWorkoutMinutes.textContent = String(getWorkoutMinutes());
-  resultCalories.textContent = String(savedWorkoutResult?.calories ?? 0);
+  if (savedWorkoutResult?.calorie_calculation_status === "WEIGHT_REQUIRED") {
+    resultCaloriesLine.textContent =
+      "체중을 등록하면 예상 소모 칼로리를 확인할 수 있어요.";
+    resultCaloriesHelp.textContent =
+      "MET 기준과 체중, 운동시간을 바탕으로 계산한 예상값입니다.";
+  } else if (savedWorkoutResult?.calorie_calculation_status === "INVALID_DURATION") {
+    resultCaloriesLine.textContent = "운동시간을 확인해 주세요.";
+    resultCaloriesHelp.textContent =
+      "예상 소모 칼로리를 계산하려면 0분보다 긴 운동시간이 필요합니다.";
+  } else {
+    resultCaloriesLine.innerHTML =
+      `<b>${Number(savedWorkoutResult?.calories ?? 0).toFixed(1)}</b> kcal`;
+    resultCaloriesHelp.textContent =
+      "MET 기준과 체중, 운동시간을 바탕으로 계산한 예상값입니다.";
+  }
   resultFeedbackTitle.textContent = planCompletionError
     ? "운동 기록 저장 완료 · 루틴 완료 처리 실패"
     : savedFeedback.title;

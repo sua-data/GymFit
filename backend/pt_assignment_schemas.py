@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -73,7 +74,7 @@ class PtAssignmentResult(BaseModel):
     completed_sets: int
     repetition_count: int
     workout_minutes: int
-    calories: int
+    calories: Decimal | None
     posture_score: int | None
     feedback_title: str | None
     feedback: str | None

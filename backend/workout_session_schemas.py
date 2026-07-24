@@ -18,6 +18,7 @@ class WorkoutSessionItemInput(BaseModel):
 
 
 class WorkoutSessionCreate(BaseModel):
+    exercise_intensity: str | None = Field(default=None, max_length=20)
     title: str | None = Field(default=None, max_length=150)
     workout_date: date
     started_at: datetime
@@ -85,7 +86,14 @@ class WorkoutSessionSummary(BaseModel):
 
 
 class WorkoutSessionDetail(WorkoutSessionSummary):
-    calories: int | None
+    calories: Decimal | None
+    exercise_intensity: str | None = None
+    intensity_is_default: bool | None = None
+    met_used: Decimal | None = None
+    user_weight_used_kg: Decimal | None = None
+    calorie_calculation_status: str | None = None
+    weight_kg: Decimal | None = None
+    training_volume_kg: Decimal | None = None
     best_posture_score: int | None
     feedback_title: str | None
     feedback: str | None

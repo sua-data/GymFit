@@ -72,6 +72,13 @@ class Exercise(Base):
         comment="수정 일시",
     )
 
+    # Deprecated: calories_per_minute is retained only for legacy compatibility.
+    met_low: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1), nullable=True)
+    met_moderate: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1), nullable=True)
+    met_high: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1), nullable=True)
+    met_source: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    met_source_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     category: Mapped[str | None] = mapped_column(
         String(30),
         nullable=True,
