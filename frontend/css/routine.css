@@ -401,6 +401,12 @@ button {
   cursor: default;
 }
 
+.routine-start-button.routine-undo-button {
+  color: var(--gymfit-green);
+  background: rgba(168, 255, 53, 0.08);
+  border: 1px solid rgba(168, 255, 53, 0.28);
+}
+
 .routine-card-actions {
   margin-top: 16px;
   display: grid;

@@ -8,23 +8,26 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from backend.database import get_db
 from backend.models import (
     Exercise, TrainerMember, User, UserExercise, WorkoutRecord,
-    WorkoutRecordDetailItem, WorkoutRecordMedia,
+    WorkoutPlan, WorkoutPlanSet, WorkoutRecordDetailItem, WorkoutRecordMedia,
 )
 from backend.routers.workout import korea_now_naive
 from backend.services.calorie_service import (
     calculate_for_record, normalize_intensity, safe_decimal, select_met,
+    calculate_training_volume,
 )
 from backend.security import get_current_user
 from backend.workout_session_schemas import (
-    WorkoutMediaItem, WorkoutSessionCreate, WorkoutSessionDetail,
+    WorkoutMediaItem, WorkoutRecordMetricsUpdate, WorkoutSessionCreate, WorkoutSessionDetail,
     WorkoutSessionExerciseItem, WorkoutSessionList, WorkoutSessionSummary, WorkoutSessionUpdate,
 )
 
@@ -190,7 +193,15 @@ def media_schema(media: WorkoutRecordMedia) -> WorkoutMediaItem:
 
 def detail_schema(record: WorkoutRecord) -> WorkoutSessionDetail:
     base = summary(record, list(record.items))
-    return WorkoutSessionDetail(**base.model_dump(), calories=record.calories if record.record_type == "WORKOUT" else None,
+    can_change = record.record_type == "WORKOUT"
+    return WorkoutSessionDetail(**base.model_dump(),
+        record_source=record.record_source,
+        workout_plan_id=record.workout_plan_id,
+        can_edit_metrics=can_change,
+        can_delete=can_change,
+        completed_sets=record.completed_sets,
+        repetition_count=record.repetition_count,
+        calories=record.calories if record.record_type == "WORKOUT" else None,
         exercise_intensity=record.exercise_intensity,
         intensity_is_default=record.intensity_is_default,
         met_used=record.met_used, user_weight_used_kg=record.user_weight_used_kg,
@@ -264,6 +275,131 @@ def session_detail(record_id: int, user: User = Depends(get_current_user), db: S
     return detail_schema(record)
 
 
+@router.patch("/{record_id}/metrics", response_model=WorkoutSessionDetail)
+def update_record_metrics(
+    record_id: int,
+    raw_payload: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        try:
+            payload = WorkoutRecordMetricsUpdate.model_validate(raw_payload)
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=exc.errors(include_url=False),
+            ) from exc
+        record = get_owned(db, record_id, user, write=True)
+        if record.user_id != user.user_id or record.record_type != "WORKOUT":
+            raise HTTPException(
+                status_code=403, detail="PT 기록은 회원이 수정할 수 없습니다."
+            )
+
+        is_ai_record = (
+            record.record_source == "COACHING"
+            or record.average_posture_score is not None
+            or record.feedback is not None
+            or record.image_url is not None
+        )
+        protected_ai_fields = {"completed_sets", "repetition_count"}
+        if is_ai_record and payload.model_fields_set & protected_ai_fields:
+            raise HTTPException(
+                status_code=403,
+                detail="AI 코칭이 측정한 세트와 반복 횟수는 수정할 수 없습니다.",
+            )
+
+        items = list(record.items)
+        detail_fields = {"weight_kg", "completed_sets", "repetition_count"}
+        if len(items) > 1 and payload.model_fields_set & detail_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="여러 운동이 포함된 기록의 중량·세트·반복은 기존 전체 편집에서 수정해 주세요.",
+            )
+
+        if "workout_minutes" in payload.model_fields_set:
+            record.workout_minutes = payload.workout_minutes
+            if record.completed_at is not None:
+                record.started_at = record.completed_at - timedelta(
+                    minutes=payload.workout_minutes
+                )
+        if "exercise_intensity" in payload.model_fields_set:
+            intensity, is_default = normalize_intensity(payload.exercise_intensity)
+            record.exercise_intensity = intensity
+            record.intensity_is_default = is_default
+        else:
+            intensity = record.exercise_intensity or "MODERATE"
+        if "weight_kg" in payload.model_fields_set:
+            record.weight_kg = payload.weight_kg
+        if "completed_sets" in payload.model_fields_set:
+            record.completed_sets = payload.completed_sets
+        if "repetition_count" in payload.model_fields_set:
+            record.repetition_count = payload.repetition_count
+
+        exercise = (
+            db.scalar(
+                select(Exercise).where(Exercise.exercise_id == record.exercise_id)
+            )
+            if record.exercise_id is not None
+            else None
+        )
+        if exercise is not None:
+            met_used = select_met(exercise, intensity)
+            result = calculate_for_record(
+                met_used,
+                user.member_profile.weight_kg if user.member_profile else None,
+                record.workout_minutes,
+            )
+            record.met_used = result.met_used
+            record.user_weight_used_kg = result.user_weight_used_kg
+            record.calorie_calculation_status = result.status
+            record.calories = result.calories
+        else:
+            record.met_used = None
+            record.user_weight_used_kg = None
+            record.calorie_calculation_status = None
+            record.calories = None
+
+        record.training_volume_kg = calculate_training_volume(
+            record.weight_kg,
+            total_repetitions=record.repetition_count,
+        )
+        if len(items) == 1:
+            item = items[0]
+            if "workout_minutes" in payload.model_fields_set:
+                item.workout_minutes = payload.workout_minutes
+            if "weight_kg" in payload.model_fields_set:
+                item.weight_value = payload.weight_kg
+            if "completed_sets" in payload.model_fields_set:
+                item.completed_sets = payload.completed_sets
+            if "repetition_count" in payload.model_fields_set:
+                item.repetitions = payload.repetition_count
+
+        db.commit()
+        record = db.scalar(
+            select(WorkoutRecord)
+            .options(
+                joinedload(WorkoutRecord.trainer),
+                selectinload(WorkoutRecord.items).selectinload(
+                    WorkoutRecordDetailItem.media
+                ),
+            )
+            .where(WorkoutRecord.workout_record_id == record_id)
+        )
+        return detail_schema(record)
+    except HTTPException:
+        db.rollback()
+        raise
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail="운동 기록을 수정하지 못했습니다."
+        ) from exc
+
+
 @router.patch("/{record_id}", response_model=WorkoutSessionDetail)
 def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
@@ -282,10 +418,53 @@ def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = D
 
 @router.delete("/{record_id}", status_code=204)
 def delete_session(record_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    record = get_owned(db, record_id, user, write=True)
-    if record.user_id != user.user_id or record.record_type != "WORKOUT": raise HTTPException(status_code=403, detail="PT 기록은 회원이 삭제할 수 없습니다.")
-    paths = [Path(path) for item in record.items for media in item.media for path in (media.storage_path, media.thumbnail_storage_path) if path]
-    db.delete(record); db.commit()
+    try:
+        record = get_owned(db, record_id, user, write=True)
+        if record.user_id != user.user_id or record.record_type != "WORKOUT":
+            raise HTTPException(
+                status_code=403, detail="PT 기록은 회원이 삭제할 수 없습니다."
+            )
+        paths = [
+            Path(path)
+            for item in record.items
+            for media in item.media
+            for path in (media.storage_path, media.thumbnail_storage_path)
+            if path
+        ]
+        if record.workout_plan_id is not None:
+            plan = db.scalar(
+                select(WorkoutPlan)
+                .where(
+                    WorkoutPlan.workout_plan_id == record.workout_plan_id,
+                    WorkoutPlan.user_id == user.user_id,
+                )
+                .with_for_update()
+            )
+            if plan is not None:
+                plan.is_completed = False
+                plan_sets = db.scalars(
+                    select(WorkoutPlanSet)
+                    .where(WorkoutPlanSet.workout_plan_id == plan.workout_plan_id)
+                    .with_for_update()
+                ).all()
+                for plan_set in plan_sets:
+                    plan_set.is_completed = False
+        db.delete(record)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="피드백 등 다른 데이터에 연결된 운동 기록은 삭제할 수 없습니다.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail="운동 기록을 삭제하지 못했습니다."
+        ) from exc
     for path in paths:
         try: path.unlink(missing_ok=True)
         except OSError: pass

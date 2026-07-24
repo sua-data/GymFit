@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class WorkoutSessionItemInput(BaseModel):
@@ -37,6 +39,30 @@ class WorkoutSessionCreate(BaseModel):
 
 class WorkoutSessionUpdate(WorkoutSessionCreate):
     pass
+
+
+class WorkoutRecordMetricsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workout_minutes: int | None = Field(default=None, ge=1, le=1440)
+    exercise_intensity: Literal["LOW", "MODERATE", "HIGH"] | None = None
+    weight_kg: Decimal | None = Field(default=None, gt=0, le=99999.99)
+    completed_sets: int | None = Field(default=None, ge=0, le=100)
+    repetition_count: int | None = Field(default=None, ge=0, le=10000)
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if not self.model_fields_set:
+            raise ValueError("수정할 값을 하나 이상 입력해 주세요.")
+        for field_name in (
+            "workout_minutes",
+            "exercise_intensity",
+            "completed_sets",
+            "repetition_count",
+        ):
+            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} 값은 null일 수 없습니다.")
+        return self
 
 
 class WorkoutMediaItem(BaseModel):
@@ -86,6 +112,12 @@ class WorkoutSessionSummary(BaseModel):
 
 
 class WorkoutSessionDetail(WorkoutSessionSummary):
+    record_source: str
+    workout_plan_id: int | None
+    can_edit_metrics: bool
+    can_delete: bool
+    completed_sets: int
+    repetition_count: int
     calories: Decimal | None
     exercise_intensity: str | None = None
     intensity_is_default: bool | None = None

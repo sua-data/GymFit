@@ -751,6 +751,20 @@ async function completePlan(userId, workoutPlanId, completion = {}) {
   return data;
 }
 
+async function uncompletePlan(workoutPlanId) {
+  const response = await fetch(
+    `/api/workouts/plans/${workoutPlanId}/uncomplete`,
+    { method: "PATCH" }
+  );
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "운동 완료를 취소하지 못했습니다.")
+    );
+  }
+  return data;
+}
+
 function plannedCompletionValues(item) {
   const sets = item.sets || [];
   return {
@@ -919,9 +933,9 @@ function moveToCoaching(item) {
 function getButtonState(item) {
   if (item.is_completed) {
     return {
-      label: "운동 완료",
-      disabled: true,
-      action: "none",
+      label: "완료 취소",
+      disabled: false,
+      action: "uncomplete",
     };
   }
 
@@ -1013,7 +1027,7 @@ function renderPlan(data) {
         <div class="routine-card-actions">
           <button
             type="button"
-            class="routine-start-button"
+            class="routine-start-button${buttonState.action === "uncomplete" ? " routine-undo-button" : ""}"
             ${buttonState.disabled ? "disabled" : ""}
           >
             ${buttonState.label}
@@ -1049,6 +1063,25 @@ function renderPlan(data) {
 
     if (buttonState.action === "complete") {
       actionButton.addEventListener("click", () => openCompletionSheet(item));
+    }
+
+    if (buttonState.action === "uncomplete") {
+      actionButton.addEventListener("click", async () => {
+        if (!window.confirm("운동 완료를 취소하시겠어요?\n일반 완료로 생성된 운동 기록은 함께 삭제됩니다.")) {
+          return;
+        }
+        actionButton.disabled = true;
+        actionButton.textContent = "취소 중";
+        try {
+          await uncompletePlan(item.workout_plan_id);
+          await loadPlan(getLoginUserId(), activePlanDate);
+        } catch (error) {
+          console.error("운동 완료 취소 실패:", error);
+          alert(error.message || "운동 완료를 취소하지 못했습니다.");
+          actionButton.disabled = false;
+          actionButton.textContent = "완료 취소";
+        }
+      });
     }
 
     const editButton = card.querySelector(".routine-edit-button");

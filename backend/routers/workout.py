@@ -469,6 +469,12 @@ class WorkoutPlanCompleteResponse(BaseModel):
     record_created: bool
 
 
+class WorkoutPlanUncompleteResponse(BaseModel):
+    message: str
+    item: TodayWorkoutPlanItem
+    workout_record_removed: bool
+
+
 class WorkoutPlanDeleteResponse(BaseModel):
     message: str
     workout_plan_id: int
@@ -1508,6 +1514,83 @@ def complete_workout_plan(
         workout_record_id=existing_record.workout_record_id,
         record_created=record_created,
     )
+
+
+@router.patch(
+    "/plans/{workout_plan_id}/uncomplete",
+    response_model=WorkoutPlanUncompleteResponse,
+)
+def uncomplete_workout_plan(
+    workout_plan_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        plan_row = db.execute(
+            select(WorkoutPlan, Exercise, UserExercise)
+            .outerjoin(Exercise, WorkoutPlan.exercise_id == Exercise.exercise_id)
+            .outerjoin(
+                UserExercise,
+                (WorkoutPlan.user_exercise_id == UserExercise.user_exercise_id)
+                & (WorkoutPlan.user_id == UserExercise.user_id),
+            )
+            .where(
+                WorkoutPlan.workout_plan_id == workout_plan_id,
+                WorkoutPlan.user_id == current_user.user_id,
+            )
+            .with_for_update()
+        ).first()
+        if plan_row is None:
+            raise HTTPException(
+                status_code=404, detail="운동 계획을 찾을 수 없습니다."
+            )
+        workout_plan, exercise, user_exercise = plan_row
+        plan_sets = db.scalars(
+            select(WorkoutPlanSet)
+            .where(WorkoutPlanSet.workout_plan_id == workout_plan_id)
+            .order_by(WorkoutPlanSet.set_order)
+            .with_for_update()
+        ).all()
+        linked_record = db.scalar(
+            select(WorkoutRecord)
+            .where(WorkoutRecord.workout_plan_id == workout_plan_id)
+            .with_for_update()
+        )
+
+        record_removed = False
+        if (
+            linked_record is not None
+            and linked_record.record_source == "ROUTINE_COMPLETE"
+        ):
+            db.delete(linked_record)
+            record_removed = True
+
+        workout_plan.is_completed = False
+        for plan_set in plan_sets:
+            plan_set.is_completed = False
+        db.commit()
+        db.refresh(workout_plan)
+        return WorkoutPlanUncompleteResponse(
+            message="운동 계획을 미완료 상태로 되돌렸습니다.",
+            item=create_plan_item(
+                workout_plan, exercise, user_exercise, plan_sets
+            ),
+            workout_record_removed=record_removed,
+        )
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="연결된 데이터 때문에 운동 완료를 취소할 수 없습니다.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail="운동 완료를 취소하지 못했습니다."
+        ) from exc
 
 
 @router.delete(
