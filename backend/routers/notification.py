@@ -1,24 +1,13 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models import Notification, User
+from backend.security import get_current_user
 
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
-
-
-def get_current_user(
-    x_user_id: int = Header(alias="X-User-Id"),
-    db: Session = Depends(get_db),
-) -> User:
-    user = db.scalar(
-        select(User).where(User.user_id == x_user_id, User.is_active.is_(True))
-    )
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="로그인이 필요합니다.")
-    return user
 
 
 def serialize_notification(item: Notification) -> dict:

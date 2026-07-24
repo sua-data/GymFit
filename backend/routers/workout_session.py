@@ -8,7 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -22,6 +22,7 @@ from backend.routers.workout import korea_now_naive
 from backend.services.calorie_service import (
     calculate_for_record, normalize_intensity, safe_decimal, select_met,
 )
+from backend.security import get_current_user
 from backend.workout_session_schemas import (
     WorkoutMediaItem, WorkoutSessionCreate, WorkoutSessionDetail,
     WorkoutSessionExerciseItem, WorkoutSessionList, WorkoutSessionSummary, WorkoutSessionUpdate,
@@ -42,13 +43,6 @@ TYPE_EXTENSIONS = {
 }
 FFPROBE_PATH = shutil.which("ffprobe")
 FFMPEG_PATH = shutil.which("ffmpeg")
-
-
-def current_user(x_user_id: int = Header(alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
-    user = db.scalar(select(User).where(User.user_id == x_user_id, User.is_active.is_(True)))
-    if user is None:
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
-    return user
 
 
 def clean(value: str | None) -> str | None:
@@ -217,7 +211,7 @@ def detail_schema(record: WorkoutRecord) -> WorkoutSessionDetail:
 
 
 @router.post("", response_model=WorkoutSessionDetail, status_code=status.HTTP_201_CREATED)
-def create_session(payload: WorkoutSessionCreate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_session(payload: WorkoutSessionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if user.account_type != "MEMBER":
         raise HTTPException(status_code=403, detail="회원만 일반 운동 기록을 등록할 수 있습니다.")
     try:
@@ -241,7 +235,7 @@ def period_conditions(period: str):
 
 
 @router.get("", response_model=WorkoutSessionList)
-def list_sessions(period: str = Query("all", pattern="^(all|today|7d|30d)$"), limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(current_user), db: Session = Depends(get_db)):
+def list_sessions(period: str = Query("all", pattern="^(all|today|7d|30d)$"), limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     filters = [WorkoutRecord.user_id == user.user_id, *period_conditions(period)]
     total = db.scalar(select(func.count(WorkoutRecord.workout_record_id)).where(*filters)) or 0
     records = db.scalars(select(WorkoutRecord).options(joinedload(WorkoutRecord.trainer), selectinload(WorkoutRecord.items).selectinload(WorkoutRecordDetailItem.media)).where(*filters).order_by(WorkoutRecord.started_at.desc(), WorkoutRecord.workout_record_id.desc()).offset(offset).limit(limit)).unique().all()
@@ -249,7 +243,7 @@ def list_sessions(period: str = Query("all", pattern="^(all|today|7d|30d)$"), li
 
 
 @router.get("/trainer/member/{member_id}", response_model=WorkoutSessionList)
-def trainer_member_sessions(member_id: int, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(current_user), db: Session = Depends(get_db)):
+def trainer_member_sessions(member_id: int, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if user.account_type != "TRAINER": raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
     relationship = db.scalar(select(TrainerMember.trainer_member_id).where(
         TrainerMember.trainer_id == user.user_id,
@@ -264,14 +258,14 @@ def trainer_member_sessions(member_id: int, limit: int = Query(100, ge=1, le=200
 
 
 @router.get("/{record_id}", response_model=WorkoutSessionDetail)
-def session_detail(record_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def session_detail(record_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     record = db.scalar(select(WorkoutRecord).options(joinedload(WorkoutRecord.trainer), selectinload(WorkoutRecord.items).selectinload(WorkoutRecordDetailItem.media)).where(WorkoutRecord.workout_record_id == record_id))
     if record is None or not can_read(db, record, user): raise HTTPException(status_code=404, detail="운동 기록을 찾을 수 없습니다.")
     return detail_schema(record)
 
 
 @router.patch("/{record_id}", response_model=WorkoutSessionDetail)
-def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         record = get_owned(db, record_id, user, write=True)
         if record.user_id != user.user_id or record.record_type != "WORKOUT": raise HTTPException(status_code=403, detail="PT 기록은 회원이 수정할 수 없습니다.")
@@ -287,7 +281,7 @@ def update_session(record_id: int, payload: WorkoutSessionUpdate, user: User = D
 
 
 @router.delete("/{record_id}", status_code=204)
-def delete_session(record_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def delete_session(record_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     record = get_owned(db, record_id, user, write=True)
     if record.user_id != user.user_id or record.record_type != "WORKOUT": raise HTTPException(status_code=403, detail="PT 기록은 회원이 삭제할 수 없습니다.")
     paths = [Path(path) for item in record.items for media in item.media for path in (media.storage_path, media.thumbnail_storage_path) if path]
@@ -329,7 +323,7 @@ def valid_signature(path: Path, mime: str) -> bool:
 
 
 @router.post("/items/{item_id}/media", response_model=WorkoutMediaItem, status_code=201)
-async def upload_media(item_id: int, file: UploadFile = File(...), user: User = Depends(current_user), db: Session = Depends(get_db)):
+async def upload_media(item_id: int, file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.scalar(select(WorkoutRecordDetailItem).options(joinedload(WorkoutRecordDetailItem.record)).where(WorkoutRecordDetailItem.item_id == item_id))
     can_write = item is not None and (
         (item.record.record_type == "WORKOUT" and item.record.user_id == user.user_id)
@@ -388,17 +382,17 @@ def media_file(db: Session, media_id: int, user: User, thumbnail: bool = False):
 
 
 @router.get("/media/{media_id}")
-def read_media(media_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def read_media(media_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return media_file(db, media_id, user)
 
 
 @router.get("/media/{media_id}/thumbnail")
-def read_thumbnail(media_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def read_thumbnail(media_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return media_file(db, media_id, user, True)
 
 
 @router.delete("/media/{media_id}", status_code=204)
-def delete_media(media_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def delete_media(media_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     media = db.scalar(select(WorkoutRecordMedia).options(joinedload(WorkoutRecordMedia.item).joinedload(WorkoutRecordDetailItem.record)).where(WorkoutRecordMedia.media_id == media_id))
     can_delete = media is not None and (
         (media.item.record.record_type == "WORKOUT" and media.item.record.user_id == user.user_id)

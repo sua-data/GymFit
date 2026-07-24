@@ -17,7 +17,7 @@ from backend.models import (
     User,
     UserGym,
 )
-from backend.routers.pt import get_current_user
+from backend.security import enforce_self, get_current_user
 from backend.services.gym_service import GymSelection, select_or_create_gym
 from backend.services.password_service import hash_password, verify_password
 from backend.routers.trainer_employment import safe_unlink as safe_unlink_employment
@@ -292,7 +292,12 @@ def disconnect_my_gym(
 
 
 @router.get("/{user_id}")
-def read_user_profile(user_id: int, db: Session = Depends(get_db)) -> dict:
+def read_user_profile(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    enforce_self(current_user, user_id)
     return serialize_user(get_active_user(db, user_id), db)
 
 
@@ -300,8 +305,10 @@ def read_user_profile(user_id: int, db: Session = Depends(get_db)) -> dict:
 def update_user_profile(
     user_id: int,
     payload: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    enforce_self(current_user, user_id)
     user = get_active_user(db, user_id)
 
     try:
@@ -348,8 +355,10 @@ class UserGymUpdate(BaseModel):
 def update_user_gym(
     user_id: int,
     payload: UserGymUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    enforce_self(current_user, user_id)
     user = get_active_user(db, user_id)
     old_evidence_path = None
 

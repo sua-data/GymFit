@@ -348,6 +348,8 @@ class LoginResponse(BaseModel):
     must_change_password: bool = False
     has_active_trainer: bool = False
     pending_pt_request_count: int = 0
+    access_token: str
+    token_type: str = "bearer"
 
 
 # =========================================================
@@ -399,6 +401,8 @@ class GoogleCodeLoginResponse(BaseModel):
     signup_token: str | None = None
     has_active_trainer: bool = False
     pending_pt_request_count: int = 0
+    access_token: str | None = None
+    token_type: str | None = None
 
 
 # =========================================================

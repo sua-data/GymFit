@@ -40,6 +40,7 @@ from backend.models import (
     TrainerMember,
 )
 from backend.services.notification_service import create_notification
+from backend.security import enforce_self, get_current_user
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 from backend.services.calorie_service import (
     calculate_for_record,
@@ -674,8 +675,10 @@ def get_active_exercises(
     search: str | None = Query(default=None, max_length=100),
     category: str | None = Query(default=None, max_length=30),
     coaching_supported: bool | None = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     require_active_user(db, user_id)
     filters = [Exercise.is_active.is_(True)]
     normalized_search = search.strip() if search else ""
@@ -752,8 +755,10 @@ def get_active_exercises(
 )
 def create_user_exercise(
     request: UserExerciseCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     require_active_user(db, request.user_id)
     existing = db.scalar(
         select(UserExercise).where(
@@ -815,8 +820,10 @@ def create_user_exercise(
 def update_user_exercise(
     user_exercise_id: int,
     request: UserExerciseUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     require_active_user(db, request.user_id)
     user_exercise = get_owned_user_exercise(
         db, request.user_id, user_exercise_id, active_only=True
@@ -862,8 +869,10 @@ def update_user_exercise(
 def deactivate_user_exercise(
     user_exercise_id: int,
     user_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     require_active_user(db, user_id)
     user_exercise = get_owned_user_exercise(
         db, user_id, user_exercise_id, active_only=True
@@ -892,8 +901,10 @@ def deactivate_user_exercise(
 def get_today_workout_plan(
     user_id: int,
     plan_date: date | None = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     user = db.scalar(
         select(User).where(
             User.user_id == user_id,
@@ -984,8 +995,10 @@ def get_today_workout_plan(
 )
 def create_or_update_workout_plan(
     request: WorkoutPlanCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     user = db.scalar(
         select(User).where(
             User.user_id
@@ -1178,8 +1191,10 @@ def create_or_update_workout_plan(
 def update_workout_plan(
     workout_plan_id: int,
     request: WorkoutPlanUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     user = db.scalar(
         select(User).where(
             User.user_id
@@ -1296,8 +1311,10 @@ def update_workout_plan(
 def complete_workout_plan(
     workout_plan_id: int,
     request: WorkoutPlanCompleteRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     user = db.scalar(
         select(User).where(
             User.user_id
@@ -1502,8 +1519,10 @@ def complete_workout_plan(
 def delete_workout_plan(
     workout_plan_id: int,
     user_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     user = db.scalar(
         select(User).where(
             User.user_id == user_id,
@@ -1622,8 +1641,10 @@ def get_workout_records(
     ),
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     require_active_user(db, user_id)
 
     conditions = [WorkoutRecord.user_id == user_id]
@@ -1686,8 +1707,10 @@ def get_workout_records(
 def get_workout_record_detail(
     workout_record_id: int,
     user_id: int = Query(gt=0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     require_active_user(db, user_id)
 
     row = db.execute(
@@ -1724,8 +1747,10 @@ def get_workout_record_detail(
 )
 def create_workout_record(
     request: WorkoutRecordCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, request.user_id)
     user = db.scalar(
         select(User).where(
             User.user_id

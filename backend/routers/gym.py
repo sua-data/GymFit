@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.services.gym_service import GymSelection, select_or_create_gym
+from backend.models import User
+from backend.security import get_current_user
 
 
 router = APIRouter(prefix="/api/gyms", tags=["gyms"])
@@ -84,7 +86,12 @@ def read_kakao_map_config() -> dict:
 
 
 @router.post("/select")
-def select_gym(payload: GymSelection, db: Session = Depends(get_db)) -> dict:
+def select_gym(
+    payload: GymSelection,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    del current_user
     try:
         gym = select_or_create_gym(db, payload)
         db.commit()

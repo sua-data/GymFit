@@ -225,6 +225,10 @@ async function requestGoogleCodeLogin(
 ========================= */
 
 function saveLoginUser(data) {
+  if (!data.access_token) {
+    throw new Error("로그인 응답에 액세스 토큰이 없습니다.");
+  }
+  sessionStorage.setItem("gymfitAccessToken", data.access_token);
   const loginUser = {
     user_id: data.user_id,
     account_type: data.account_type,

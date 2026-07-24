@@ -70,6 +70,7 @@ from backend.services.password_service import (
     hash_password,
     verify_password
 )
+from backend.security import create_access_token, get_current_user
 
 
 # =========================================================
@@ -1494,6 +1495,8 @@ def login(
             pending_pt_request_count=get_pending_pt_request_count(
                 db, user.user_id, user.account_type
             ),
+            access_token=create_access_token(user),
+            token_type="bearer",
         )
 
     except Exception as error:
@@ -1592,6 +1595,8 @@ def google_code_login(
                     pending_pt_request_count=get_pending_pt_request_count(
                         db, user.user_id, user.account_type
                     ),
+                    access_token=create_access_token(user),
+                    token_type="bearer",
                 )
             )
 
@@ -1661,6 +1666,24 @@ def google_code_login(
         email=email,
         signup_token=signup_token,
     )
+
+
+@router.get("/me")
+def authenticated_user_me(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return {
+        "user_id": user.user_id,
+        "name": user.name,
+        "email": user.email,
+        "account_type": user.account_type,
+        "is_active": user.is_active,
+        "has_active_trainer": has_active_trainer(db, user.user_id, user.account_type),
+        "pending_pt_request_count": get_pending_pt_request_count(
+            db, user.user_id, user.account_type
+        ),
+    }
 
 
 # =========================================================

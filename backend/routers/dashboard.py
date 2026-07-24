@@ -28,6 +28,7 @@ from backend.models.workout_record import WorkoutRecord
 from backend.models.user_exercise import UserExercise
 from backend.models.pt_schedule import PtSchedule
 from backend.services.pt_service import has_active_trainer
+from backend.security import enforce_self, get_current_user
 
 
 router = APIRouter(
@@ -100,8 +101,10 @@ def calculate_streak_days(
 @router.get("/{user_id}")
 def get_dashboard(
     user_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    enforce_self(current_user, user_id)
     user = db.scalar(
         select(User).where(
             User.user_id == user_id,

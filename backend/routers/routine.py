@@ -16,6 +16,8 @@ from backend.routine_schemas import (
     RecommendationResponse,
 )
 from backend.services.routine_recommendation_service import create_recommendation
+from backend.models import User
+from backend.security import enforce_self, get_current_user
 
 router = APIRouter(prefix="/api/routine", tags=["맞춤 루틴 추천"])
 
@@ -97,12 +99,22 @@ def _generate(payload: RecommendationCreate, db: Session, replace: bool) -> Reco
 
 
 @router.post("/recommendations", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
-def recommend(payload: RecommendationCreate, db: Session = Depends(get_db)):
+def recommend(
+    payload: RecommendationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    enforce_self(current_user, payload.user_id)
     return _generate(payload, db, False)
 
 
 @router.get("/recommendations/latest", response_model=RecommendationResponse)
-def latest(user_id: int, db: Session = Depends(get_db)):
+def latest(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    enforce_self(current_user, user_id)
     recommendation = db.scalar(
         select(RoutineRecommendation)
         .options(selectinload(RoutineRecommendation.items))
@@ -115,7 +127,12 @@ def latest(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/recommendations/regenerate", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
-def regenerate(payload: RecommendationCreate, db: Session = Depends(get_db)):
+def regenerate(
+    payload: RecommendationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    enforce_self(current_user, payload.user_id)
     return _generate(payload, db, True)
 
 
@@ -123,7 +140,11 @@ def regenerate(payload: RecommendationCreate, db: Session = Depends(get_db)):
     "/recommendations/{recommendation_id}/apply",
     response_model=RecommendationApplyResponse,
 )
-def apply_recommendation(recommendation_id: int, db: Session = Depends(get_db)):
+def apply_recommendation(
+    recommendation_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     recommendation = db.scalar(
         select(RoutineRecommendation)
         .options(selectinload(RoutineRecommendation.items))
@@ -132,6 +153,7 @@ def apply_recommendation(recommendation_id: int, db: Session = Depends(get_db)):
     )
     if not recommendation:
         raise HTTPException(status_code=404, detail="추천을 찾을 수 없습니다.")
+    enforce_self(current_user, recommendation.user_id)
     if recommendation.status == "APPLIED":
         raise HTTPException(status_code=409, detail="이미 적용된 추천입니다.")
     if recommendation.status == "REPLACED":
