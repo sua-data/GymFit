@@ -10,6 +10,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Response,
     status,
 )
 from sqlalchemy import (
@@ -63,6 +64,7 @@ def get_day_range(
 
 def calculate_streak_days(
     workout_dates: list[date],
+    today: date,
 ) -> int:
     if not workout_dates:
         return 0
@@ -72,7 +74,6 @@ def calculate_streak_days(
         reverse=True,
     )
 
-    today = date.today()
     yesterday = today - timedelta(days=1)
 
     if unique_dates[0] not in {
@@ -101,9 +102,13 @@ def calculate_streak_days(
 @router.get("/{user_id}")
 def get_dashboard(
     user_id: int,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     enforce_self(current_user, user_id)
     user = db.scalar(
         select(User).where(
@@ -126,7 +131,8 @@ def get_dashboard(
             )
         )
 
-    today = date.today()
+    kst = ZoneInfo("Asia/Seoul")
+    today = datetime.now(kst).date()
 
     today_start, today_end = get_day_range(
         today
@@ -227,7 +233,8 @@ def get_dashboard(
             )
 
     streak_days = calculate_streak_days(
-        normalized_workout_dates
+        normalized_workout_dates,
+        today,
     )
 
     # 읽지 않은 알림

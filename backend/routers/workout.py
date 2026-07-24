@@ -15,6 +15,7 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    Response,
     status
 )
 from pydantic import (
@@ -23,7 +24,7 @@ from pydantic import (
     field_validator,
     model_validator
 )
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -298,6 +299,18 @@ class TodayWorkoutPlanResponse(BaseModel):
     completed_count: int
     total_minutes: int
     items: list[TodayWorkoutPlanItem]
+
+
+class WorkoutPlanCalendarDay(BaseModel):
+    plan_date: date
+    total_count: int
+    completed_count: int
+
+
+class WorkoutPlanCalendarResponse(BaseModel):
+    start_date: date
+    end_date: date
+    days: list[WorkoutPlanCalendarDay]
 
 
 class ExerciseListItem(BaseModel):
@@ -895,6 +908,75 @@ def deactivate_user_exercise(
     return UserExerciseDeleteResponse(
         message="사용자 운동이 비활성화되었습니다.",
         user_exercise_id=user_exercise_id,
+    )
+
+
+def create_calendar_days(
+    start_date: date,
+    end_date: date,
+    counts: dict[date, tuple[int, int]],
+) -> list[WorkoutPlanCalendarDay]:
+    return [
+        WorkoutPlanCalendarDay(
+            plan_date=target_date,
+            total_count=counts.get(target_date, (0, 0))[0],
+            completed_count=counts.get(target_date, (0, 0))[1],
+        )
+        for offset in range((end_date - start_date).days + 1)
+        for target_date in (start_date + timedelta(days=offset),)
+    ]
+
+
+@router.get(
+    "/plans/calendar/{user_id}",
+    response_model=WorkoutPlanCalendarResponse,
+)
+def get_workout_plan_calendar(
+    user_id: int,
+    start_date: date,
+    end_date: date,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    enforce_self(current_user, user_id)
+    range_days = (end_date - start_date).days + 1
+    if range_days <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail="시작일은 종료일보다 늦을 수 없습니다.",
+        )
+    if range_days > 31:
+        raise HTTPException(
+            status_code=422,
+            detail="달력 조회 범위는 최대 31일입니다.",
+        )
+
+    rows = db.execute(
+        select(
+            WorkoutPlan.plan_date,
+            func.count(WorkoutPlan.workout_plan_id),
+            func.sum(
+                case((WorkoutPlan.is_completed.is_(True), 1), else_=0)
+            ),
+        )
+        .where(
+            WorkoutPlan.user_id == user_id,
+            WorkoutPlan.plan_date.between(start_date, end_date),
+        )
+        .group_by(WorkoutPlan.plan_date)
+    ).all()
+    counts = {
+        plan_date: (int(total_count or 0), int(completed_count or 0))
+        for plan_date, total_count, completed_count in rows
+    }
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return WorkoutPlanCalendarResponse(
+        start_date=start_date,
+        end_date=end_date,
+        days=create_calendar_days(start_date, end_date, counts),
     )
 
 

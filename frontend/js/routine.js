@@ -5,6 +5,9 @@ const totalMinutes = document.querySelector("#totalMinutes");
 const routineMessage = document.querySelector("#routineMessage");
 const routineList = document.querySelector("#routineList");
 const routineAddButton = document.querySelector("#routineAddButton");
+const routineCalendarPrev = document.querySelector("#routineCalendarPrev");
+const routineCalendarNext = document.querySelector("#routineCalendarNext");
+const routineCalendarDays = document.querySelector("#routineCalendarDays");
 const routineSheetOverlay = document.querySelector("#routineSheetOverlay");
 const routineSheetCloseButton = document.querySelector(
   "#routineSheetCloseButton"
@@ -22,6 +25,14 @@ const exerciseLoadMessage = document.querySelector(
 const exerciseRetryButton = document.querySelector(
   "#exerciseRetryButton"
 );
+const exerciseSearchInput = document.querySelector("#exerciseSearchInput");
+const exerciseCategoryFilters = document.querySelector(
+  "#exerciseCategoryFilters"
+);
+const exerciseAiFilter = document.querySelector("#exerciseAiFilter");
+const exerciseOptionList = document.querySelector("#exerciseOptionList");
+const exerciseEmptyState = document.querySelector("#exerciseEmptyState");
+const exerciseDirectInput = document.querySelector("#exerciseDirectInput");
 const routineSheetTitle = document.querySelector(
   "#routineSheetTitle"
 );
@@ -68,6 +79,12 @@ const completionSave = document.querySelector("#completionSave");
 const completionExerciseName = document.querySelector("#completionExerciseName");
 
 let activePlanDate = null;
+let calendarStartDate = null;
+let calendarPlanCounts = new Map();
+let calendarRequestController = null;
+let calendarRequestVersion = 0;
+let planRequestController = null;
+let planRequestVersion = 0;
 let isSavingPlan = false;
 let completingPlanId = null;
 let deletingPlanId = null;
@@ -75,9 +92,17 @@ let exerciseListState = "idle";
 let formMode = "create";
 let editingPlan = null;
 let currentRecommendation = null;
-let recommendationBusy = false;
+let recommendationVariant = 0;
+let recommendationRequestInFlight = false;
+let recommendationApplyInFlight = false;
+let recommendationRequestController = null;
+let recommendationRequestVersion = 0;
 let completingItem = null;
 let completionIntensityChanged = false;
+let availableExercises = [];
+let selectedExerciseValue = "";
+let selectedExerciseCategory = "all";
+let aiCoachingOnly = false;
 
 function getLoginUserId() {
   const savedUser = sessionStorage.getItem("gymfitUser");
@@ -94,6 +119,13 @@ function getLoginUserId() {
   }
 }
 
+function invalidateDashboard() {
+  sessionStorage.setItem(
+    "gymfitDashboardInvalidatedAt",
+    String(Date.now())
+  );
+}
+
 function escapeHtml(value) {
   const element = document.createElement("div");
   element.textContent = value ?? "";
@@ -106,13 +138,38 @@ const adjustmentLabels = {
   REPEATED_FEEDBACK: "반복 피드백",
 };
 
-function setRecommendationBusy(value, message = "") {
-  recommendationBusy = value;
-  recommendationButton.disabled = value;
-  recommendationRegenerate.disabled = value;
-  recommendationApply.disabled = value || currentRecommendation?.status === "APPLIED";
+function setRecommendationUi(message = "") {
+  const busy = recommendationRequestInFlight || recommendationApplyInFlight;
+  recommendationButton.disabled = busy;
+  recommendationRegenerate.disabled = busy;
+  recommendationApply.disabled = busy || !currentRecommendation;
+  recommendationApply.setAttribute(
+    "aria-busy", String(recommendationApplyInFlight)
+  );
   recommendationStatus.hidden = !message;
   recommendationStatus.textContent = message;
+}
+
+function resetRecommendationState({ hideResult = true } = {}) {
+  recommendationRequestController?.abort();
+  recommendationRequestController = null;
+  recommendationRequestVersion += 1;
+  recommendationRequestInFlight = false;
+  recommendationApplyInFlight = false;
+  recommendationVariant = 0;
+  currentRecommendation = null;
+  recommendationResultError.hidden = true;
+  recommendationResultError.textContent = "";
+  if (hideResult) recommendationResult.hidden = true;
+  setRecommendationUi();
+}
+
+function buildRecommendationPayload(userId, variant) {
+  return {
+    user_id: Number(userId),
+    workout_minutes: 40,
+    variant,
+  };
 }
 
 function renderRecommendation(data) {
@@ -121,7 +178,7 @@ function renderRecommendation(data) {
   recommendationResultError.hidden = true;
   recommendationSummary.innerHTML = `
     <p><strong>${data.days_per_week}일</strong> · 회당 ${data.workout_minutes}분 · ${escapeHtml(data.level)}</p>
-    <span>${data.items.length}개 운동 · 기록과 자세 결과 반영</span>`;
+    <span>하루 ${Number(data.daily_exercise_count) || 0}개 · ${escapeHtml(data.recommendation_reason || "기록과 자세 결과 반영")}</span>`;
   const grouped = data.items.reduce((result, item) => {
     (result[item.workout_date] ||= []).push(item);
     return result;
@@ -146,52 +203,115 @@ function renderRecommendation(data) {
         </article>`).join("")}
     </section>`).join("");
   recommendationApply.textContent = data.status === "APPLIED" ? "적용 완료" : "내 루틴에 적용";
-  setRecommendationBusy(false);
+  setRecommendationUi();
   recommendationResult.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function requestRecommendation(regenerate = false) {
   const userId = getLoginUserId();
-  if (!userId || recommendationBusy) return;
-  setRecommendationBusy(true, "맞춤 루틴을 구성하고 있습니다.");
+  if (!userId || recommendationRequestInFlight || recommendationApplyInFlight) {
+    return;
+  }
+  if (regenerate) {
+    recommendationVariant += 1;
+  } else {
+    recommendationVariant = 0;
+    currentRecommendation = null;
+  }
+  recommendationRequestController?.abort();
+  recommendationRequestController = new AbortController();
+  const requestVersion = ++recommendationRequestVersion;
+  recommendationRequestInFlight = true;
+  setRecommendationUi("맞춤 루틴을 구성하고 있습니다.");
   try {
     const response = await fetch(
       regenerate ? "/api/routine/recommendations/regenerate" : "/api/routine/recommendations",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: Number(userId), workout_minutes: 40 }),
+        body: JSON.stringify(
+          buildRecommendationPayload(userId, recommendationVariant)
+        ),
+        cache: "no-store",
+        signal: recommendationRequestController.signal,
       }
     );
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(getErrorMessage(data, "추천을 생성하지 못했습니다."));
+    if (requestVersion !== recommendationRequestVersion) return;
+    recommendationRequestInFlight = false;
     recommendationStatus.hidden = true;
     renderRecommendation(data);
   } catch (error) {
-    setRecommendationBusy(false, error.message || "추천을 생성하지 못했습니다.");
+    if (requestVersion !== recommendationRequestVersion) return;
+    recommendationRequestInFlight = false;
+    if (error.name === "AbortError") return;
+    if (regenerate) recommendationVariant = Math.max(0, recommendationVariant - 1);
+    setRecommendationUi(error.message || "추천을 생성하지 못했습니다.");
+  } finally {
+    if (requestVersion === recommendationRequestVersion) {
+      recommendationRequestController = null;
+    }
   }
 }
 
 async function applyRecommendation() {
-  if (!currentRecommendation || recommendationBusy) return;
-  setRecommendationBusy(true, "추천 루틴을 적용하고 있습니다.");
+  if (
+    !currentRecommendation
+    || recommendationRequestInFlight
+    || recommendationApplyInFlight
+  ) return;
+  recommendationApplyInFlight = true;
+  setRecommendationUi("추천 루틴을 적용하고 있습니다.");
   recommendationResultError.hidden = true;
   try {
     const response = await fetch(
       `/api/routine/recommendations/${currentRecommendation.recommendation_id}/apply`,
-      { method: "POST" }
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replace_existing_recommendations: true }),
+        cache: "no-store",
+      }
     );
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(getErrorMessage(data, "추천을 적용하지 못했습니다."));
-    currentRecommendation.status = "APPLIED";
-    recommendationApply.textContent = "적용 완료";
-    setRecommendationBusy(
-      false,
-      `${data.created_count}개 계획을 적용했습니다.${data.skipped_count ? ` 기존 계획 ${data.skipped_count}개는 유지했습니다.` : ""}`
+    if (!Number(data.created_count)) {
+      throw new Error(
+        "적용할 수 있는 새 운동이 없습니다. 기존 루틴과 날짜가 겹치는지 확인해주세요."
+      );
+    }
+    invalidateDashboard();
+    const targetDate = (data.affected_dates || []).includes(getLocalDateValue())
+      ? getLocalDateValue()
+      : data.affected_dates?.[0] || activePlanDate;
+    currentRecommendation = null;
+    recommendationVariant = 0;
+    recommendationResult.hidden = true;
+    recommendationApplyInFlight = false;
+    activePlanDate = targetDate;
+    calendarStartDate = startOfCalendarRange(targetDate);
+    calendarPlanCounts = new Map();
+    setPlanDateToUrl(targetDate);
+    renderRoutineCalendar();
+    let refreshFailed = false;
+    try {
+      await Promise.all([
+        loadPlan(getLoginUserId(), targetDate),
+        loadCalendarPlanCounts(),
+      ]);
+    } catch (refreshError) {
+      refreshFailed = true;
+      console.error("추천 적용 후 루틴 목록 갱신 실패:", refreshError);
+    }
+    setRecommendationUi(
+      refreshFailed
+        ? "추천은 적용됐지만 목록을 새로고침하지 못했습니다. 페이지를 새로고침해주세요."
+        : `${data.created_count}개 계획을 적용했습니다.${data.skipped_count ? ` 기존 계획 ${data.skipped_count}개는 유지했습니다.` : ""}`
     );
-    await loadPlan(getLoginUserId(), activePlanDate);
   } catch (error) {
-    setRecommendationBusy(false);
+    recommendationApplyInFlight = false;
+    setRecommendationUi();
     recommendationResultError.hidden = false;
     recommendationResultError.textContent = error.message || "추천을 적용하지 못했습니다.";
   }
@@ -210,17 +330,64 @@ function formatPlanDate(value) {
   ).format(date);
 }
 
-function getLocalDateValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(
-    now.getMonth() + 1
-  ).padStart(2, "0");
-  const day = String(
-    now.getDate()
-  ).padStart(2, "0");
+function getKstDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
 
-  return `${year}-${month}-${day}`;
+function getLocalDateValue() {
+  return getKstDateString();
+}
+
+function parseDateValue(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return (
+    parsed.getFullYear() === year
+    && parsed.getMonth() === month - 1
+    && parsed.getDate() === day
+  ) ? parsed : null;
+}
+
+function addDays(value, days) {
+  const source = typeof value === "string" ? parseDateValue(value) : value;
+  const result = new Date(source.getFullYear(), source.getMonth(), source.getDate());
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function formatDateValue(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function startOfCalendarRange(planDate) {
+  const today = getKstDateString();
+  const todayEnd = formatDateValue(addDays(today, 6));
+  return planDate >= today && planDate <= todayEnd ? today : planDate;
+}
+
+function getPlanDateFromUrl() {
+  const value = new URL(window.location.href).searchParams.get("plan_date");
+  return parseDateValue(value) ? value : null;
+}
+
+function setPlanDateToUrl(planDate) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("plan_date", planDate);
+  window.history.replaceState(
+    { ...(window.history.state || {}), planDate },
+    "",
+    `${url.pathname}${url.search}`
+  );
 }
 
 function getErrorMessage(data, fallbackMessage) {
@@ -247,7 +414,134 @@ async function readJsonResponse(response) {
   }
 }
 
-async function requestPlan(userId, planDate = null) {
+function renderRoutineCalendar() {
+  const today = getKstDateString();
+  const weekdayFormatter = new Intl.DateTimeFormat("ko-KR", {
+    weekday: "short",
+  });
+  routineCalendarDays.replaceChildren();
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDays(calendarStartDate, offset);
+    const planDate = formatDateValue(date);
+    const counts = calendarPlanCounts.get(planDate) || {
+      total_count: 0,
+      completed_count: 0,
+    };
+    const active = planDate === activePlanDate;
+    const isToday = planDate === today;
+    const hasPlan = counts.total_count > 0;
+    const completed = hasPlan
+      && counts.completed_count === counts.total_count;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = [
+      "routine-calendar-day",
+      active ? "active" : "",
+      isToday ? "today" : "",
+      hasPlan ? "has-plan" : "",
+      completed ? "completed" : "",
+    ].filter(Boolean).join(" ");
+    button.dataset.planDate = planDate;
+    button.role = "tab";
+    button.setAttribute("aria-selected", String(active));
+    button.setAttribute(
+      "aria-label",
+      `${isToday ? "오늘, " : ""}${formatPlanDate(planDate)}, `
+      + (hasPlan
+        ? `${counts.completed_count}/${counts.total_count}개 완료`
+        : "운동 계획 없음")
+    );
+    button.innerHTML = `
+      <span class="routine-calendar-weekday">${
+        isToday ? "오늘" : weekdayFormatter.format(date)
+      }</span>
+      <strong class="routine-calendar-number">${date.getDate()}</strong>
+      ${hasPlan ? `<span class="routine-calendar-indicator">${
+        completed ? "✓" : `${counts.completed_count}/${counts.total_count}`
+      }</span>` : '<span class="routine-calendar-indicator" aria-hidden="true"></span>'}
+    `;
+    button.addEventListener("click", () => selectRoutineDate(planDate));
+    routineCalendarDays.appendChild(button);
+  }
+}
+
+async function loadCalendarPlanCounts() {
+  const userId = getLoginUserId();
+  if (!userId || !calendarStartDate) return;
+  calendarRequestController?.abort();
+  calendarRequestController = new AbortController();
+  const requestVersion = ++calendarRequestVersion;
+  const startDate = calendarStartDate;
+  const endDate = formatDateValue(addDays(startDate, 6));
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+  });
+  try {
+    const response = await fetch(
+      `/api/workouts/plans/calendar/${userId}?${params.toString()}`,
+      {
+        cache: "no-store",
+        signal: calendarRequestController.signal,
+      }
+    );
+    const data = await readJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(getErrorMessage(data, "날짜별 계획을 불러오지 못했습니다."));
+    }
+    if (requestVersion !== calendarRequestVersion) return;
+    calendarPlanCounts = new Map(
+      (data.days || []).map((item) => [item.plan_date, item])
+    );
+    renderRoutineCalendar();
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      console.error("날짜별 계획 개수 조회 실패:", error);
+    }
+  } finally {
+    if (requestVersion === calendarRequestVersion) {
+      calendarRequestController = null;
+    }
+  }
+}
+
+async function selectRoutineDate(planDate, { updateUrl = true } = {}) {
+  const userId = getLoginUserId();
+  if (!userId) {
+    window.location.href = "/login";
+    return;
+  }
+  if (!parseDateValue(planDate)) return;
+  activePlanDate = planDate;
+  const rangeEnd = formatDateValue(addDays(calendarStartDate, 6));
+  if (planDate < calendarStartDate || planDate > rangeEnd) {
+    calendarStartDate = startOfCalendarRange(planDate);
+    calendarPlanCounts = new Map();
+    loadCalendarPlanCounts();
+  }
+  if (updateUrl) setPlanDateToUrl(planDate);
+  renderRoutineCalendar();
+  try {
+    await loadPlan(userId, planDate);
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    console.error("날짜별 루틴 조회 실패:", error);
+    routineList.replaceChildren();
+    routineMessage.hidden = false;
+    routineMessage.textContent = error.message || "운동 계획을 불러오지 못했습니다.";
+  }
+}
+
+async function moveCalendarRange(days) {
+  calendarStartDate = formatDateValue(addDays(calendarStartDate, days));
+  calendarPlanCounts = new Map();
+  await Promise.all([
+    loadCalendarPlanCounts(),
+    selectRoutineDate(calendarStartDate),
+  ]);
+}
+
+async function requestPlan(userId, planDate = null, signal = undefined) {
   const params = new URLSearchParams();
 
   if (planDate) {
@@ -259,7 +553,8 @@ async function requestPlan(userId, planDate = null) {
   const response = await fetch(
     `/api/workouts/plans/today/${userId}${
       query ? `?${query}` : ""
-    }`
+    }`,
+    { cache: "no-store", signal }
   );
 
   const data = await readJsonResponse(response);
@@ -277,10 +572,17 @@ async function requestPlan(userId, planDate = null) {
 }
 
 async function loadPlan(userId, planDate = null) {
-  const data = await requestPlan(userId, planDate);
-
+  planRequestController?.abort();
+  planRequestController = new AbortController();
+  const requestVersion = ++planRequestVersion;
+  const data = await requestPlan(
+    userId, planDate, planRequestController.signal
+  );
+  if (requestVersion !== planRequestVersion) return null;
   activePlanDate = data.plan_date;
   renderPlan(data);
+  renderRoutineCalendar();
+  return data;
 }
 
 async function requestActiveExercises(userId) {
@@ -310,7 +612,10 @@ function updateSaveButtonState() {
     isSavingPlan
     || (
       formMode === "create"
-      && exerciseListState !== "ready"
+      && (
+        exerciseListState !== "ready"
+        || !selectedExerciseValue
+      )
     );
 }
 
@@ -321,8 +626,9 @@ function setExerciseLoadState(state, message) {
     "error",
     state === "error"
   );
-  routineExerciseSelect.disabled =
-    state !== "ready";
+  exerciseSearchInput.disabled = state !== "ready";
+  exerciseAiFilter.disabled = state !== "ready";
+  exerciseDirectInput.disabled = state !== "ready";
   exerciseRetryButton.hidden =
     state !== "error";
 
@@ -331,6 +637,9 @@ function setExerciseLoadState(state, message) {
 
 function renderExerciseOptions(exercises) {
   routineExerciseSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  routineExerciseSelect.appendChild(placeholder);
 
   exercises.forEach((exercise) => {
     const option = document.createElement("option");
@@ -349,7 +658,123 @@ function renderExerciseOptions(exercises) {
   customOption.value = "custom:new";
   customOption.textContent = "직접 입력";
   routineExerciseSelect.appendChild(customOption);
+  routineExerciseSelect.value = selectedExerciseValue;
   syncCustomExerciseField();
+}
+
+function exerciseValue(exercise) {
+  return exercise.exercise_type === "custom"
+    ? `custom:${exercise.user_exercise_id}`
+    : `default:${exercise.exercise_id}`;
+}
+
+function exerciseCategory(exercise) {
+  return String(exercise.category || "").trim() || "__uncategorized__";
+}
+
+function categoryDisplayName(category) {
+  return category === "__uncategorized__" ? "기타" : category;
+}
+
+function normalizedExerciseSearch(value) {
+  return String(value || "").trim().toLocaleLowerCase("ko-KR");
+}
+
+function filterExercises() {
+  const search = normalizedExerciseSearch(exerciseSearchInput.value);
+  return availableExercises.filter((exercise) => {
+    const name = normalizedExerciseSearch(exercise.exercise_name);
+    const code = normalizedExerciseSearch(exercise.exercise_code);
+    const categoryMatches = selectedExerciseCategory === "all"
+      || exerciseCategory(exercise) === selectedExerciseCategory;
+    const aiMatches = !aiCoachingOnly
+      || exercise.ai_coaching_supported === true;
+    return (!search || name.includes(search) || code.includes(search))
+      && categoryMatches
+      && aiMatches;
+  });
+}
+
+function selectExercise(value) {
+  selectedExerciseValue = value;
+  routineExerciseSelect.value = value;
+  exerciseDirectInput.classList.toggle("selected", value === "custom:new");
+  exerciseDirectInput.setAttribute(
+    "aria-pressed", String(value === "custom:new")
+  );
+  syncCustomExerciseField();
+  renderExerciseOptionsList();
+  updateSaveButtonState();
+}
+
+function renderExerciseOptionsList() {
+  const exercises = filterExercises();
+  exerciseOptionList.replaceChildren();
+  exercises.forEach((exercise) => {
+    const value = exerciseValue(exercise);
+    const button = document.createElement("button");
+    const selected = value === selectedExerciseValue;
+    button.type = "button";
+    button.className = `exercise-option-card${selected ? " selected" : ""}`;
+    button.dataset.exerciseValue = value;
+    button.setAttribute("role", "radio");
+    button.setAttribute("aria-checked", String(selected));
+    button.innerHTML = `
+      <span class="exercise-option-copy">
+        <strong>${escapeHtml(exercise.exercise_name)}</strong>
+        <small>${escapeHtml(categoryDisplayName(exerciseCategory(exercise)))}</small>
+      </span>
+      ${exercise.exercise_type === "custom"
+        ? '<span class="exercise-kind-badge custom">내 운동</span>'
+        : exercise.ai_coaching_supported
+          ? '<span class="exercise-kind-badge ai">AI 코칭</span>'
+          : '<span class="exercise-kind-badge general">일반 기록</span>'}
+    `;
+    button.addEventListener("click", () => selectExercise(value));
+    exerciseOptionList.appendChild(button);
+  });
+  const noCatalogExercises = availableExercises.length === 0;
+  exerciseEmptyState.querySelector("strong").textContent = noCatalogExercises
+    ? "선택 가능한 운동이 없습니다."
+    : "검색 결과가 없습니다.";
+  exerciseEmptyState.querySelector("p").textContent = noCatalogExercises
+    ? "직접 입력 운동을 추가하거나 다시 시도해주세요."
+    : "다른 운동 이름이나 부위를 선택해보세요.";
+  exerciseEmptyState.hidden = exercises.length > 0;
+}
+
+function renderExerciseFilters() {
+  const categories = [...new Set(
+    availableExercises.map(exerciseCategory)
+  )].sort((left, right) => categoryDisplayName(left).localeCompare(
+    categoryDisplayName(right), "ko"
+  ));
+  const filters = ["all", ...categories];
+  exerciseCategoryFilters.replaceChildren();
+  filters.forEach((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = category === "all"
+      ? "전체"
+      : categoryDisplayName(category);
+    button.className = category === selectedExerciseCategory ? "active" : "";
+    button.setAttribute(
+      "aria-pressed",
+      String(category === selectedExerciseCategory)
+    );
+    button.addEventListener("click", () => {
+      selectedExerciseCategory = category;
+      renderExerciseFilters();
+      renderExerciseOptionsList();
+    });
+    exerciseCategoryFilters.appendChild(button);
+  });
+}
+
+function renderExercisePicker() {
+  renderExerciseOptions(availableExercises);
+  renderExerciseFilters();
+  renderExerciseOptionsList();
 }
 
 function syncCustomExerciseField() {
@@ -373,36 +798,28 @@ async function loadActiveExercises() {
     "운동 목록을 불러오는 중입니다."
   );
 
-  routineExerciseSelect.innerHTML = `
-    <option value="">
-      운동 목록을 불러오는 중입니다.
-    </option>
-  `;
+  exerciseOptionList.replaceChildren();
+  exerciseEmptyState.hidden = true;
 
   try {
-    const exercises = await requestActiveExercises(userId);
-
-    renderExerciseOptions(exercises);
+    availableExercises = await requestActiveExercises(userId);
+    renderExercisePicker();
 
     setExerciseLoadState(
       "ready",
-      exercises.length
-        ? `${exercises.length}개의 운동을 선택할 수 있습니다.`
+      availableExercises.length
+        ? `${availableExercises.length}개의 운동을 선택할 수 있습니다.`
         : "등록된 운동이 없습니다. 직접 입력해 주세요."
     );
   } catch (error) {
     console.error("운동 목록 조회 실패:", error);
 
-    routineExerciseSelect.innerHTML = `
-      <option value="">
-        운동 목록 조회 실패
-      </option>
-    `;
+    availableExercises = [];
+    renderExercisePicker();
 
     setExerciseLoadState(
       "error",
-      error.message
-      || "운동 목록을 불러오지 못했습니다."
+      "운동 목록을 불러오지 못했습니다. 다시 시도해주세요."
     );
   }
 }
@@ -569,8 +986,18 @@ function resetRoutineForm() {
   customExerciseNameField.hidden = true;
   customExerciseName.required = false;
   customExerciseName.value = "";
-  routineExerciseSelect.disabled =
-    exerciseListState !== "ready";
+  selectedExerciseValue = "";
+  selectedExerciseCategory = "all";
+  aiCoachingOnly = false;
+  exerciseSearchInput.value = "";
+  exerciseAiFilter.setAttribute("aria-pressed", "false");
+  exerciseAiFilter.classList.remove("active");
+  exerciseDirectInput.classList.remove("selected");
+  exerciseDirectInput.setAttribute("aria-pressed", "false");
+  routineExerciseSelect.disabled = false;
+  if (exerciseListState === "ready") {
+    renderExercisePicker();
+  }
   routinePlanDate.disabled = false;
   renderSetRows([{ repetition_count: 10 }]);
 
@@ -867,11 +1294,15 @@ async function submitCompletion(event) {
       completed_sets: completedSets,
       repetition_count: repetitionCount,
     });
+    invalidateDashboard();
     completionSheetOverlay.hidden = true;
     document.body.classList.remove("routine-sheet-open");
     completingItem = null;
     try {
-      await loadPlan(userId, activePlanDate);
+      await Promise.all([
+        loadPlan(userId, activePlanDate),
+        loadCalendarPlanCounts(),
+      ]);
     } catch (refreshError) {
       console.error("완료 후 루틴 목록 갱신 실패:", refreshError);
       alert("운동 기록은 저장됐지만 목록을 새로고침하지 못했습니다.");
@@ -1074,7 +1505,11 @@ function renderPlan(data) {
         actionButton.textContent = "취소 중";
         try {
           await uncompletePlan(item.workout_plan_id);
-          await loadPlan(getLoginUserId(), activePlanDate);
+          invalidateDashboard();
+          await Promise.all([
+            loadPlan(getLoginUserId(), activePlanDate),
+            loadCalendarPlanCounts(),
+          ]);
         } catch (error) {
           console.error("운동 완료 취소 실패:", error);
           alert(error.message || "운동 완료를 취소하지 못했습니다.");
@@ -1118,7 +1553,11 @@ function renderPlan(data) {
 
       try {
         await deletePlan(userId, item.workout_plan_id);
-        await loadPlan(userId, activePlanDate);
+        invalidateDashboard();
+        await Promise.all([
+          loadPlan(userId, activePlanDate),
+          loadCalendarPlanCounts(),
+        ]);
       } catch (error) {
         console.error("운동 계획 삭제 실패:", error);
         alert(
@@ -1136,6 +1575,12 @@ function renderPlan(data) {
 }
 
 routineAddButton.addEventListener("click", openCreateRoutineSheet);
+routineCalendarPrev.addEventListener(
+  "click", () => moveCalendarRange(-7)
+);
+routineCalendarNext.addEventListener(
+  "click", () => moveCalendarRange(7)
+);
 routineSheetCloseButton.addEventListener("click", closeRoutineSheet);
 routineCancelButton.addEventListener("click", closeRoutineSheet);
 exerciseRetryButton.addEventListener("click", loadActiveExercises);
@@ -1143,15 +1588,26 @@ routineAddSetButton.addEventListener(
   "click",
   () => createSetRow({}, true)
 );
-routineExerciseSelect.addEventListener("change", () => {
-  syncCustomExerciseField();
+exerciseSearchInput.addEventListener("input", () => {
+  renderExerciseOptionsList();
 });
+exerciseAiFilter.addEventListener("click", () => {
+  aiCoachingOnly = !aiCoachingOnly;
+  exerciseAiFilter.classList.toggle("active", aiCoachingOnly);
+  exerciseAiFilter.setAttribute("aria-pressed", String(aiCoachingOnly));
+  renderExerciseOptionsList();
+});
+exerciseDirectInput.addEventListener(
+  "click",
+  () => selectExercise("custom:new")
+);
 recommendationButton.addEventListener("click", () => requestRecommendation(false));
 recommendationRegenerate.addEventListener("click", () => requestRecommendation(true));
 recommendationApply.addEventListener("click", applyRecommendation);
-recommendationResultClose.addEventListener("click", () => {
-  recommendationResult.hidden = true;
-});
+recommendationResultClose.addEventListener(
+  "click",
+  () => resetRecommendationState()
+);
 completionSheetClose.addEventListener("click", closeCompletionSheet);
 completionCancel.addEventListener("click", closeCompletionSheet);
 completionForm.addEventListener("submit", submitCompletion);
@@ -1303,11 +1759,18 @@ routineForm.addEventListener("submit", async (event) => {
       activePlanDate = createPayload.plan_date;
     }
 
+    invalidateDashboard();
+
     isSavingPlan = false;
     updateSaveButtonState();
     closeRoutineSheet();
 
-    await loadPlan(userId, activePlanDate);
+    calendarStartDate = startOfCalendarRange(activePlanDate);
+    setPlanDateToUrl(activePlanDate);
+    await Promise.all([
+      loadPlan(userId, activePlanDate),
+      loadCalendarPlanCounts(),
+    ]);
   } catch (error) {
     console.error(
       formMode === "edit"
@@ -1341,15 +1804,30 @@ async function initializeRoutine() {
     return;
   }
 
+  const initialDate = getPlanDateFromUrl() || getKstDateString();
+  activePlanDate = initialDate;
+  calendarStartDate = startOfCalendarRange(initialDate);
+  setPlanDateToUrl(initialDate);
+  renderRoutineCalendar();
+
   try {
-    await loadPlan(userId);
+    await Promise.all([
+      loadCalendarPlanCounts(),
+      loadPlan(userId, initialDate),
+    ]);
   } catch (error) {
-    console.error("오늘의 루틴 조회 실패:", error);
+    if (error.name === "AbortError") return;
+    console.error("루틴 초기화 실패:", error);
     routineMessage.hidden = false;
     routineMessage.textContent =
       error.message
-      || "오늘의 운동 계획을 불러오지 못했습니다.";
+      || "운동 계획을 불러오지 못했습니다.";
   }
 }
+
+window.addEventListener("popstate", () => {
+  const planDate = getPlanDateFromUrl() || getKstDateString();
+  selectRoutineDate(planDate, { updateUrl: false });
+});
 
 initializeRoutine();

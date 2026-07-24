@@ -248,6 +248,100 @@ button {
   letter-spacing: -0.8px;
 }
 
+.routine-calendar {
+  margin-top: 14px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: 5px;
+  align-items: stretch;
+  background: #141414;
+  border: 1px solid var(--routine-border);
+  border-radius: 16px;
+}
+
+.routine-calendar-arrow {
+  min-width: 32px;
+  min-height: 48px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+  background: #202020;
+  border: 0;
+  border-radius: 10px;
+  font-size: 23px;
+}
+
+.routine-calendar-arrow:focus-visible,
+.routine-calendar-day:focus-visible {
+  outline: 2px solid var(--gymfit-green);
+  outline-offset: 2px;
+}
+
+.routine-calendar-days {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.routine-calendar-day {
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 1px;
+  display: grid;
+  grid-template-rows: 13px 18px 11px;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.routine-calendar-day.active {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.routine-calendar-day.today:not(.active) {
+  color: var(--gymfit-green);
+  border-color: rgba(168, 255, 53, 0.28);
+}
+
+.routine-calendar-weekday {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routine-calendar-number {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.routine-calendar-indicator {
+  min-width: 12px;
+  min-height: 10px;
+  padding: 0 2px;
+  color: var(--gymfit-green);
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 10px;
+}
+
+.routine-calendar-day.active .routine-calendar-indicator {
+  color: #050505;
+}
+
+.routine-calendar-day.completed:not(.active) .routine-calendar-indicator {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-radius: 999px;
+}
+
 #routineProgress {
   color: var(--routine-muted);
   font-size: 12px;
@@ -626,6 +720,196 @@ button {
 .routine-field input[readonly],
 .routine-field select:disabled {
   opacity: 0.6;
+}
+
+.exercise-selection-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.routine-field .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.exercise-search {
+  display: block;
+}
+
+.exercise-search input {
+  height: 46px;
+  padding-left: 15px;
+}
+
+.exercise-filter-chips {
+  display: flex;
+  gap: 8px;
+  padding: 2px 1px 4px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.exercise-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.exercise-filter-chips button,
+.exercise-ai-filter {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.7);
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exercise-filter-chips button.active,
+.exercise-ai-filter.active {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-color: var(--gymfit-green);
+}
+
+.exercise-ai-filter {
+  align-self: flex-start;
+}
+
+.exercise-option-list {
+  max-height: 262px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.exercise-option-card {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  text-align: left;
+}
+
+.exercise-option-card.selected {
+  background: rgba(168, 255, 53, 0.08);
+  border-color: var(--gymfit-green);
+  box-shadow: inset 0 0 0 1px rgba(168, 255, 53, 0.12);
+}
+
+.exercise-option-card:focus-visible {
+  outline: 2px solid var(--gymfit-green);
+  outline-offset: 2px;
+}
+
+.exercise-option-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.exercise-option-copy strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-option-copy small {
+  color: var(--routine-muted);
+  font-size: 11px;
+}
+
+.exercise-kind-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.exercise-kind-badge.ai {
+  color: #050505;
+  background: var(--gymfit-green);
+}
+
+.exercise-kind-badge.custom {
+  color: #d8b5ff;
+  background: rgba(183, 126, 255, 0.12);
+}
+
+.exercise-kind-badge.general {
+  color: rgba(255, 255, 255, 0.58);
+  background: #242424;
+}
+
+.exercise-empty-state {
+  padding: 22px 14px;
+  color: var(--routine-muted);
+  background: #171717;
+  border-radius: 13px;
+  text-align: center;
+}
+
+.exercise-empty-state[hidden] {
+  display: none;
+}
+
+.exercise-empty-state strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.exercise-empty-state p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.exercise-direct-input {
+  min-height: 44px;
+  color: var(--gymfit-green);
+  background: rgba(168, 255, 53, 0.06);
+  border: 1px dashed rgba(168, 255, 53, 0.3);
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.exercise-direct-input.selected {
+  color: #050505;
+  background: var(--gymfit-green);
+  border-style: solid;
+  border-color: var(--gymfit-green);
+}
+
+.exercise-direct-input:disabled,
+.exercise-ai-filter:disabled {
+  opacity: 0.45;
 }
 
 .exercise-load-state {

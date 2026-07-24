@@ -18,13 +18,13 @@
   <link rel="stylesheet" href="/static/css/common.css">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=3">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/routine.css?v=5">
+  <link rel="stylesheet" href="/static/css/routine.css?v=7">
 
   <script src="/static/js/api_client.js?v=3" defer></script>
   <script src="/static/js/common_layout.js?v=19" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
   <script src="/static/js/coaching_plan.js?v=1" defer></script>
-  <script src="/static/js/routine.js?v=8" defer></script>
+  <script src="/static/js/routine.js?v=11" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png?v=1">
@@ -62,7 +62,7 @@
         <p class="recommendation-result-error" id="recommendationResultError" hidden></p>
         <div class="recommendation-actions">
           <button type="button" class="recommendation-secondary" id="recommendationRegenerate">다시 추천받기</button>
-          <button type="button" class="recommendation-primary" id="recommendationApply">내 루틴에 적용</button>
+          <button type="button" class="recommendation-primary" id="recommendationApply" disabled aria-busy="false">내 루틴에 적용</button>
         </div>
       </section>
 
@@ -83,6 +83,29 @@
             루틴 추가
           </button>
         </div>
+      </section>
+
+      <section class="routine-calendar" aria-label="7일 운동 계획">
+        <button
+          type="button"
+          id="routineCalendarPrev"
+          class="routine-calendar-arrow"
+          aria-label="이전 7일"
+        >‹</button>
+
+        <div
+          id="routineCalendarDays"
+          class="routine-calendar-days"
+          role="tablist"
+          aria-label="운동 계획 날짜 선택"
+        ></div>
+
+        <button
+          type="button"
+          id="routineCalendarNext"
+          class="routine-calendar-arrow"
+          aria-label="다음 7일"
+        >›</button>
       </section>
 
       <section class="routine-summary">
@@ -202,24 +225,72 @@
         </div>
 
         <form id="routineForm">
-          <label
+          <section
             class="routine-field"
             id="routineExerciseSelectField"
+            aria-labelledby="exercisePickerLabel"
           >
-            <span>운동 선택</span>
+            <span id="exercisePickerLabel">운동 선택</span>
 
             <select
               name="exercise_selection"
               id="routineExerciseSelect"
-              data-gymfit-select
-              required
-              disabled
+              class="exercise-selection-native"
+              aria-hidden="true"
+              tabindex="-1"
             >
-              <option value="">
-                운동 목록을 불러오는 중입니다.
-              </option>
+              <option value=""></option>
             </select>
-          </label>
+
+            <label class="exercise-search">
+              <span class="sr-only">운동명 검색</span>
+              <input
+                type="search"
+                id="exerciseSearchInput"
+                autocomplete="off"
+                placeholder="운동 이름을 검색하세요"
+              >
+            </label>
+
+            <div
+              class="exercise-filter-chips"
+              id="exerciseCategoryFilters"
+              aria-label="운동 부위 필터"
+            ></div>
+
+            <button
+              type="button"
+              class="exercise-ai-filter"
+              id="exerciseAiFilter"
+              aria-pressed="false"
+            >
+              AI 코칭 가능
+            </button>
+
+            <div
+              class="exercise-option-list"
+              id="exerciseOptionList"
+              role="radiogroup"
+              aria-label="운동 목록"
+            ></div>
+
+            <div
+              class="exercise-empty-state"
+              id="exerciseEmptyState"
+              hidden
+            >
+              <strong>검색 결과가 없습니다.</strong>
+              <p>다른 운동 이름이나 부위를 선택해보세요.</p>
+            </div>
+
+            <button
+              type="button"
+              class="exercise-direct-input"
+              id="exerciseDirectInput"
+            >
+              + 직접 입력 운동 추가
+            </button>
+          </section>
 
           <div
             class="exercise-load-state"

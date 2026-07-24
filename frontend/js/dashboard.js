@@ -177,38 +177,6 @@ function getLoginUserId() {
 
 
 /* =========================
-   대시보드 API 요청
-========================= */
-
-async function requestDashboardData() {
-  const userId = getLoginUserId();
-
-  if (!userId) {
-    throw new Error(
-      "로그인 정보가 없습니다."
-    );
-  }
-
-  const response = await fetch(
-    `/api/dashboard/${userId}`
-  );
-
-  const data =
-    await readJsonResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(
-        data,
-        "대시보드 정보를 불러오지 못했습니다."
-      )
-    );
-  }
-
-  return data;
-}
-
-/* =========================
    사용자 및 요약
 ========================= */
 
@@ -820,23 +788,128 @@ window.addEventListener(
    초기 실행
 ========================= */
 
-window.addEventListener(
-  "commonLayoutReady",
-  async () => {
-    try {
-      const data =
-        await requestDashboardData();
+let dashboardRequestController = null;
+let dashboardRequestVersion = 0;
+let dashboardInitialized = false;
 
-      renderDashboard(data);
+async function requestDashboardData(signal) {
+  const userId = getLoginUserId();
 
-    } catch (error) {
-      console.error(
-        "대시보드 로딩 실패:",
-        error
-      );
+  if (!userId) {
+    throw new Error("로그인 정보가 없습니다.");
+  }
+
+  const response = await fetch(
+    `/api/dashboard/${userId}`,
+    {
+      cache: "no-store",
+      signal,
+    }
+  );
+
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(
+        data,
+        "대시보드 정보를 불러오지 못했습니다."
+      )
+    );
+  }
+
+  return data;
+}
+
+async function loadDashboard({ force = false } = {}) {
+  const requestVersion = ++dashboardRequestVersion;
+
+  dashboardRequestController?.abort();
+  dashboardRequestController = new AbortController();
+
+  try {
+    const data = await requestDashboardData(
+      dashboardRequestController.signal
+    );
+
+    if (requestVersion !== dashboardRequestVersion) {
+      return;
+    }
+
+    renderDashboard(data);
+
+    sessionStorage.removeItem(
+      "gymfitDashboardInvalidatedAt"
+    );
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+
+    console.error("대시보드 로딩 실패:", error);
+  } finally {
+    if (requestVersion === dashboardRequestVersion) {
+      dashboardRequestController = null;
     }
   }
+}
+
+function initializeDashboard() {
+  if (dashboardInitialized) {
+    return;
+  }
+
+  dashboardInitialized = true;
+  loadDashboard({ force: true });
+}
+
+/*
+  commonLayoutReady 이벤트가 늦게 오면 여기서 실행.
+*/
+window.addEventListener(
+  "commonLayoutReady",
+  initializeDashboard
 );
+
+/*
+  commonLayoutReady 이벤트가 dashboard.js 실행 전에 이미 발생했어도
+  대시보드 자체 초기화는 반드시 실행.
+*/
+if (document.readyState === "loading") {
+  document.addEventListener(
+    "DOMContentLoaded",
+    initializeDashboard,
+    { once: true }
+  );
+} else {
+  initializeDashboard();
+}
+
+/*
+  뒤로가기로 캐시된 화면이 복원되거나
+  루틴 변경 신호가 있으면 최신 데이터 재조회.
+*/
+window.addEventListener("pageshow", (event) => {
+  const invalidated =
+    sessionStorage.getItem(
+      "gymfitDashboardInvalidatedAt"
+    );
+
+  if (event.persisted || invalidated) {
+    loadDashboard({ force: true });
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (
+    document.visibilityState === "visible"
+    && sessionStorage.getItem(
+      "gymfitDashboardInvalidatedAt"
+    )
+  ) {
+    loadDashboard({ force: true });
+  }
+});
 
 
 coachingButton.addEventListener(
