@@ -580,9 +580,50 @@ body.side-menu-open {
 
 .side-menu-logout {
   margin-top: 12px;
-  color: rgba(255, 255, 255, 0.76);
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 8px;
+  color: #ff8585;
+  background: transparent;
+  border: 0;
   border-top: 1px solid var(--layout-border);
-  border-radius: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.side-menu-logout:hover,
+.side-menu-logout:focus-visible {
+  color: #ff9d9d;
+  background: rgba(255, 96, 96, 0.08);
+}
+
+.side-menu-logout:focus-visible {
+  outline: 2px solid rgba(255, 133, 133, 0.45);
+  outline-offset: 2px;
+}
+
+.side-menu-logout-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: currentColor;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
 }
 
 body.side-menu-open {

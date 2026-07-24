@@ -412,8 +412,21 @@ function renderSideMenu() {
     logoutButton.dataset.gymfitLogout = "true";
     logoutButton.id = "sideMenuLogoutButton";
     const label = document.createElement("span");
+    label.className = "side-menu-item__label";
     label.textContent = "로그아웃";
-    logoutButton.appendChild(label);
+    const icon = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg"
+    );
+    icon.classList.add("side-menu-logout-icon");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = [
+      '<path d="M10 17l5-5-5-5"></path>',
+      '<path d="M15 12H3"></path>',
+      '<path d="M13 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"></path>',
+    ].join("");
+    logoutButton.append(label, icon);
     menuList.appendChild(logoutButton);
   };
 
