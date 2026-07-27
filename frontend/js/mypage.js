@@ -445,7 +445,10 @@ async function submitProfile(event) {
   try {
     currentUser = await requestJson(`/api/users/${currentUser.user_id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": String(currentUser.user_id),
+      },
       body: JSON.stringify(payload),
     });
     updateSessionUser(currentUser);

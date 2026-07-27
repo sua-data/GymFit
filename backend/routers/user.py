@@ -1,3 +1,5 @@
+import traceback
+
 from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -41,9 +43,15 @@ EXERCISE_LEVELS = {"BEGINNER", "INTERMEDIATE", "ADVANCED"}
 
 
 class UserProfileUpdate(BaseModel):
-    name: str | None = None
-    goal: str | None = None
-    level: str | None = None
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+    )
+
+    exercise_level: str | None = None
+    goals: list[str] | None = None
+
     weekly_workout_days: int | None = Field(
         default=None,
         ge=1,
@@ -61,6 +69,67 @@ class UserProfileUpdate(BaseModel):
         ge=Decimal("30"),
         le=Decimal("300"),
     )
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+
+        if not cleaned:
+            raise ValueError("이름을 입력해 주세요.")
+
+        return cleaned
+
+    @field_validator("exercise_level")
+    @classmethod
+    def validate_exercise_level(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        normalized = value.strip().upper()
+
+        if normalized not in EXERCISE_LEVELS:
+            raise ValueError("지원하지 않는 운동 수준입니다.")
+
+        return normalized
+
+    @field_validator("goals")
+    @classmethod
+    def validate_goals(
+        cls,
+        value: list[str] | None,
+    ) -> list[str] | None:
+        if value is None:
+            return None
+
+        normalized = []
+
+        for item in value:
+            code = str(item).strip().upper()
+
+            if code not in GOAL_NAMES:
+                raise ValueError(
+                    f"지원하지 않는 운동 목표입니다: {code}"
+                )
+
+            if code not in normalized:
+                normalized.append(code)
+
+        if not normalized:
+            raise ValueError(
+                "운동 목표를 하나 이상 선택해 주세요."
+            )
+
+        return normalized
 
     @field_validator(
         "height_cm",
@@ -339,7 +408,9 @@ def update_user_profile(
     user = get_active_user(db, user_id)
 
     try:
-        user.name = payload.name
+        if "name" in payload.model_fields_set:
+            user.name = payload.name
+
         member_fields = {
             "exercise_level",
             "weekly_workout_days",
@@ -347,59 +418,116 @@ def update_user_profile(
             "height_cm",
             "weight_kg",
         }
+
+        requested_member_fields = (
+            member_fields.intersection(
+                payload.model_fields_set
+            )
+        )
+
         if (
             user.account_type != "MEMBER"
-            and member_fields.intersection(payload.model_fields_set)
+            and requested_member_fields
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="회원 운동 프로필은 일반 회원만 수정할 수 있습니다.",
+                detail=(
+                    "회원 운동 프로필은 "
+                    "일반 회원만 수정할 수 있습니다."
+                ),
             )
 
-        if user.member_profile is None and (
-            payload.exercise_level is not None
-            or payload.weekly_workout_days is not None
-            or payload.height_cm is not None
-            or payload.weight_kg is not None
-        ):
-            user.member_profile = MemberProfile(user_id=user.user_id)
-        if payload.exercise_level is not None:
-            user.member_profile.exercise_level = payload.exercise_level
-        if payload.weekly_workout_days is not None:
-            user.member_profile.weekly_workout_days = payload.weekly_workout_days
-        if "height_cm" in payload.model_fields_set:
-            if user.member_profile is None:
-                user.member_profile = MemberProfile(user_id=user.user_id)
-            user.member_profile.height_cm = payload.height_cm
-        if "weight_kg" in payload.model_fields_set:
-            if user.member_profile is None:
-                user.member_profile = MemberProfile(user_id=user.user_id)
-            user.member_profile.weight_kg = payload.weight_kg
-        if payload.goals is not None:
-            db.execute(
-                delete(MemberGoal).where(MemberGoal.user_id == user.user_id)
+        profile_fields = {
+            "exercise_level",
+            "weekly_workout_days",
+            "height_cm",
+            "weight_kg",
+        }
+
+        needs_member_profile = bool(
+            profile_fields.intersection(
+                payload.model_fields_set
             )
-            db.add_all([
+        )
+
+        if (
+            user.member_profile is None
+            and needs_member_profile
+        ):
+            user.member_profile = MemberProfile(
+                user_id=user.user_id
+            )
+
+        if "exercise_level" in payload.model_fields_set:
+            user.member_profile.exercise_level = (
+                payload.exercise_level
+            )
+
+        if (
+            "weekly_workout_days"
+            in payload.model_fields_set
+        ):
+            user.member_profile.weekly_workout_days = (
+                payload.weekly_workout_days
+            )
+
+        if "height_cm" in payload.model_fields_set:
+            user.member_profile.height_cm = (
+                payload.height_cm
+            )
+
+        if "weight_kg" in payload.model_fields_set:
+            user.member_profile.weight_kg = (
+                payload.weight_kg
+            )
+
+        if "goals" in payload.model_fields_set:
+            db.execute(
+                delete(MemberGoal).where(
+                    MemberGoal.user_id
+                    == user.user_id
+                )
+            )
+
+            new_goals = [
                 MemberGoal(
                     user_id=user.user_id,
                     goal_code=code,
                     goal_name=GOAL_NAMES[code],
                 )
                 for code in payload.goals
-            ])
+            ]
+
+            db.add_all(new_goals)
 
         db.commit()
-        db.expire(user)
-        return serialize_user(get_active_user(db, user_id), db)
+
+        return serialize_user(
+            get_active_user(db, user_id),
+            db,
+        )
+
     except HTTPException:
         db.rollback()
         raise
-    except Exception:
+
+    except Exception as error:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="프로필을 저장하지 못했습니다.",
+        print(
+            "프로필 수정 오류:",
+            repr(error),
         )
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
+            detail=(
+                "프로필을 저장하지 못했습니다: "
+                f"{error}"
+            ),
+        ) from error
 
 
 class UserGymUpdate(BaseModel):
