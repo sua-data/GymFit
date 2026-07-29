@@ -7,9 +7,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
-from backend.models import PtSchedule, TrainerMember, User, WorkoutRecord, WorkoutRecordDetailItem
+from backend.models import PtSchedule, User, WorkoutRecord, WorkoutRecordDetailItem
 from backend.pt_schedule_schemas import PtScheduleCompleteRequest, PtScheduleCreate, PtScheduleItem, PtScheduleList, PtScheduleUpdate
 from backend.routers.pt import get_current_user, require_role
+from backend.security import require_active_member_relation, require_employed_trainer
 from backend.services.notification_service import create_notification
 from backend.routers.workout_session import validate_item_reference
 
@@ -50,20 +51,6 @@ def serialize(item: PtSchedule) -> PtScheduleItem:
     )
 
 
-def active_relationship(db: Session, trainer_id: int, member_id: int, *, lock: bool = False) -> TrainerMember:
-    statement = select(TrainerMember).where(
-        TrainerMember.trainer_id == trainer_id,
-        TrainerMember.member_id == member_id,
-        TrainerMember.status == "ACTIVE",
-    )
-    if lock:
-        statement = statement.with_for_update()
-    relationship = db.scalar(statement)
-    if relationship is None:
-        raise HTTPException(status_code=403, detail="활성 PT 연결 관계가 필요합니다.")
-    return relationship
-
-
 def validate_range(start_at: datetime, end_at: datetime) -> None:
     if start_at >= end_at:
         raise HTTPException(status_code=400, detail="종료 시간은 시작 시간보다 늦어야 합니다.")
@@ -86,7 +73,11 @@ def validate_overlap(
 
 
 def owned_schedule(db: Session, schedule_id: int, user: User, *, lock: bool = False) -> PtSchedule:
-    owner = PtSchedule.trainer_id if user.account_type == "TRAINER" else PtSchedule.member_id
+    if user.account_type == "MEMBER":
+        owner = PtSchedule.member_id
+    else:
+        require_employed_trainer(user)
+        owner = PtSchedule.trainer_id
     statement = schedule_query().where(PtSchedule.schedule_id == schedule_id, owner == user.user_id)
     if lock:
         statement = statement.with_for_update()
@@ -102,11 +93,13 @@ def format_time(value: datetime) -> str:
 
 @router.post("", response_model=PtScheduleItem, status_code=status.HTTP_201_CREATED)
 def create_schedule(payload: PtScheduleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         start_at, end_at = normalize_datetime(payload.start_at), normalize_datetime(payload.end_at)
         validate_range(start_at, end_at)
-        relationship = active_relationship(db, current_user.user_id, payload.member_id, lock=True)
+        relationship = require_active_member_relation(
+            db, trainer=current_user, member_id=payload.member_id, lock=True
+        )
         validate_overlap(db, current_user.user_id, payload.member_id, start_at, end_at)
         item = PtSchedule(
             trainer_member_id=relationship.trainer_member_id,
@@ -156,7 +149,7 @@ def list_for_owner(db: Session, owner, owner_id: int, schedule_status: str | Non
 
 @router.get("/trainer", response_model=PtScheduleList)
 def trainer_schedules(member_id: int | None = Query(None, gt=0), schedule_status: str | None = Query(None, alias="status"), date_from: datetime | None = None, date_to: datetime | None = None, limit: int = Query(200, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     return list_for_owner(db, PtSchedule.trainer_id, current_user.user_id, schedule_status, member_id, date_from, date_to, limit, offset)
 
 
@@ -173,10 +166,12 @@ def schedule_detail(schedule_id: int, current_user: User = Depends(get_current_u
 
 @router.patch("/{schedule_id}", response_model=PtScheduleItem)
 def update_schedule(schedule_id: int, payload: PtScheduleUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        active_relationship(db, item.trainer_id, item.member_id, lock=True)
+        require_active_member_relation(
+            db, trainer=current_user, member_id=item.member_id, lock=True
+        )
         if item.status != "SCHEDULED":
             raise HTTPException(status_code=409, detail="예정 상태의 PT 일정만 수정할 수 있습니다.")
         changes = payload.model_dump(exclude_unset=True)
@@ -215,10 +210,12 @@ def update_schedule(schedule_id: int, payload: PtScheduleUpdate, current_user: U
 
 @router.patch("/{schedule_id}/cancel", response_model=PtScheduleItem)
 def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        active_relationship(db, item.trainer_id, item.member_id, lock=True)
+        require_active_member_relation(
+            db, trainer=current_user, member_id=item.member_id, lock=True
+        )
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="이미 취소된 PT 일정입니다.")
         if item.status != "SCHEDULED":
@@ -246,10 +243,12 @@ def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_u
 
 @router.patch("/{schedule_id}/complete", response_model=PtScheduleItem)
 def complete_schedule(schedule_id: int, payload: PtScheduleCompleteRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        active_relationship(db, item.trainer_id, item.member_id, lock=True)
+        require_active_member_relation(
+            db, trainer=current_user, member_id=item.member_id, lock=True
+        )
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="취소된 PT 일정은 완료 처리할 수 없습니다.")
         if item.status == "COMPLETED":

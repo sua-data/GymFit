@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import TrainerCertification, TrainerProfile, User
 from backend.routers.pt import get_current_user
+from backend.security import require_trainer
 from backend.services.notification_service import create_notification
 
 
@@ -48,12 +49,6 @@ class CertificationPayload(BaseModel):
     @classmethod
     def clean_optional(cls, value: str | None) -> str | None:
         return value.strip() or None if value else None
-
-
-def require_trainer(user: User = Depends(get_current_user)) -> User:
-    if user.account_type != "TRAINER":
-        raise HTTPException(status_code=403, detail="트레이너 계정만 접근할 수 있습니다.")
-    return user
 
 
 def profile(db: Session, user_id: int, *, lock: bool = False) -> TrainerProfile:
@@ -296,10 +291,11 @@ def read_evidence(
             TrainerCertification.is_active.is_(True),
         )
     )
-    allowed = item is not None and (
-        (user.account_type == "TRAINER" and item.user_id == user.user_id)
-        or user.account_type == "ADMIN"
-    )
+    if user.account_type == "ADMIN":
+        allowed = item is not None
+    else:
+        require_trainer(user)
+        allowed = item is not None and item.user_id == user.user_id
     if not allowed or not item.evidence_storage_path:
         raise HTTPException(status_code=404, detail="증빙 이미지를 찾을 수 없습니다.")
     path = Path(item.evidence_storage_path).resolve()

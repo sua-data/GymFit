@@ -25,7 +25,12 @@ from backend.services.calorie_service import (
     calculate_for_record, normalize_intensity, safe_decimal, select_met,
     calculate_training_volume,
 )
-from backend.security import get_current_user, require_account_type
+from backend.security import (
+    get_current_user,
+    require_account_type,
+    require_active_member_relation,
+    require_employed_trainer,
+)
 from backend.workout_session_schemas import (
     WorkoutMediaItem, WorkoutRecordMetricsUpdate, WorkoutSessionCreate, WorkoutSessionDetail,
     WorkoutSessionExerciseItem, WorkoutSessionList, WorkoutSessionSummary, WorkoutSessionUpdate,
@@ -157,7 +162,11 @@ def apply_met_calculation(
 def can_read(db: Session, record: WorkoutRecord, user: User) -> bool:
     if record.user_id == user.user_id:
         return True
-    if user.account_type == "TRAINER" and record.record_type == "PT" and record.trainer_id == user.user_id:
+    try:
+        require_employed_trainer(user)
+    except HTTPException:
+        return False
+    if record.record_type == "PT" and record.trainer_id == user.user_id:
         return True
     return False
 
@@ -254,7 +263,7 @@ def list_sessions(period: str = Query("all", pattern="^(all|today|7d|30d)$"), li
 
 @router.get("/trainer/member/{member_id}", response_model=WorkoutSessionList)
 def trainer_member_sessions(member_id: int, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.account_type != "TRAINER": raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+    require_employed_trainer(user)
     relationship = db.scalar(select(TrainerMember.trainer_member_id).where(
         TrainerMember.trainer_id == user.user_id,
         TrainerMember.member_id == member_id,
@@ -508,11 +517,12 @@ async def upload_media(item_id: int, file: UploadFile = File(...), user: User = 
         or (item.record.record_type == "PT" and item.record.trainer_id == user.user_id)
     )
     if can_write and item.record.record_type == "PT":
-        can_write = db.scalar(select(TrainerMember.trainer_member_id).where(
-            TrainerMember.trainer_id == user.user_id,
-            TrainerMember.member_id == item.record.user_id,
-            TrainerMember.status == "ACTIVE",
-        )) is not None
+        try:
+            require_active_member_relation(
+                db, trainer=user, member_id=item.record.user_id
+            )
+        except HTTPException:
+            can_write = False
     if not can_write: raise HTTPException(status_code=404, detail="운동 항목을 찾을 수 없습니다.")
     mime = (file.content_type or "").lower()
     original_suffix = Path(file.filename or "").suffix.lower()
@@ -576,6 +586,11 @@ def delete_media(media_id: int, user: User = Depends(get_current_user), db: Sess
         (media.item.record.record_type == "WORKOUT" and media.item.record.user_id == user.user_id)
         or (media.item.record.record_type == "PT" and media.item.record.trainer_id == user.user_id)
     )
+    if can_delete and media.item.record.record_type == "PT":
+        try:
+            require_employed_trainer(user)
+        except HTTPException:
+            can_delete = False
     if not can_delete: raise HTTPException(status_code=404, detail="미디어를 찾을 수 없습니다.")
     paths = [Path(value) for value in (media.storage_path, media.thumbnail_storage_path) if value]
     db.delete(media); db.commit()

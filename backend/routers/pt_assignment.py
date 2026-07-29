@@ -2,14 +2,25 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
 from backend.models import Exercise, PtAssignment, TrainerMember, User, UserExercise, WorkoutRecord, WorkoutRecordDetailItem
-from backend.pt_assignment_schemas import PtAssignmentComplete, PtAssignmentCreate, PtAssignmentItem, PtAssignmentList, PtAssignmentUpdate, PtManualRecordCreate, PtCustomExerciseCreate
+from backend.pt_assignment_schemas import (
+    PtAssignmentComplete,
+    PtAssignmentCreate,
+    PtAssignmentExerciseItem,
+    PtAssignmentExerciseList,
+    PtAssignmentItem,
+    PtAssignmentList,
+    PtAssignmentUpdate,
+    PtCustomExerciseCreate,
+    PtManualRecordCreate,
+)
 from backend.services.exercise_catalog import is_coaching_supported
 from backend.routers.pt import get_current_user, require_role
+from backend.security import require_active_member_relation, require_employed_trainer
 from backend.services.notification_service import create_notification
 from backend.services.calorie_service import calculate_for_record, calculate_training_volume, select_met
 
@@ -18,11 +29,91 @@ KST = ZoneInfo("Asia/Seoul")
 MUTABLE_STATUSES = ("ASSIGNED", "IN_PROGRESS")
 
 
+@router.get("/exercises", response_model=PtAssignmentExerciseList)
+def list_member_exercises(
+    member_id: int = Query(gt=0),
+    search: str | None = Query(default=None, max_length=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    require_employed_trainer(current_user)
+    require_active_member_relation(
+        db, trainer=current_user, member_id=member_id
+    )
+    keyword = search.strip() if search else ""
+    exercise_filters = [Exercise.is_active.is_(True)]
+    custom_filters = [
+        UserExercise.user_id == member_id,
+        UserExercise.is_active.is_(True),
+    ]
+    if keyword:
+        exercise_filters.append(
+            or_(
+                Exercise.exercise_name.ilike(f"%{keyword}%"),
+                Exercise.exercise_code.ilike(f"%{keyword}%"),
+            )
+        )
+        custom_filters.append(UserExercise.exercise_name.ilike(f"%{keyword}%"))
+
+    exercises = db.scalars(
+        select(Exercise)
+        .where(*exercise_filters)
+        .order_by(
+            Exercise.category.asc(),
+            Exercise.exercise_name.asc(),
+            Exercise.exercise_id.asc(),
+        )
+    ).all()
+    custom_exercises = db.scalars(
+        select(UserExercise)
+        .where(*custom_filters)
+        .order_by(
+            UserExercise.exercise_name.asc(),
+            UserExercise.user_exercise_id.asc(),
+        )
+    ).all()
+    items = [
+        PtAssignmentExerciseItem(
+            exercise_type="default",
+            exercise_id=item.exercise_id,
+            user_exercise_id=None,
+            exercise_code=item.exercise_code,
+            exercise_name=item.exercise_name,
+            category=item.category,
+            coaching_supported=is_coaching_supported(item.exercise_code),
+            coaching_code=(
+                item.exercise_code
+                if is_coaching_supported(item.exercise_code)
+                else None
+            ),
+            ai_coaching_supported=is_coaching_supported(item.exercise_code),
+        )
+        for item in exercises
+    ]
+    items.extend(
+        PtAssignmentExerciseItem(
+            exercise_type="custom",
+            exercise_id=None,
+            user_exercise_id=item.user_exercise_id,
+            exercise_code=None,
+            exercise_name=item.exercise_name,
+            category=item.category or "회원 운동",
+            coaching_supported=False,
+            coaching_code=None,
+            ai_coaching_supported=False,
+        )
+        for item in custom_exercises
+    )
+    return PtAssignmentExerciseList(items=items)
+
+
 @router.post("/custom-exercises", status_code=status.HTTP_201_CREATED)
 def create_member_custom_exercise(payload: PtCustomExerciseCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
-        active_relationship(db, current_user.user_id, payload.member_id, lock=True)
+        require_active_member_relation(
+            db, trainer=current_user, member_id=payload.member_id, lock=True
+        )
         existing = db.scalar(select(UserExercise).where(UserExercise.user_id == payload.member_id, func.lower(UserExercise.exercise_name) == payload.exercise_name.lower()).with_for_update())
         if existing is not None:
             if existing.is_active:
@@ -118,9 +209,11 @@ def require_active_for_change(db: Session, item: PtAssignment) -> None:
 
 @router.post("", response_model=PtAssignmentItem, status_code=status.HTTP_201_CREATED)
 def create_assignment(payload: PtAssignmentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
-        relationship = active_relationship(db, current_user.user_id, payload.member_id, lock=True)
+        relationship = require_active_member_relation(
+            db, trainer=current_user, member_id=payload.member_id, lock=True
+        )
         exercise_name = validate_exercise(db, payload.member_id, payload.exercise_id, payload.user_exercise_id)
         item = PtAssignment(trainer_member_id=relationship.trainer_member_id, trainer_id=current_user.user_id,
             member_id=payload.member_id, exercise_id=payload.exercise_id, user_exercise_id=payload.user_exercise_id,
@@ -157,7 +250,7 @@ def list_assignments(db: Session, owner_field, owner_id: int, assignment_status:
 
 @router.get("/trainer", response_model=PtAssignmentList)
 def trainer_assignments(member_id: int | None = Query(default=None, gt=0), assignment_status: str | None = Query(default=None, alias="status"), date_from: date | None = None, date_to: date | None = None, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     return list_assignments(db, PtAssignment.trainer_id, current_user.user_id, assignment_status, member_id, date_from, date_to, limit, offset)
 
 
@@ -181,7 +274,8 @@ def get_owned_assignment(db: Session, assignment_id: int, current_user: User, tr
 
 @router.get("/trainer/{assignment_id}", response_model=PtAssignmentItem)
 def trainer_assignment_detail(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER"); return get_owned_assignment(db, assignment_id, current_user, True)
+    require_employed_trainer(current_user)
+    return get_owned_assignment(db, assignment_id, current_user, True)
 
 
 @router.get("/member/{assignment_id}", response_model=PtAssignmentItem)
@@ -191,10 +285,13 @@ def member_assignment_detail(assignment_id: int, current_user: User = Depends(ge
 
 @router.patch("/{assignment_id}", response_model=PtAssignmentItem)
 def update_assignment(assignment_id: int, payload: PtAssignmentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = locked_assignment(db, assignment_id)
         if item.trainer_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+        require_active_member_relation(
+            db, trainer=current_user, member_id=item.member_id, lock=True
+        )
         require_active_for_change(db, item)
         changes = payload.model_dump(exclude_unset=True)
         exercise_changed = "exercise_id" in changes or "user_exercise_id" in changes
@@ -225,10 +322,13 @@ def update_assignment(assignment_id: int, payload: PtAssignmentUpdate, current_u
 
 @router.patch("/{assignment_id}/cancel", response_model=PtAssignmentItem)
 def cancel_assignment(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = locked_assignment(db, assignment_id)
         if item.trainer_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+        require_active_member_relation(
+            db, trainer=current_user, member_id=item.member_id, lock=True
+        )
         require_active_for_change(db, item); item.status = "CANCELLED"
         create_notification(db, user_id=item.member_id, title="PT 숙제가 취소되었어요", message=f"'{item.title}' 숙제가 취소되었습니다.", notification_type="PT_ASSIGNMENT_CANCELLED", target_url="/pt/assignments", reference_id=item.assignment_id)
         db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)

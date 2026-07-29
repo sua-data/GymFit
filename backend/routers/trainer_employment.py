@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Gym, TrainerProfile, User, UserGym
 from backend.routers.pt import get_current_user
+from backend.security import require_trainer
 from backend.services.notification_service import create_notification
 
 
@@ -24,12 +25,6 @@ IMAGE_TYPES = {
     "image/png": {".png"},
     "image/webp": {".webp"},
 }
-
-
-def require_trainer(user: User = Depends(get_current_user)) -> User:
-    if user.account_type != "TRAINER":
-        raise HTTPException(status_code=403, detail="트레이너 계정만 접근할 수 있습니다.")
-    return user
 
 
 def get_profile(db: Session, user_id: int, *, lock: bool = False) -> TrainerProfile:
@@ -162,12 +157,13 @@ def read_employment_evidence(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    profile = get_profile(db, user.user_id) if user.account_type == "TRAINER" else None
     if user.account_type == "ADMIN":
         raise HTTPException(
             status_code=400,
             detail="관리자 증빙 조회에는 트레이너 ID가 필요합니다.",
         )
+    require_trainer(user)
+    profile = get_profile(db, user.user_id)
     if profile is None or not profile.employment_storage_path:
         raise HTTPException(status_code=404, detail="소속 증빙을 찾을 수 없습니다.")
     path = Path(profile.employment_storage_path).resolve()

@@ -119,6 +119,56 @@ def require_account_type(*allowed: str):
     return dependency
 
 
+def require_trainer(user: User = Depends(get_current_user)) -> User:
+    if user.account_type != "TRAINER":
+        raise HTTPException(status_code=403, detail="트레이너 계정만 접근할 수 있습니다.")
+    return user
+
+
+def require_approved_trainer(user: User = Depends(get_current_user)) -> User:
+    require_trainer(user)
+    if (
+        user.trainer_profile is None
+        or user.trainer_profile.approval_status != "APPROVED"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="자격 승인이 완료된 트레이너만 접근할 수 있습니다.",
+        )
+    return user
+
+
+def require_employed_trainer(user: User = Depends(get_current_user)) -> User:
+    require_approved_trainer(user)
+    if user.trainer_profile.employment_status != "APPROVED":
+        raise HTTPException(
+            status_code=403,
+            detail="소속 승인이 완료된 트레이너만 접근할 수 있습니다.",
+        )
+    return user
+
+
+def require_active_member_relation(
+    db: Session,
+    *,
+    trainer: User,
+    member_id: int,
+    lock: bool = False,
+) -> TrainerMember:
+    require_employed_trainer(trainer)
+    statement = select(TrainerMember).where(
+        TrainerMember.trainer_id == trainer.user_id,
+        TrainerMember.member_id == member_id,
+        TrainerMember.status == "ACTIVE",
+    )
+    if lock:
+        statement = statement.with_for_update()
+    relationship = db.scalar(statement)
+    if relationship is None:
+        raise HTTPException(status_code=403, detail="활성 담당 회원 관계가 필요합니다.")
+    return relationship
+
+
 def enforce_self(current_user: User, requested_user_id: int) -> None:
     if current_user.user_id != requested_user_id:
         raise HTTPException(status_code=403, detail="다른 사용자의 데이터에는 접근할 수 없습니다.")

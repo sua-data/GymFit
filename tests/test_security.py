@@ -127,6 +127,64 @@ def test_account_type_dependency_rejects_wrong_role():
     assert error.value.status_code == 403
 
 
+def test_trainer_permission_stages():
+    pending = user(
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="PENDING",
+            employment_status="NONE",
+        ),
+    )
+    assert security.require_trainer(pending) is pending
+
+    with pytest.raises(HTTPException) as error:
+        security.require_approved_trainer(pending)
+    assert error.value.status_code == 403
+
+    approved = user(
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="APPROVED",
+            employment_status="PENDING",
+        ),
+    )
+    assert security.require_approved_trainer(approved) is approved
+
+    with pytest.raises(HTTPException) as error:
+        security.require_employed_trainer(approved)
+    assert error.value.status_code == 403
+
+    employed = user(
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="APPROVED",
+            employment_status="APPROVED",
+        ),
+    )
+    assert security.require_employed_trainer(employed) is employed
+
+
+def test_active_member_relation_requires_employed_trainer():
+    relation = SimpleNamespace(trainer_id=10, member_id=20, status="ACTIVE")
+    trainer = user(
+        user_id=10,
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="APPROVED",
+            employment_status="APPROVED",
+        ),
+    )
+    assert security.require_active_member_relation(
+        ScalarSession(relation), trainer=trainer, member_id=20
+    ) is relation
+
+    with pytest.raises(HTTPException) as error:
+        security.require_active_member_relation(
+            ScalarSession(None), trainer=trainer, member_id=21
+        )
+    assert error.value.status_code == 403
+
+
 def test_active_trainer_member_relation_is_required():
     relation = SimpleNamespace(
         trainer_id=10, member_id=20, status="ACTIVE"

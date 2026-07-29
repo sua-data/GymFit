@@ -22,7 +22,7 @@ from backend.services.pt_service import (
     serialize_sent_request,
 )
 from backend.services.notification_service import create_notification
-from backend.security import get_current_user
+from backend.security import get_current_user, require_employed_trainer
 
 
 router = APIRouter(prefix="/api/pt", tags=["pt"])
@@ -31,18 +31,6 @@ router = APIRouter(prefix="/api/pt", tags=["pt"])
 def require_role(user: User, account_type: str) -> None:
     if user.account_type != account_type:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="접근 권한이 없습니다.")
-    if (
-        account_type == "TRAINER"
-        and (
-            user.trainer_profile is None
-            or user.trainer_profile.approval_status != "APPROVED"
-            or user.trainer_profile.employment_status != "APPROVED"
-        )
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="트레이너 자격과 헬스장 소속이 모두 승인되어야 이 기능을 사용할 수 있습니다.",
-        )
 
 
 def relationship_query():
@@ -58,7 +46,7 @@ def search_members(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     keyword = email.strip().lower()
     members = db.scalars(
         select(User).where(
@@ -98,7 +86,7 @@ def create_request(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         users = lock_users(db, current_user.user_id, payload.member_id)
         member = users.get(payload.member_id)
@@ -148,7 +136,7 @@ def list_relationships(db: Session, *conditions) -> dict:
 
 @router.get("/requests/sent", response_model=SentPtRequestListResponse)
 def sent_requests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     items = db.scalars(
         relationship_query().where(
             TrainerMember.trainer_id == current_user.user_id,
@@ -160,7 +148,7 @@ def sent_requests(current_user: User = Depends(get_current_user), db: Session = 
 
 @router.get("/my-members", response_model=PTListResponse)
 def my_members(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     return list_relationships(db, TrainerMember.trainer_id == current_user.user_id, TrainerMember.status == "ACTIVE")
 
 
@@ -195,7 +183,7 @@ def cancel_request(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         relationship = db.scalar(
             relationship_query().where(

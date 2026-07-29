@@ -8,6 +8,7 @@
   const exerciseSearch = document.querySelector("#exerciseSearch");
   const categoryFilters = document.querySelector("#exerciseCategoryFilters");
   const exerciseCardList = document.querySelector("#exerciseCardList");
+  const selectedExerciseSummary = document.querySelector("#selectedExerciseSummary");
   const customExerciseFields = document.querySelector("#customExerciseFields");
   const state = document.querySelector("#assignmentState");
   const list = document.querySelector("#assignmentList");
@@ -19,6 +20,7 @@
   let members = [];
   let assignments = [];
   let exerciseItems = [];
+  let selectedExercise = null;
   let selectedMemberId = null;
   let editingId = null;
   let busy = false;
@@ -278,17 +280,57 @@
   async function loadExercises(selectedValue = "") {
     exerciseSelect.disabled = true;
     exerciseSelect.innerHTML = '<option value="">운동 선택</option>';
-    if (!selectedMemberId) return;
-    const data = await api(`/api/workouts/exercises?user_id=${selectedMemberId}`);
-    exerciseItems = data.items;
-    exerciseItems.forEach(item => {
-      const value = `${item.exercise_type}:${item.exercise_id ?? item.user_exercise_id}`;
-      exerciseSelect.add(new Option(item.exercise_name, value));
-    });
-    exerciseSelect.disabled = false;
-    if (selectedValue) exerciseSelect.value = selectedValue;
-    renderExerciseFilters();
-    renderExerciseCards();
+    exerciseItems = [];
+    selectedExercise = null;
+    updateSelectedExercise();
+    exerciseCardList.innerHTML = "<p>운동 목록을 불러오고 있습니다.</p>";
+    if (!selectedMemberId) {
+      exerciseCardList.innerHTML = "<p>회원을 먼저 선택해 주세요.</p>";
+      return false;
+    }
+    try {
+      const data = await api(
+        `/api/pt/assignments/exercises?member_id=${selectedMemberId}`
+      );
+      exerciseItems = Array.isArray(data?.items) ? data.items : [];
+      exerciseItems.forEach(item => {
+        const value = exerciseValue(item);
+        exerciseSelect.add(new Option(item.exercise_name, value));
+      });
+      exerciseSelect.disabled = false;
+      if (selectedValue) {
+        selectExercise(selectedValue, false);
+      }
+      renderExerciseFilters();
+      renderExerciseCards();
+      return true;
+    } catch (error) {
+      exerciseSelect.disabled = true;
+      exerciseCardList.innerHTML =
+        "<p class=\"exercise-load-error\">운동 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>";
+      message.textContent = error.message;
+      return false;
+    }
+  }
+
+  const exerciseValue = item =>
+    `${item.exercise_type}:${item.exercise_id ?? item.user_exercise_id}`;
+
+  function selectExercise(value, rerender = true) {
+    const next = exerciseItems.find(item => exerciseValue(item) === value) || null;
+    selectedExercise = next;
+    exerciseSelect.value = next ? value : "";
+    updateSelectedExercise();
+    if (rerender) renderExerciseCards();
+  }
+
+  function updateSelectedExercise() {
+    selectedExerciseSummary.classList.toggle("has-selection", Boolean(selectedExercise));
+    selectedExerciseSummary.textContent = selectedExercise
+      ? `선택됨: ${selectedExercise.exercise_name}${
+        selectedExercise.exercise_code ? ` (${selectedExercise.exercise_code})` : ""
+      }`
+      : "선택한 운동이 없습니다.";
   }
 
   function renderExerciseFilters() {
@@ -323,11 +365,14 @@
       return;
     }
     filtered.forEach(item => {
-      const value = `${item.exercise_type}:${item.exercise_id ?? item.user_exercise_id}`;
+      const value = exerciseValue(item);
       const card = document.createElement("button");
       card.type = "button";
       card.className = "exercise-choice-card";
       card.classList.toggle("selected", exerciseSelect.value === value);
+      card.setAttribute("role", "option");
+      card.setAttribute("aria-selected", String(exerciseSelect.value === value));
+      card.dataset.exerciseValue = value;
       const title = document.createElement("strong");
       title.textContent = item.exercise_name;
       const meta = document.createElement("span");
@@ -335,7 +380,7 @@
       const mode = document.createElement("em");
       mode.textContent = (item.ai_coaching_supported || item.coaching_supported) ? "실시간 코칭" : "기록형 운동";
       card.append(title, meta, mode);
-      card.addEventListener("click", () => { exerciseSelect.value = value; renderExerciseCards(); });
+      card.addEventListener("click", () => selectExercise(value));
       exerciseCardList.append(card);
     });
   }
@@ -348,6 +393,8 @@
     document.querySelector("#assignmentDueDate").value = today;
     exerciseSelect.disabled = true;
     exerciseItems = [];
+    selectedExercise = null;
+    updateSelectedExercise();
     document.querySelector("#assignmentFormTitle").textContent = "새 숙제";
     document.querySelector("#assignmentFormMemberName").textContent = members.find(item => Number(item.member_id) === selectedMemberId)?.member_name || "";
     saveButton.textContent = "숙제 등록";
@@ -370,7 +417,28 @@
     editingId = item.assignment_id;
     formOverlay.hidden = false;
     document.body.classList.add("assignment-sheet-open");
-    await loadExercises(`${item.exercise_type}:${item.exercise_id ?? item.user_exercise_id}`);
+    const existingValue =
+      `${item.exercise_type}:${item.exercise_id ?? item.user_exercise_id}`;
+    await loadExercises(existingValue);
+    if (!selectedExercise) {
+      const existingExercise = {
+        exercise_type: item.exercise_type,
+        exercise_id: item.exercise_id,
+        user_exercise_id: item.user_exercise_id,
+        exercise_code: item.exercise_code || null,
+        exercise_name: item.exercise_name,
+        category: item.exercise_type === "custom" ? "회원 운동" : "기존 운동",
+        coaching_supported: false,
+        ai_coaching_supported: false,
+      };
+      exerciseItems.unshift(existingExercise);
+      exerciseSelect.add(
+        new Option(existingExercise.exercise_name, existingValue),
+        exerciseSelect.options[1] || null
+      );
+      exerciseSelect.disabled = false;
+      selectExercise(existingValue);
+    }
     document.querySelector("#assignmentDescription").value = item.description || "";
     document.querySelector("#assignmentDate").value = item.assigned_date;
     document.querySelector("#assignmentDueDate").value = item.due_date || "";
@@ -444,6 +512,7 @@
 
   form.addEventListener("submit", event => {
     event.preventDefault();
+    if (busy) return;
     message.textContent = "";
     let weightKg;
     try {
@@ -458,8 +527,14 @@
       target_minutes: numberOrNull("#targetMinutes"),
     };
     if (!Object.values(targetValues).some(Boolean)) { message.textContent = "목표값을 하나 이상 입력해 주세요."; return; }
-    const [exerciseType, exerciseId] = exerciseSelect.value.split(":");
-    if (!exerciseType || !exerciseId) { message.textContent = "운동을 선택해 주세요."; return; }
+    const selectedValue = selectedExercise
+      ? exerciseValue(selectedExercise)
+      : exerciseSelect.value;
+    const [exerciseType, exerciseId] = selectedValue.split(":");
+    if (!selectedExercise || !exerciseType || !exerciseId) {
+      message.textContent = "운동을 선택해 주세요.";
+      return;
+    }
     const payload = {
       exercise_id: exerciseType === "default" ? Number(exerciseId) : null,
       user_exercise_id: exerciseType === "custom" ? Number(exerciseId) : null,

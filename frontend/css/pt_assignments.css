@@ -436,6 +436,21 @@ body {
 
 .exercise-card-list > p { color: var(--assignment-muted); font-size: 13px; }
 
+.selected-exercise-summary {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--assignment-muted);
+  background: #161616;
+  border: 1px solid var(--assignment-border);
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.selected-exercise-summary.has-selection {
+  color: var(--assignment-accent);
+  border-color: rgba(168, 255, 53, 0.45);
+}
+
 .assignment-form .exercise-choice-card {
   position: relative;
   display: grid;
@@ -447,6 +462,7 @@ body {
   background: #202020;
   border: 1px solid var(--assignment-border);
   border-radius: 13px;
+  cursor: pointer;
 }
 
 .exercise-choice-card strong { font-size: 14px; }

@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="/static/css/common.css?v=2">
   <link rel="stylesheet" href="/static/css/common_layout.css?v=4">
   <link rel="stylesheet" href="/static/css/common_dropdown.css?v=3">
-  <link rel="stylesheet" href="/static/css/pt_assignments.css?v=8">
+  <link rel="stylesheet" href="/static/css/pt_assignments.css?v=9">
   <script src="/static/js/api_client.js?v=3" defer></script>
   <script src="/static/js/common_layout.js?v=22" defer></script>
   <script src="/static/js/common_dropdown.js?v=2" defer></script>
-  <script src="/static/js/trainer_assignments.js?v=6" defer></script>
+  <script src="/static/js/trainer_assignments.js?v=7" defer></script>
   <script src="/static/js/trainer_assignment_results.js?v=4" defer></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png?v=1">
@@ -77,7 +77,8 @@
             <span class="exercise-picker-label">운동</span>
             <input id="exerciseSearch" type="search" placeholder="운동명 검색" autocomplete="off">
             <div id="exerciseCategoryFilters" class="exercise-category-filters"></div>
-            <div id="exerciseCardList" class="exercise-card-list"><p>회원을 먼저 선택해 주세요.</p></div>
+            <p id="selectedExerciseSummary" class="selected-exercise-summary" aria-live="polite">선택한 운동이 없습니다.</p>
+            <div id="exerciseCardList" class="exercise-card-list" role="listbox" aria-label="운동 검색 결과"><p>회원을 먼저 선택해 주세요.</p></div>
             <select id="assignmentExercise" class="assignment-native-select" required disabled aria-label="선택한 운동"><option value="">운동 선택</option></select>
             <button id="openCustomExercise" type="button" class="secondary">+ 직접 입력 운동</button>
             <div id="customExerciseFields" class="custom-exercise-fields" hidden>

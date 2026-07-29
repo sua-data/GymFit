@@ -131,6 +131,22 @@ class PtCustomExerciseCreate(BaseModel):
         return self
 
 
+class PtAssignmentExerciseItem(BaseModel):
+    exercise_type: str
+    exercise_id: int | None
+    user_exercise_id: int | None
+    exercise_code: str | None
+    exercise_name: str
+    category: str | None
+    coaching_supported: bool
+    coaching_code: str | None
+    ai_coaching_supported: bool
+
+
+class PtAssignmentExerciseList(BaseModel):
+    items: list[PtAssignmentExerciseItem]
+
+
 class PtFeedbackWrite(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
 

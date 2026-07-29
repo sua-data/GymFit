@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Exercise, Gym, GymMachine, User, UserGym
 from backend.routers.pt import get_current_user
+from backend.security import require_employed_trainer
 
 
 router = APIRouter(prefix="/api/users/me/gym/machines", tags=["gym-machines"])
@@ -73,20 +74,15 @@ def current_gym(db: Session, user_id: int) -> Gym:
 
 
 def can_manage(user: User) -> bool:
-    return bool(
-        user.account_type == "TRAINER"
-        and user.trainer_profile
-        and user.trainer_profile.approval_status == "APPROVED"
-        and user.trainer_profile.employment_status == "APPROVED"
-    )
+    try:
+        require_employed_trainer(user)
+        return True
+    except HTTPException:
+        return False
 
 
 def require_manager(user: User) -> None:
-    if not can_manage(user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="승인된 트레이너만 헬스장 머신을 관리할 수 있습니다.",
-        )
+    require_employed_trainer(user)
 
 
 def categories(db: Session) -> list[str]:

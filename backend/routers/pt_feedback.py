@@ -6,6 +6,7 @@ from backend.database import get_db
 from backend.models import PtAssignment, PtFeedback, User, WorkoutRecord
 from backend.pt_assignment_schemas import PtAssignmentResult, PtFeedbackItem, PtFeedbackList, PtFeedbackWrite
 from backend.routers.pt import get_current_user, require_role
+from backend.security import require_employed_trainer
 from backend.routers.pt_assignment import assignment_query, serialize_assignment
 from backend.services.notification_service import create_notification
 
@@ -62,13 +63,13 @@ def result_for_trainer(db: Session, assignment_id: int, trainer_id: int) -> PtAs
 
 @router.get("/assignments/{assignment_id}/result", response_model=PtAssignmentResult)
 def assignment_result(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     return result_for_trainer(db, assignment_id, current_user.user_id)
 
 
 @router.post("/assignments/{assignment_id}/feedback", response_model=PtFeedbackItem, status_code=status.HTTP_201_CREATED)
 def create_feedback(assignment_id: int, payload: PtFeedbackWrite, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         assignment = db.scalar(select(PtAssignment).where(PtAssignment.assignment_id == assignment_id, PtAssignment.trainer_id == current_user.user_id).with_for_update())
         if assignment is None:
@@ -100,7 +101,7 @@ def create_feedback(assignment_id: int, payload: PtFeedbackWrite, current_user: 
 
 @router.patch("/feedback/{feedback_id}", response_model=PtFeedbackItem)
 def update_feedback(feedback_id: int, payload: PtFeedbackWrite, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_role(current_user, "TRAINER")
+    require_employed_trainer(current_user)
     try:
         item = db.scalar(select(PtFeedback).where(PtFeedback.feedback_id == feedback_id, PtFeedback.trainer_id == current_user.user_id).with_for_update())
         if item is None:
