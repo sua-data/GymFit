@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
-from backend.models import Exercise, PtAssignment, TrainerMember, User, UserExercise, WorkoutRecord, WorkoutRecordDetailItem
+from backend.models import Exercise, PtAssignment, User, UserExercise, WorkoutRecord, WorkoutRecordDetailItem
 from backend.pt_assignment_schemas import (
     PtAssignmentComplete,
     PtAssignmentCreate,
@@ -20,7 +20,11 @@ from backend.pt_assignment_schemas import (
 )
 from backend.services.exercise_catalog import is_coaching_supported
 from backend.routers.pt import get_current_user, require_role
-from backend.security import require_active_member_relation, require_employed_trainer
+from backend.security import (
+    require_active_member_relation,
+    require_employed_trainer,
+    require_pt_relation_access,
+)
 from backend.services.notification_service import create_notification
 from backend.services.calorie_service import calculate_for_record, calculate_training_volume, select_met
 
@@ -166,20 +170,6 @@ def serialize_assignment(item: PtAssignment) -> PtAssignmentItem:
     )
 
 
-def active_relationship(db: Session, trainer_id: int, member_id: int, lock: bool = False) -> TrainerMember:
-    statement = select(TrainerMember).where(
-        TrainerMember.trainer_id == trainer_id,
-        TrainerMember.member_id == member_id,
-        TrainerMember.status == "ACTIVE",
-    )
-    if lock:
-        statement = statement.with_for_update()
-    relationship = db.scalar(statement)
-    if relationship is None:
-        raise HTTPException(status_code=403, detail="활성 PT 연결 관계가 필요합니다.")
-    return relationship
-
-
 def validate_exercise(db: Session, member_id: int, exercise_id: int | None, user_exercise_id: int | None) -> str:
     if (exercise_id is None) == (user_exercise_id is None):
         raise HTTPException(status_code=400, detail="기본 운동과 사용자 운동 중 하나만 선택해 주세요.")
@@ -201,8 +191,18 @@ def locked_assignment(db: Session, assignment_id: int) -> PtAssignment:
     return item
 
 
-def require_active_for_change(db: Session, item: PtAssignment) -> None:
-    active_relationship(db, item.trainer_id, item.member_id, lock=True)
+def require_active_for_change(
+    db: Session, item: PtAssignment, current_user: User
+) -> None:
+    require_pt_relation_access(
+        db,
+        user=current_user,
+        trainer_id=item.trainer_id,
+        member_id=item.member_id,
+        trainer_member_id=item.trainer_member_id,
+        write=True,
+        lock=True,
+    )
     if item.status not in MUTABLE_STATUSES:
         raise HTTPException(status_code=409, detail="현재 상태에서는 PT 숙제를 변경할 수 없습니다.")
 
@@ -233,7 +233,7 @@ def create_assignment(payload: PtAssignmentCreate, current_user: User = Depends(
         db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제 등록에 실패했습니다.") from exc
 
 
-def list_assignments(db: Session, owner_field, owner_id: int, assignment_status: str | None, member_id: int | None, date_from: date | None, date_to: date | None, limit: int, offset: int) -> PtAssignmentList:
+def list_assignments(db: Session, owner_field, owner_id: int, assignment_status: str | None, member_id: int | None, date_from: date | None, date_to: date | None, limit: int, offset: int, current_user: User) -> PtAssignmentList:
     filters = [owner_field == owner_id]
     if assignment_status:
         filters.append(PtAssignment.status == assignment_status)
@@ -245,19 +245,28 @@ def list_assignments(db: Session, owner_field, owner_id: int, assignment_status:
         filters.append(PtAssignment.assigned_date <= date_to)
     total = db.scalar(select(func.count(PtAssignment.assignment_id)).where(*filters)) or 0
     items = db.scalars(assignment_query().where(*filters).order_by(PtAssignment.due_date.desc(), PtAssignment.assignment_id.desc()).offset(offset).limit(limit)).all()
+    for item in items:
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.trainer_member_id,
+            write=False,
+        )
     return PtAssignmentList(items=[serialize_assignment(item) for item in items], total=total)
 
 
 @router.get("/trainer", response_model=PtAssignmentList)
 def trainer_assignments(member_id: int | None = Query(default=None, gt=0), assignment_status: str | None = Query(default=None, alias="status"), date_from: date | None = None, date_to: date | None = None, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
-    return list_assignments(db, PtAssignment.trainer_id, current_user.user_id, assignment_status, member_id, date_from, date_to, limit, offset)
+    return list_assignments(db, PtAssignment.trainer_id, current_user.user_id, assignment_status, member_id, date_from, date_to, limit, offset, current_user)
 
 
 @router.get("/member", response_model=PtAssignmentList)
 def member_assignments(assignment_status: str | None = Query(default=None, alias="status"), assigned_date: date | None = None, due_date: date | None = None, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_role(current_user, "MEMBER")
-    result = list_assignments(db, PtAssignment.member_id, current_user.user_id, assignment_status, None, assigned_date, None, limit, offset)
+    result = list_assignments(db, PtAssignment.member_id, current_user.user_id, assignment_status, None, assigned_date, None, limit, offset, current_user)
     if due_date is not None:
         result.items = [item for item in result.items if item.due_date == due_date]
         result.total = len(result.items)
@@ -269,6 +278,14 @@ def get_owned_assignment(db: Session, assignment_id: int, current_user: User, tr
     item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id, field == current_user.user_id))
     if item is None:
         raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+    require_pt_relation_access(
+        db,
+        user=current_user,
+        trainer_id=item.trainer_id,
+        member_id=item.member_id,
+        trainer_member_id=item.trainer_member_id,
+        write=False,
+    )
     return serialize_assignment(item)
 
 
@@ -289,10 +306,7 @@ def update_assignment(assignment_id: int, payload: PtAssignmentUpdate, current_u
     try:
         item = locked_assignment(db, assignment_id)
         if item.trainer_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
-        require_active_member_relation(
-            db, trainer=current_user, member_id=item.member_id, lock=True
-        )
-        require_active_for_change(db, item)
+        require_active_for_change(db, item, current_user)
         changes = payload.model_dump(exclude_unset=True)
         exercise_changed = "exercise_id" in changes or "user_exercise_id" in changes
         if exercise_changed:
@@ -326,10 +340,7 @@ def cancel_assignment(assignment_id: int, current_user: User = Depends(get_curre
     try:
         item = locked_assignment(db, assignment_id)
         if item.trainer_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
-        require_active_member_relation(
-            db, trainer=current_user, member_id=item.member_id, lock=True
-        )
-        require_active_for_change(db, item); item.status = "CANCELLED"
+        require_active_for_change(db, item, current_user); item.status = "CANCELLED"
         create_notification(db, user_id=item.member_id, title="PT 숙제가 취소되었어요", message=f"'{item.title}' 숙제가 취소되었습니다.", notification_type="PT_ASSIGNMENT_CANCELLED", target_url="/pt/assignments", reference_id=item.assignment_id)
         db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)
     except HTTPException: db.rollback(); raise
@@ -342,7 +353,7 @@ def start_assignment(assignment_id: int, current_user: User = Depends(get_curren
     try:
         item = locked_assignment(db, assignment_id)
         if item.member_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
-        require_active_for_change(db, item)
+        require_active_for_change(db, item, current_user)
         if item.status != "ASSIGNED": raise HTTPException(status_code=409, detail="배정 상태의 숙제만 시작할 수 있습니다.")
         item.status = "IN_PROGRESS"; db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)
     except HTTPException: db.rollback(); raise
@@ -355,7 +366,7 @@ def complete_assignment(assignment_id: int, payload: PtAssignmentComplete, curre
     try:
         item = locked_assignment(db, assignment_id)
         if item.member_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
-        require_active_for_change(db, item)
+        require_active_for_change(db, item, current_user)
         if item.user_exercise_id is not None: raise HTTPException(status_code=400, detail="사용자 운동 숙제에는 기존 운동 기록을 연결할 수 없습니다.")
         record = db.scalar(select(WorkoutRecord).where(WorkoutRecord.workout_record_id == payload.workout_record_id, WorkoutRecord.user_id == current_user.user_id, WorkoutRecord.exercise_id == item.exercise_id))
         if record is None: raise HTTPException(status_code=404, detail="연결할 운동 기록을 찾을 수 없습니다.")
@@ -373,7 +384,7 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
         item = locked_assignment(db, assignment_id)
         if item.member_id != current_user.user_id:
             raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
-        require_active_for_change(db, item)
+        require_active_for_change(db, item, current_user)
         if item.workout_record_id is not None:
             raise HTTPException(status_code=409, detail="이미 운동 기록이 연결된 PT 숙제입니다.")
         if item.exercise_id is not None and is_coaching_supported(item.exercise.exercise_code):

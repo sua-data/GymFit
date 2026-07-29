@@ -6,7 +6,7 @@ from backend.database import get_db
 from backend.models import PtAssignment, PtFeedback, User, WorkoutRecord
 from backend.pt_assignment_schemas import PtAssignmentResult, PtFeedbackItem, PtFeedbackList, PtFeedbackWrite
 from backend.routers.pt import get_current_user, require_role
-from backend.security import require_employed_trainer
+from backend.security import require_employed_trainer, require_pt_relation_access
 from backend.routers.pt_assignment import assignment_query, serialize_assignment
 from backend.services.notification_service import create_notification
 
@@ -39,10 +39,18 @@ def serialize_feedback(item: PtFeedback) -> PtFeedbackItem:
     )
 
 
-def result_for_trainer(db: Session, assignment_id: int, trainer_id: int) -> PtAssignmentResult:
-    assignment = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id, PtAssignment.trainer_id == trainer_id))
+def result_for_trainer(db: Session, assignment_id: int, trainer: User) -> PtAssignmentResult:
+    assignment = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id, PtAssignment.trainer_id == trainer.user_id))
     if assignment is None:
         raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+    require_pt_relation_access(
+        db,
+        user=trainer,
+        trainer_id=assignment.trainer_id,
+        member_id=assignment.member_id,
+        trainer_member_id=assignment.trainer_member_id,
+        write=False,
+    )
     if assignment.status != "COMPLETED" or assignment.workout_record_id is None:
         raise HTTPException(status_code=409, detail="운동 기록이 연결된 완료 숙제만 조회할 수 있습니다.")
     record = db.scalar(select(WorkoutRecord).where(WorkoutRecord.workout_record_id == assignment.workout_record_id, WorkoutRecord.user_id == assignment.member_id))
@@ -64,7 +72,7 @@ def result_for_trainer(db: Session, assignment_id: int, trainer_id: int) -> PtAs
 @router.get("/assignments/{assignment_id}/result", response_model=PtAssignmentResult)
 def assignment_result(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
-    return result_for_trainer(db, assignment_id, current_user.user_id)
+    return result_for_trainer(db, assignment_id, current_user)
 
 
 @router.post("/assignments/{assignment_id}/feedback", response_model=PtFeedbackItem, status_code=status.HTTP_201_CREATED)
@@ -74,6 +82,15 @@ def create_feedback(assignment_id: int, payload: PtFeedbackWrite, current_user: 
         assignment = db.scalar(select(PtAssignment).where(PtAssignment.assignment_id == assignment_id, PtAssignment.trainer_id == current_user.user_id).with_for_update())
         if assignment is None:
             raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=assignment.trainer_id,
+            member_id=assignment.member_id,
+            trainer_member_id=assignment.trainer_member_id,
+            write=True,
+            lock=True,
+        )
         if assignment.status != "COMPLETED" or assignment.workout_record_id is None:
             raise HTTPException(status_code=409, detail="완료 기록이 있는 숙제에만 피드백을 작성할 수 있습니다.")
         if db.scalar(select(PtFeedback.feedback_id).where(PtFeedback.assignment_id == assignment_id)) is not None:
@@ -106,6 +123,15 @@ def update_feedback(feedback_id: int, payload: PtFeedbackWrite, current_user: Us
         item = db.scalar(select(PtFeedback).where(PtFeedback.feedback_id == feedback_id, PtFeedback.trainer_id == current_user.user_id).with_for_update())
         if item is None:
             raise HTTPException(status_code=404, detail="피드백을 찾을 수 없습니다.")
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.assignment.trainer_member_id,
+            write=True,
+            lock=True,
+        )
         content = payload.content.strip()
         if not content:
             raise HTTPException(status_code=400, detail="피드백 내용을 입력해 주세요.")
@@ -126,6 +152,14 @@ def get_assignment_feedback(assignment_id: int, current_user: User = Depends(get
     item = db.scalar(feedback_query().where(PtFeedback.assignment_id == assignment_id))
     if item is None or current_user.user_id not in {item.trainer_id, item.member_id}:
         raise HTTPException(status_code=404, detail="피드백을 찾을 수 없습니다.")
+    require_pt_relation_access(
+        db,
+        user=current_user,
+        trainer_id=item.trainer_id,
+        member_id=item.member_id,
+        trainer_member_id=item.assignment.trainer_member_id,
+        write=False,
+    )
     return serialize_feedback(item)
 
 
@@ -133,4 +167,13 @@ def get_assignment_feedback(assignment_id: int, current_user: User = Depends(get
 def member_feedback(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_role(current_user, "MEMBER")
     items = db.scalars(feedback_query().where(PtFeedback.member_id == current_user.user_id).order_by(PtFeedback.updated_at.desc(), PtFeedback.feedback_id.desc())).unique().all()
+    for item in items:
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.assignment.trainer_member_id,
+            write=False,
+        )
     return PtFeedbackList(items=[serialize_feedback(item) for item in items], total=len(items))

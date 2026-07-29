@@ -185,6 +185,62 @@ def test_active_member_relation_requires_employed_trainer():
     assert error.value.status_code == 403
 
 
+def test_ended_pt_relation_allows_read_for_both_participants():
+    relation = SimpleNamespace(
+        trainer_member_id=30,
+        trainer_id=10,
+        member_id=20,
+        status="ENDED",
+    )
+    trainer = user(
+        user_id=10,
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="APPROVED",
+            employment_status="APPROVED",
+        ),
+    )
+    member = user(user_id=20, account_type="MEMBER")
+
+    assert security.require_pt_relation_access(
+        ScalarSession(relation),
+        user=trainer,
+        trainer_id=10,
+        member_id=20,
+        trainer_member_id=30,
+        write=False,
+    ) is relation
+    assert security.require_pt_relation_access(
+        ScalarSession(relation),
+        user=member,
+        trainer_id=10,
+        member_id=20,
+        trainer_member_id=30,
+        write=False,
+    ) is relation
+
+
+def test_ended_pt_relation_rejects_changes():
+    trainer = user(
+        user_id=10,
+        account_type="TRAINER",
+        trainer_profile=SimpleNamespace(
+            approval_status="APPROVED",
+            employment_status="APPROVED",
+        ),
+    )
+    with pytest.raises(HTTPException) as error:
+        security.require_pt_relation_access(
+            ScalarSession(None),
+            user=trainer,
+            trainer_id=10,
+            member_id=20,
+            trainer_member_id=30,
+            write=True,
+        )
+    assert error.value.status_code == 403
+
+
 def test_active_trainer_member_relation_is_required():
     relation = SimpleNamespace(
         trainer_id=10, member_id=20, status="ACTIVE"

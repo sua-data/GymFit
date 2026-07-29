@@ -155,17 +155,53 @@ def require_active_member_relation(
     member_id: int,
     lock: bool = False,
 ) -> TrainerMember:
-    require_employed_trainer(trainer)
-    statement = select(TrainerMember).where(
-        TrainerMember.trainer_id == trainer.user_id,
-        TrainerMember.member_id == member_id,
-        TrainerMember.status == "ACTIVE",
+    return require_pt_relation_access(
+        db,
+        user=trainer,
+        trainer_id=trainer.user_id,
+        member_id=member_id,
+        write=True,
+        lock=lock,
     )
+
+
+def require_pt_relation_access(
+    db: Session,
+    *,
+    user: User,
+    trainer_id: int,
+    member_id: int,
+    write: bool,
+    trainer_member_id: int | None = None,
+    lock: bool = False,
+) -> TrainerMember:
+    if user.user_id == trainer_id:
+        require_employed_trainer(user)
+    elif user.user_id != member_id or user.account_type != "MEMBER":
+        raise HTTPException(status_code=403, detail="PT 관계 데이터에 접근할 수 없습니다.")
+
+    statement = select(TrainerMember).where(
+        TrainerMember.trainer_id == trainer_id,
+        TrainerMember.member_id == member_id,
+    )
+    if write:
+        statement = statement.where(TrainerMember.status == "ACTIVE")
+    else:
+        statement = statement.where(TrainerMember.status.in_(("ACTIVE", "ENDED")))
+    if trainer_member_id is not None:
+        statement = statement.where(
+            TrainerMember.trainer_member_id == trainer_member_id
+        )
     if lock:
         statement = statement.with_for_update()
     relationship = db.scalar(statement)
     if relationship is None:
-        raise HTTPException(status_code=403, detail="활성 담당 회원 관계가 필요합니다.")
+        detail = (
+            "활성 담당 회원 관계가 필요합니다."
+            if write
+            else "PT 연결 이력이 필요합니다."
+        )
+        raise HTTPException(status_code=403, detail=detail)
     return relationship
 
 

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from backend.database import get_db
 from backend.models import (
-    Exercise, TrainerMember, User, UserExercise, WorkoutRecord,
+    Exercise, User, UserExercise, WorkoutRecord,
     WorkoutPlan, WorkoutPlanSet, WorkoutRecordDetailItem, WorkoutRecordMedia,
 )
 from backend.routers.workout import korea_now_naive
@@ -28,8 +28,8 @@ from backend.services.calorie_service import (
 from backend.security import (
     get_current_user,
     require_account_type,
-    require_active_member_relation,
     require_employed_trainer,
+    require_pt_relation_access,
 )
 from backend.workout_session_schemas import (
     WorkoutMediaItem, WorkoutRecordMetricsUpdate, WorkoutSessionCreate, WorkoutSessionDetail,
@@ -160,15 +160,24 @@ def apply_met_calculation(
 
 
 def can_read(db: Session, record: WorkoutRecord, user: User) -> bool:
-    if record.user_id == user.user_id:
+    if record.record_type != "PT" and record.user_id == user.user_id:
         return True
     try:
-        require_employed_trainer(user)
+        require_pt_relation_access(
+            db,
+            user=user,
+            trainer_id=record.trainer_id,
+            member_id=record.user_id,
+            trainer_member_id=(
+                record.pt_schedule.trainer_member_id
+                if record.pt_schedule is not None
+                else None
+            ),
+            write=False,
+        )
     except HTTPException:
         return False
-    if record.record_type == "PT" and record.trainer_id == user.user_id:
-        return True
-    return False
+    return record.record_type == "PT"
 
 
 def get_owned(db: Session, record_id: int, user: User, *, write: bool = False) -> WorkoutRecord:
@@ -258,18 +267,22 @@ def list_sessions(period: str = Query("all", pattern="^(all|today|7d|30d)$"), li
     filters = [WorkoutRecord.user_id == user.user_id, *period_conditions(period)]
     total = db.scalar(select(func.count(WorkoutRecord.workout_record_id)).where(*filters)) or 0
     records = db.scalars(select(WorkoutRecord).options(joinedload(WorkoutRecord.trainer), selectinload(WorkoutRecord.items).selectinload(WorkoutRecordDetailItem.media)).where(*filters).order_by(WorkoutRecord.started_at.desc(), WorkoutRecord.workout_record_id.desc()).offset(offset).limit(limit)).unique().all()
+    for record in records:
+        if record.record_type == "PT" and not can_read(db, record, user):
+            raise HTTPException(status_code=403, detail="PT 연결 이력이 필요합니다.")
     return WorkoutSessionList(items=[summary(record, list(record.items)) for record in records], total=total, limit=limit, offset=offset)
 
 
 @router.get("/trainer/member/{member_id}", response_model=WorkoutSessionList)
 def trainer_member_sessions(member_id: int, limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(user)
-    relationship = db.scalar(select(TrainerMember.trainer_member_id).where(
-        TrainerMember.trainer_id == user.user_id,
-        TrainerMember.member_id == member_id,
-        TrainerMember.status.in_(("ACTIVE", "ENDED")),
-    ))
-    if relationship is None: raise HTTPException(status_code=403, detail="PT 연결 기록이 필요합니다.")
+    require_pt_relation_access(
+        db,
+        user=user,
+        trainer_id=user.user_id,
+        member_id=member_id,
+        write=False,
+    )
     filters = [WorkoutRecord.user_id == member_id, WorkoutRecord.record_type == "PT", WorkoutRecord.trainer_id == user.user_id]
     total = db.scalar(select(func.count(WorkoutRecord.workout_record_id)).where(*filters)) or 0
     records = db.scalars(select(WorkoutRecord).options(joinedload(WorkoutRecord.trainer), selectinload(WorkoutRecord.items).selectinload(WorkoutRecordDetailItem.media)).where(*filters).order_by(WorkoutRecord.started_at.desc()).offset(offset).limit(limit)).unique().all()
@@ -518,8 +531,17 @@ async def upload_media(item_id: int, file: UploadFile = File(...), user: User = 
     )
     if can_write and item.record.record_type == "PT":
         try:
-            require_active_member_relation(
-                db, trainer=user, member_id=item.record.user_id
+            require_pt_relation_access(
+                db,
+                user=user,
+                trainer_id=item.record.trainer_id,
+                member_id=item.record.user_id,
+                trainer_member_id=(
+                    item.record.pt_schedule.trainer_member_id
+                    if item.record.pt_schedule is not None
+                    else None
+                ),
+                write=True,
             )
         except HTTPException:
             can_write = False
@@ -588,7 +610,19 @@ def delete_media(media_id: int, user: User = Depends(get_current_user), db: Sess
     )
     if can_delete and media.item.record.record_type == "PT":
         try:
-            require_employed_trainer(user)
+            require_pt_relation_access(
+                db,
+                user=user,
+                trainer_id=media.item.record.trainer_id,
+                member_id=media.item.record.user_id,
+                trainer_member_id=(
+                    media.item.record.pt_schedule.trainer_member_id
+                    if media.item.record.pt_schedule is not None
+                    else None
+                ),
+                write=True,
+                lock=True,
+            )
         except HTTPException:
             can_delete = False
     if not can_delete: raise HTTPException(status_code=404, detail="미디어를 찾을 수 없습니다.")

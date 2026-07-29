@@ -38,10 +38,14 @@ from backend.models import (
     WorkoutRecord,
     WorkoutRecordDetailItem,
     PtAssignment,
-    TrainerMember,
 )
 from backend.services.notification_service import create_notification
-from backend.security import enforce_self, get_current_user, require_account_type
+from backend.security import (
+    enforce_self,
+    get_current_user,
+    require_account_type,
+    require_pt_relation_access,
+)
 from backend.services.exercise_catalog import AI_COACHING_EXERCISE_CODES
 from backend.services.calorie_service import (
     calculate_for_record,
@@ -1791,6 +1795,25 @@ def create_workout_record_item(
     )
 
 
+def require_pt_record_read(
+    db: Session, record: WorkoutRecord, current_user: User
+) -> None:
+    if record.record_type != "PT":
+        return
+    require_pt_relation_access(
+        db,
+        user=current_user,
+        trainer_id=record.trainer_id,
+        member_id=record.user_id,
+        trainer_member_id=(
+            record.pt_schedule.trainer_member_id
+            if record.pt_schedule is not None
+            else None
+        ),
+        write=False,
+    )
+
+
 @router.get(
     "/records",
     response_model=WorkoutRecordListResponse,
@@ -1850,6 +1873,8 @@ def get_workout_records(
         .offset(offset)
         .limit(limit)
     ).all()
+    for record, _, _ in rows:
+        require_pt_record_read(db, record, current_user)
 
     return WorkoutRecordListResponse(
         items=[
@@ -1895,6 +1920,7 @@ def get_workout_record_detail(
         )
 
     record, exercise, user_exercise = row
+    require_pt_record_read(db, record, current_user)
     return create_workout_record_item(record, exercise, user_exercise)
 
 
@@ -2033,17 +2059,15 @@ def create_workout_record(
         if assignment.user_exercise_id is not None or assignment.exercise_id != exercise.exercise_id:
             db.rollback()
             raise HTTPException(status_code=400, detail="PT 숙제와 운동 기록의 운동이 일치하지 않습니다.")
-        active_relationship = db.scalar(
-            select(TrainerMember).where(
-                TrainerMember.trainer_member_id == assignment.trainer_member_id,
-                TrainerMember.trainer_id == assignment.trainer_id,
-                TrainerMember.member_id == assignment.member_id,
-                TrainerMember.status == "ACTIVE",
-            ).with_for_update()
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=assignment.trainer_id,
+            member_id=assignment.member_id,
+            trainer_member_id=assignment.trainer_member_id,
+            write=True,
+            lock=True,
         )
-        if active_relationship is None:
-            db.rollback()
-            raise HTTPException(status_code=403, detail="활성 PT 연결 관계가 필요합니다.")
         record_weight_kg = assignment.weight_kg
         training_volume = calculate_training_volume(
             record_weight_kg,

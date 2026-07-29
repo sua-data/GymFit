@@ -10,7 +10,11 @@ from backend.database import get_db
 from backend.models import PtSchedule, User, WorkoutRecord, WorkoutRecordDetailItem
 from backend.pt_schedule_schemas import PtScheduleCompleteRequest, PtScheduleCreate, PtScheduleItem, PtScheduleList, PtScheduleUpdate
 from backend.routers.pt import get_current_user, require_role
-from backend.security import require_active_member_relation, require_employed_trainer
+from backend.security import (
+    require_active_member_relation,
+    require_employed_trainer,
+    require_pt_relation_access,
+)
 from backend.services.notification_service import create_notification
 from backend.routers.workout_session import validate_item_reference
 
@@ -84,6 +88,14 @@ def owned_schedule(db: Session, schedule_id: int, user: User, *, lock: bool = Fa
     item = db.scalar(statement)
     if item is None:
         raise HTTPException(status_code=404, detail="PT 일정을 찾을 수 없습니다.")
+    require_pt_relation_access(
+        db,
+        user=user,
+        trainer_id=item.trainer_id,
+        member_id=item.member_id,
+        trainer_member_id=item.trainer_member_id,
+        write=False,
+    )
     return item
 
 
@@ -132,7 +144,7 @@ def create_schedule(payload: PtScheduleCreate, current_user: User = Depends(get_
         db.rollback(); raise HTTPException(status_code=500, detail="PT 일정을 등록하지 못했습니다.") from exc
 
 
-def list_for_owner(db: Session, owner, owner_id: int, schedule_status: str | None, member_id: int | None, date_from: datetime | None, date_to: datetime | None, limit: int, offset: int) -> PtScheduleList:
+def list_for_owner(db: Session, owner, owner_id: int, schedule_status: str | None, member_id: int | None, date_from: datetime | None, date_to: datetime | None, limit: int, offset: int, current_user: User) -> PtScheduleList:
     filters = [owner == owner_id]
     if schedule_status:
         filters.append(PtSchedule.status == schedule_status)
@@ -144,19 +156,28 @@ def list_for_owner(db: Session, owner, owner_id: int, schedule_status: str | Non
         filters.append(PtSchedule.start_at < normalize_datetime(date_to))
     total = db.scalar(select(func.count(PtSchedule.schedule_id)).where(*filters)) or 0
     items = db.scalars(schedule_query().where(*filters).order_by(PtSchedule.start_at.asc()).offset(offset).limit(limit)).all()
+    for item in items:
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.trainer_member_id,
+            write=False,
+        )
     return PtScheduleList(items=[serialize(item) for item in items], total=total)
 
 
 @router.get("/trainer", response_model=PtScheduleList)
 def trainer_schedules(member_id: int | None = Query(None, gt=0), schedule_status: str | None = Query(None, alias="status"), date_from: datetime | None = None, date_to: datetime | None = None, limit: int = Query(200, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
-    return list_for_owner(db, PtSchedule.trainer_id, current_user.user_id, schedule_status, member_id, date_from, date_to, limit, offset)
+    return list_for_owner(db, PtSchedule.trainer_id, current_user.user_id, schedule_status, member_id, date_from, date_to, limit, offset, current_user)
 
 
 @router.get("/member", response_model=PtScheduleList)
 def member_schedules(schedule_status: str | None = Query(None, alias="status"), date_from: datetime | None = None, date_to: datetime | None = None, limit: int = Query(200, ge=1, le=200), offset: int = Query(0, ge=0), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_role(current_user, "MEMBER")
-    return list_for_owner(db, PtSchedule.member_id, current_user.user_id, schedule_status, None, date_from, date_to, limit, offset)
+    return list_for_owner(db, PtSchedule.member_id, current_user.user_id, schedule_status, None, date_from, date_to, limit, offset, current_user)
 
 
 @router.get("/{schedule_id}", response_model=PtScheduleItem)
@@ -169,8 +190,14 @@ def update_schedule(schedule_id: int, payload: PtScheduleUpdate, current_user: U
     require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_active_member_relation(
-            db, trainer=current_user, member_id=item.member_id, lock=True
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.trainer_member_id,
+            write=True,
+            lock=True,
         )
         if item.status != "SCHEDULED":
             raise HTTPException(status_code=409, detail="예정 상태의 PT 일정만 수정할 수 있습니다.")
@@ -213,8 +240,14 @@ def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_u
     require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_active_member_relation(
-            db, trainer=current_user, member_id=item.member_id, lock=True
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.trainer_member_id,
+            write=True,
+            lock=True,
         )
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="이미 취소된 PT 일정입니다.")
@@ -246,8 +279,14 @@ def complete_schedule(schedule_id: int, payload: PtScheduleCompleteRequest, curr
     require_employed_trainer(current_user)
     try:
         item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_active_member_relation(
-            db, trainer=current_user, member_id=item.member_id, lock=True
+        require_pt_relation_access(
+            db,
+            user=current_user,
+            trainer_id=item.trainer_id,
+            member_id=item.member_id,
+            trainer_member_id=item.trainer_member_id,
+            write=True,
+            lock=True,
         )
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="취소된 PT 일정은 완료 처리할 수 없습니다.")
