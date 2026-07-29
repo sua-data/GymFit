@@ -9,10 +9,6 @@
   let cancelSchedule = async () => {};
   let completeSchedule = async () => {};
 
-  function currentUser() {
-    return window.gymfitApi.getUser();
-  }
-
   async function api(url, options = {}) {
     return window.gymfitApi.request(url, options);
   }

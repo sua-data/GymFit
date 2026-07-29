@@ -39,10 +39,9 @@ button { cursor: pointer; }
 .trainer-activity-message { margin: 12px 0 0; color: #ffb078; font-size: 12px; line-height: 1.5; }
 .gym-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .gym-current p { margin: 5px 0 0; color: var(--my-muted); font-size: 12px; }
-.gym-current button, .disconnect-gym-button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 11px; font-weight: 850; }
+.gym-current button { min-height: 40px; padding: 0 13px; border: 0; border-radius: 11px; font-weight: 850; }
 .gym-current button { color: #050505; background: var(--my-green); }
 .gym-current button:disabled { opacity: .45; }
-.disconnect-gym-button { width: 100%; margin-top: 12px; color: #ff8585; background: #292929; }
 .gym-detail-link { min-height: 42px; display: grid; place-items: center; margin-top: 12px; color: #050505; background: var(--my-green); border-radius: 11px; text-decoration: none; font-size: 13px; font-weight: 850; }
 .gym-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.gym-link-grid .secondary { color: #fff; background: #292929; }
 .gym-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 18px; }

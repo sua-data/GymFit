@@ -6,7 +6,6 @@
   const metricsOverlay = q("#recordMetricsOverlay"), deleteOverlay = q("#recordDeleteOverlay");
   let user = null, period = "all", itemSequence = 0, mediaObjectUrls = [], activeDetailId = null, activeDetailData = null;
 
-  function getUser() { return window.gymfitApi.getUser(); }
   async function api(url, options={}) { return window.gymfitApi.request(url,options); }
   const esc = value => String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
   function localDate(value){ const match=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return match?new Date(+match[1],+match[2]-1,+match[3],+match[4],+match[5]):null; }

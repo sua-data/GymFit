@@ -240,32 +240,6 @@ MEMBER_GOAL_NAMES = {
 }
 
 
-def goal_code_from_name(
-    goal_name: str,
-) -> str:
-    goal_map = {
-        "체중 감량": "WEIGHT_LOSS",
-        "근력 향상": "MUSCLE_GAIN",
-        "체력 향상": "ENDURANCE",
-        "건강 관리": "HEALTH",
-        "자세 교정": "POSTURE",
-        "벌크업": "BULK_UP",
-        "다이어트": "DIET",
-    }
-
-    cleaned_name = goal_name.strip()
-
-    return goal_map.get(
-        cleaned_name,
-        cleaned_name
-        .upper()
-        .replace(
-            " ",
-            "_",
-        ),
-    )
-
-
 def normalize_member_goal(goal_value: str) -> tuple[str, str]:
     code = goal_value.strip().upper()
     if code not in MEMBER_GOAL_NAMES:

@@ -270,42 +270,6 @@ body {
   cursor: pointer;
 }
 
-.date-text {
-  position: absolute;
-  top: 50%;
-  left: 24px;
-  z-index: 1;
-
-  color: rgba(255, 255, 255, 0.4);
-
-  font-size: 15px;
-  font-weight: 500;
-
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.date-text.has-value {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.calendar-icon {
-  position: absolute;
-  top: 50%;
-  right: 19px;
-  z-index: 1;
-
-  width: 27px;
-  height: 27px;
-
-  object-fit: contain;
-
-  opacity: 0.58;
-
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
 /* =========================
    키 / 몸무게
 ========================= */

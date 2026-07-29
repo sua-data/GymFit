@@ -338,40 +338,6 @@ body {
   cursor: pointer;
 }
 
-.date-text {
-  position: absolute;
-  top: 50%;
-  left: 22px;
-  z-index: 1;
-
-  color: rgba(255, 255, 255, 0.4);
-
-  font-size: 15px;
-  font-weight: 500;
-
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.date-text.has-value {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.calendar-icon {
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  z-index: 1;
-
-  width: 25px;
-  height: 25px;
-
-  color: rgba(255, 255, 255, 0.48);
-
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
 /* =========================
    전문 분야
 ========================= */
