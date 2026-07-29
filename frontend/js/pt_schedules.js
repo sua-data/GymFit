@@ -135,6 +135,7 @@
 
   if (isTrainerPage) {
     const overlay = document.querySelector("#scheduleFormOverlay"), form = document.querySelector("#scheduleForm"), message = document.querySelector("#scheduleFormMessage");
+    const scheduleSaveButton = document.querySelector("#scheduleSave");
     const completeOverlay = document.querySelector("#ptCompleteOverlay"), completeForm = document.querySelector("#ptCompleteForm"), completeMessage = document.querySelector("#ptCompleteMessage");
     let completingItem = null, completeDirty = false, completeMediaUrls = [];
     const localInput = value => { const date = new Date(value); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0,16); };
@@ -146,7 +147,8 @@
       document.querySelector("#scheduleEnd").value = item ? localInput(item.end_at) : localInput(new Date(base.getTime()+3600000));
       document.querySelector("#scheduleMemo").value = item?.memo || "";
       document.querySelector("#scheduleFormTitle").textContent = item ? "PT 일정 수정" : "새 PT 일정";
-      document.querySelector("#scheduleSave").textContent = item ? "변경사항 저장" : "PT 일정 저장";
+      scheduleSaveButton.textContent = item ? "변경사항 저장" : "PT 일정 저장";
+      scheduleSaveButton.disabled = false;
       overlay.hidden = false; document.body.classList.add("schedule-sheet-open");
     }
     cancelSchedule = async function (item) {
@@ -257,10 +259,18 @@
       if (!start || !end || new Date(start) >= new Date(end)) { message.textContent = "종료 시간은 시작 시간보다 늦어야 합니다."; return; }
       const payload = { start_at:start, end_at:end, memo:document.querySelector("#scheduleMemo").value.trim() || null };
       if (!editingId) payload.member_id = selectedMemberId;
-      busy = true; document.querySelector("#scheduleSave").disabled = true;
+      const saveLabel = scheduleSaveButton.textContent;
+      busy = true;
+      scheduleSaveButton.disabled = true;
+      scheduleSaveButton.textContent = "저장 중...";
+      scheduleSaveButton.setAttribute("aria-busy", "true");
       try { await api(editingId ? `/api/pt/schedules/${editingId}` : "/api/pt/schedules", { method:editingId ? "PATCH" : "POST", body:JSON.stringify(payload) }); busy = false; closeForm(); await load(); }
       catch (error) { message.textContent = error.message; busy = false; }
-      finally { document.querySelector("#scheduleSave").disabled = false; }
+      finally {
+        scheduleSaveButton.disabled = false;
+        scheduleSaveButton.textContent = saveLabel;
+        scheduleSaveButton.removeAttribute("aria-busy");
+      }
     });
   }
 

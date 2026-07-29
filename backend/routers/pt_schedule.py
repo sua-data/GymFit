@@ -21,6 +21,7 @@ from backend.routers.workout_session import validate_item_reference
 
 router = APIRouter(prefix="/api/pt/schedules", tags=["pt-schedules"])
 KST = ZoneInfo("Asia/Seoul")
+SCHEDULE_OVERLAP_MESSAGE = "같은 시간에 트레이너 또는 회원의 다른 PT 일정이 있습니다."
 
 
 def now_kst() -> datetime:
@@ -73,7 +74,21 @@ def validate_overlap(
         filters.append(PtSchedule.schedule_id != exclude_id)
     conflict = db.scalar(select(PtSchedule.schedule_id).where(*filters).limit(1).with_for_update())
     if conflict is not None:
-        raise HTTPException(status_code=409, detail="트레이너 또는 회원의 기존 PT 일정과 시간이 겹칩니다.")
+        raise HTTPException(status_code=409, detail=SCHEDULE_OVERLAP_MESSAGE)
+
+
+def lock_schedule_participants(
+    db: Session, trainer_id: int, member_id: int
+) -> None:
+    participant_ids = sorted({trainer_id, member_id})
+    locked_ids = db.scalars(
+        select(User.user_id)
+        .where(User.user_id.in_(participant_ids))
+        .order_by(User.user_id.asc())
+        .with_for_update()
+    ).all()
+    if len(locked_ids) != len(participant_ids):
+        raise HTTPException(status_code=404, detail="PT 일정 참여자를 찾을 수 없습니다.")
 
 
 def owned_schedule(db: Session, schedule_id: int, user: User, *, lock: bool = False) -> PtSchedule:
@@ -99,6 +114,23 @@ def owned_schedule(db: Session, schedule_id: int, user: User, *, lock: bool = Fa
     return item
 
 
+def lock_owned_schedule_for_change(
+    db: Session, schedule_id: int, user: User
+) -> PtSchedule:
+    snapshot = owned_schedule(db, schedule_id, user)
+    lock_schedule_participants(db, snapshot.trainer_id, snapshot.member_id)
+    require_pt_relation_access(
+        db,
+        user=user,
+        trainer_id=snapshot.trainer_id,
+        member_id=snapshot.member_id,
+        trainer_member_id=snapshot.trainer_member_id,
+        write=True,
+        lock=True,
+    )
+    return owned_schedule(db, schedule_id, user, lock=True)
+
+
 def format_time(value: datetime) -> str:
     return value.strftime("%Y년 %m월 %d일 %H:%M")
 
@@ -109,6 +141,9 @@ def create_schedule(payload: PtScheduleCreate, current_user: User = Depends(get_
     try:
         start_at, end_at = normalize_datetime(payload.start_at), normalize_datetime(payload.end_at)
         validate_range(start_at, end_at)
+        lock_schedule_participants(
+            db, current_user.user_id, payload.member_id
+        )
         relationship = require_active_member_relation(
             db, trainer=current_user, member_id=payload.member_id, lock=True
         )
@@ -189,16 +224,7 @@ def schedule_detail(schedule_id: int, current_user: User = Depends(get_current_u
 def update_schedule(schedule_id: int, payload: PtScheduleUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
     try:
-        item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_pt_relation_access(
-            db,
-            user=current_user,
-            trainer_id=item.trainer_id,
-            member_id=item.member_id,
-            trainer_member_id=item.trainer_member_id,
-            write=True,
-            lock=True,
-        )
+        item = lock_owned_schedule_for_change(db, schedule_id, current_user)
         if item.status != "SCHEDULED":
             raise HTTPException(status_code=409, detail="예정 상태의 PT 일정만 수정할 수 있습니다.")
         changes = payload.model_dump(exclude_unset=True)
@@ -239,16 +265,7 @@ def update_schedule(schedule_id: int, payload: PtScheduleUpdate, current_user: U
 def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
     try:
-        item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_pt_relation_access(
-            db,
-            user=current_user,
-            trainer_id=item.trainer_id,
-            member_id=item.member_id,
-            trainer_member_id=item.trainer_member_id,
-            write=True,
-            lock=True,
-        )
+        item = lock_owned_schedule_for_change(db, schedule_id, current_user)
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="이미 취소된 PT 일정입니다.")
         if item.status != "SCHEDULED":
@@ -278,16 +295,7 @@ def cancel_schedule(schedule_id: int, current_user: User = Depends(get_current_u
 def complete_schedule(schedule_id: int, payload: PtScheduleCompleteRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_employed_trainer(current_user)
     try:
-        item = owned_schedule(db, schedule_id, current_user, lock=True)
-        require_pt_relation_access(
-            db,
-            user=current_user,
-            trainer_id=item.trainer_id,
-            member_id=item.member_id,
-            trainer_member_id=item.trainer_member_id,
-            write=True,
-            lock=True,
-        )
+        item = lock_owned_schedule_for_change(db, schedule_id, current_user)
         if item.status == "CANCELLED":
             raise HTTPException(status_code=409, detail="취소된 PT 일정은 완료 처리할 수 없습니다.")
         if item.status == "COMPLETED":
