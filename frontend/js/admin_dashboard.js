@@ -1,16 +1,10 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  let user;
-  try { user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null"); } catch { user = null; }
-  user = user && Number(user.user_id ?? user.userId) > 0 ? { ...user, user_id: Number(user.user_id ?? user.userId) } : null;
-  if (!user) { location.replace("/login"); return; }
-  if (String(user.account_type || "").toUpperCase() !== "ADMIN") { location.replace("/dashboard"); return; }
+  const user = window.gymfitApi.requireRole("ADMIN");
+  if (!user) return;
 
   async function api(url) {
-    const response = await fetch(url, { headers: { "X-User-Id": String(user.user_id) } });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) { const error = new Error(body?.detail || "관리자 정보를 불러오지 못했습니다."); error.status = response.status; throw error; }
-    return body;
+    return window.gymfitApi.request(url);
   }
   const formatDate = (value) => value ? new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit" }).format(new Date(value)) : "";
   function renderRecent(container, empty, items, type) {
@@ -49,9 +43,8 @@
       renderRecent($("employmentRecentList"), $("employmentRecentEmpty"), employmentPending.items || [], "employment");
       $("dashboardContent").hidden = false;
     } catch (error) {
-      if (error.status === 401) location.replace("/login");
-      else if (error.status === 403) location.replace("/dashboard");
-      else { $("dashboardErrorMessage").textContent = error.message; $("dashboardError").hidden = false; }
+      $("dashboardErrorMessage").textContent = error.message;
+      $("dashboardError").hidden = false;
     } finally { $("dashboardLoading").hidden = true; }
   }
   $("dashboardRetry").addEventListener("click", load);

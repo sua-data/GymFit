@@ -1,10 +1,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  let user;
-  try { user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null"); } catch { user = null; }
-  user = user && Number(user.user_id ?? user.userId) > 0 ? { ...user, user_id: Number(user.user_id ?? user.userId) } : null;
-  if (!user) { location.replace("/login"); return; }
-  if (String(user.account_type || "").toUpperCase() !== "ADMIN") { location.replace("/dashboard"); return; }
+  const user = window.gymfitApi.requireRole("ADMIN");
+  if (!user) return;
 
   const statusLabels = { NONE: "미등록", PENDING: "대기", APPROVED: "승인", REJECTED: "거절" };
   let filter = String(new URLSearchParams(location.search).get("status") || "PENDING").toUpperCase();
@@ -12,10 +9,7 @@
   let selected = null, busy = false, blobUrl = null, toastTimer;
 
   async function api(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), "X-User-Id": String(user.user_id) } });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) { const error = new Error(body?.detail || "요청을 처리하지 못했습니다."); error.status = response.status; throw error; }
-    return body;
+    return window.gymfitApi.request(url, options);
   }
   function el(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value != null) node.textContent = value; return node; }
   function toast(message) { clearTimeout(toastTimer); $("employmentToast").textContent = message; $("employmentToast").hidden = false; toastTimer = setTimeout(() => { $("employmentToast").hidden = true; }, 2400); }
@@ -61,8 +55,8 @@
         $("employmentList").append(card);
       });
     } catch (error) {
-      if (error.status === 401) location.replace("/login"); else if (error.status === 403) location.replace("/dashboard");
-      else { $("employmentEmpty").textContent = error.message; $("employmentEmpty").hidden = false; }
+      $("employmentEmpty").textContent = error.message;
+      $("employmentEmpty").hidden = false;
     } finally { $("employmentLoading").hidden = true; }
   }
   function detailSection(title, rows) {
@@ -80,7 +74,7 @@
       const evidence = el("section", "admin-detail-section admin-evidence-grid"); evidence.append(el("h3", "", "재직·소속 증빙"));
       if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
       if (selected.employment_evidence_url) {
-        const response = await fetch(selected.employment_evidence_url, { headers: { "X-User-Id": String(user.user_id) } });
+        const response = await window.gymfitApi.fetch(selected.employment_evidence_url);
         if (response.ok) {
           blobUrl = URL.createObjectURL(await response.blob());
           const image = document.createElement("img"); image.src = blobUrl; image.alt = "재직·소속 증빙"; image.addEventListener("click", () => window.open(blobUrl, "_blank", "noopener,noreferrer")); evidence.append(image);

@@ -2,25 +2,15 @@
   const overlay = document.querySelector("#assignmentResultOverlay");
   const panel = document.querySelector("#assignmentResultPanel");
   const content = document.querySelector("#assignmentResultContent");
-  let user = null;
+  const user = window.gymfitApi.getUser();
   let busy = false;
-  try { user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null"); } catch { user = null; }
   const userId = Number(user?.user_id ?? user?.userId);
   if (!userId || String(user?.account_type).toUpperCase() !== "TRAINER" || !overlay || !panel || !content) return;
 
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
 
   async function api(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        "X-User-Id": String(userId),
-      },
-    });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   function closeResult() {

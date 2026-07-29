@@ -1,16 +1,10 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  let user;
-  try { user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null"); } catch { user = null; }
-  user = user && Number(user.user_id ?? user.userId) > 0 ? { ...user, user_id: Number(user.user_id ?? user.userId) } : null;
-  if (!user) { location.replace("/login"); return; }
-  if (String(user.account_type || "").toUpperCase() !== "TRAINER") { location.replace("/mypage"); return; }
+  const user = window.gymfitApi.requireRole("TRAINER");
+  if (!user) return;
   let items = [], editing = null, busy = false, toastTimer;
   async function api(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { ...(options.body instanceof FormData ? {} : options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}), "X-User-Id": String(user.user_id) } });
-    const body = response.status === 204 ? null : await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
   function toast(message) { clearTimeout(toastTimer); $("certToast").textContent = message; $("certToast").hidden = false; toastTimer = setTimeout(() => { $("certToast").hidden = true; }, 2200); }
   function statusCopy(status, reason) {

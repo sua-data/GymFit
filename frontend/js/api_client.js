@@ -6,6 +6,7 @@
   const rawFetch = window.fetch.bind(window);
   let redirecting = false;
   let isLoggingOut = false;
+  let forbiddenNoticeVisible = false;
   let authCheckController = null;
   let authStateVersion = 0;
   const authPendingStyle = document.createElement("style");
@@ -24,6 +25,57 @@
 
   function getAccessToken() {
     return sessionStorage.getItem(TOKEN_KEY);
+  }
+
+  function getStoredUser() {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(USER_KEY) || "null");
+      if (!value) return null;
+      const userId = Number(value.user_id ?? value.userId);
+      return Number.isInteger(userId) && userId > 0
+        ? {
+            ...value,
+            user_id: userId,
+            account_type: String(
+              value.account_type ?? value.accountType ?? ""
+            ).toUpperCase(),
+          }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function showForbidden(message = "접근 권한이 없습니다.") {
+    if (forbiddenNoticeVisible) return;
+    forbiddenNoticeVisible = true;
+    window.alert(message);
+    window.setTimeout(() => {
+      forbiddenNoticeVisible = false;
+    }, 1500);
+  }
+
+  function homeForRole(accountType) {
+    if (accountType === "ADMIN") return "/admin/dashboard";
+    if (accountType === "TRAINER") return "/trainer/members";
+    return "/dashboard";
+  }
+
+  function requireRole(allowedRoles) {
+    const user = getStoredUser();
+    if (!getAccessToken() || !user) {
+      redirectToLogin();
+      return null;
+    }
+    const roles = (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles])
+      .filter(Boolean)
+      .map((role) => String(role).toUpperCase());
+    if (roles.length && !roles.includes(user.account_type)) {
+      showForbidden();
+      window.location.replace(homeForRole(user.account_type));
+      return null;
+    }
+    return user;
   }
 
   function clearAuthentication() {
@@ -82,6 +134,15 @@
       clearAuthentication();
       redirectToLogin();
     }
+    if (response.status === 403 && isApiRequest(input)) {
+      response.clone().json().catch(() => null).then((data) => {
+        showForbidden(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "접근 권한이 없습니다."
+        );
+      });
+    }
     return response;
   }
 
@@ -91,17 +152,32 @@
     if (
       body
       && !(body instanceof FormData)
-      && typeof body !== "string"
       && !(body instanceof URLSearchParams)
     ) {
-      headers.set("Content-Type", "application/json");
-      body = JSON.stringify(body);
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
+      if (typeof body !== "string") {
+        body = JSON.stringify(body);
+      }
     }
     const response = await authenticatedFetch(input, { ...init, headers, body });
     const data = await response.json().catch(() => null);
     if (!response.ok) {
+      const detail = Array.isArray(data?.detail)
+        ? data.detail.map((item) => item?.msg).filter(Boolean).join(" ")
+        : data?.detail;
+      if (response.status === 403) {
+        showForbidden(
+          typeof detail === "string" && detail
+            ? detail
+            : "접근 권한이 없습니다."
+        );
+      }
       const error = new Error(
-        typeof data?.detail === "string" ? data.detail : "요청을 처리하지 못했습니다."
+        typeof detail === "string" && detail
+          ? detail
+          : "요청을 처리하지 못했습니다."
       );
       error.status = response.status;
       error.data = data;
@@ -151,6 +227,9 @@
     fetch: authenticatedFetch,
     request: requestJson,
     getAccessToken,
+    getUser: getStoredUser,
+    requireRole,
+    showForbidden,
     setAccessToken(token) {
       if (typeof token !== "string" || !token) {
         throw new Error("유효한 액세스 토큰이 필요합니다.");

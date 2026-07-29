@@ -7,19 +7,8 @@
   const readAllButton = document.querySelector("#readAllButton");
   let user = null;
 
-  function getSessionUser() {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const userId = Number(value?.user_id ?? value?.userId);
-      return Number.isInteger(userId) && userId > 0 ? { ...value, user_id: userId } : null;
-    } catch { return null; }
-  }
-
   async function requestJson(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { "X-User-Id": String(user.user_id), ...(options.headers || {}) } });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "알림 요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   function formatTime(value) {
@@ -103,7 +92,7 @@
     }
   });
   document.querySelector("#notificationsRetryButton").addEventListener("click", loadNotifications);
-  user = getSessionUser();
-  if (!user) window.location.replace("/login");
-  else loadNotifications();
+  user = window.gymfitApi.requireRole(["MEMBER", "TRAINER", "ADMIN"]);
+  if (!user) return;
+  loadNotifications();
 })();

@@ -27,27 +27,8 @@
   let statusFilter = "";
   let exerciseCategory = "전체";
 
-  function getUser() {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const userId = Number(value?.user_id ?? value?.userId);
-      return userId > 0 ? { ...value, user_id: userId } : null;
-    } catch {
-      return null;
-    }
-  }
-
   async function api(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        "X-User-Id": String(user.user_id),
-      },
-    });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   const inputValue = selector => document.querySelector(selector).value.trim();
@@ -560,9 +541,8 @@
     renderAssignments();
   });
 
-  user = getUser();
-  if (!user) { location.replace("/login"); return; }
-  if (String(user.account_type).toUpperCase() !== "TRAINER") { location.replace("/pt/assignments"); return; }
+  user = window.gymfitApi.requireRole("TRAINER");
+  if (!user) return;
   resetForm();
   loadData();
 })();

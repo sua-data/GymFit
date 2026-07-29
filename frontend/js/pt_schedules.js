@@ -10,21 +10,11 @@
   let completeSchedule = async () => {};
 
   function currentUser() {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const id = Number(value?.user_id ?? value?.userId);
-      return id > 0 ? { ...value, user_id: id, account_type: String(value.account_type ?? value.accountType ?? "").toUpperCase() } : null;
-    } catch { return null; }
+    return window.gymfitApi.getUser();
   }
 
   async function api(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { ...(options.body && !(options.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), "X-User-Id": String(user.user_id) } });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) {
-      const detail = Array.isArray(body?.detail) ? body.detail.map(item => item.msg).join("\n") : body?.detail;
-      throw new Error(detail || "요청을 처리하지 못했습니다.");
-    }
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   const now = () => Date.now();
@@ -275,8 +265,8 @@
   }
 
   window.addEventListener("commonLayoutReady", async () => {
-    user = currentUser(); if (!user) { location.href = "/login"; return; }
-    if ((isTrainerPage && user.account_type !== "TRAINER") || (!isTrainerPage && user.account_type === "TRAINER")) { location.href = "/dashboard"; return; }
+    user = window.gymfitApi.requireRole(isTrainerPage ? "TRAINER" : "MEMBER");
+    if (!user) return;
     await load();
   });
   window.addEventListener("keydown", event => { if (event.key === "Escape") { if (!document.querySelector("#ptCompleteOverlay")?.hidden) document.querySelector("#ptCompleteClose")?.click(); else if (!document.querySelector("#scheduleFormOverlay")?.hidden) document.querySelector("#scheduleFormClose")?.click(); } });

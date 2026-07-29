@@ -1,10 +1,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  let user;
-  try { user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null"); } catch { user = null; }
-  user = user && Number(user.user_id ?? user.userId) > 0 ? { ...user, user_id: Number(user.user_id ?? user.userId) } : null;
-  if (!user) { location.replace("/login"); return; }
-  if (String(user.account_type || "").toUpperCase() !== "ADMIN") { location.replace("/dashboard"); return; }
+  const user = window.gymfitApi.requireRole("ADMIN");
+  if (!user) return;
 
   const statusLabels = { PENDING: "대기", APPROVED: "승인", REJECTED: "거절", NONE: "미등록" };
   const specialtyLabels = {
@@ -19,10 +16,7 @@
   const blobUrls = new Set();
 
   async function api(url, options = {}) {
-    const response = await fetch(url, { ...options, headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}), "X-User-Id": String(user.user_id) } });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) { const error = new Error(body?.detail || "요청을 처리하지 못했습니다."); error.status = response.status; throw error; }
-    return body;
+    return window.gymfitApi.request(url, options);
   }
   function el(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value != null) node.textContent = value; return node; }
   function formatDate(value, withTime = false) { return value ? new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) }).format(new Date(value)) : "미등록"; }
@@ -59,8 +53,8 @@
       trainers = Array.isArray(data.items) ? data.items : []; render();
       const match = location.hash.match(/^#trainer-(\d+)$/); if (match) openDetail(Number(match[1]));
     } catch (error) {
-      if (error.status === 401) location.replace("/login"); else if (error.status === 403) location.replace("/dashboard");
-      else { $("adminErrorMessage").textContent = error.message; $("adminError").hidden = false; }
+      $("adminErrorMessage").textContent = error.message;
+      $("adminError").hidden = false;
     } finally { $("adminLoading").hidden = true; }
   }
   function section(title, values, className = "") {
@@ -77,7 +71,7 @@
   async function appendEvidence(container, certification) {
     if (!certification.has_evidence || !certification.evidence_image_url) return false;
     try {
-      const response = await fetch(certification.evidence_image_url, { headers: { "X-User-Id": String(user.user_id) } }); if (!response.ok) return false;
+      const response = await window.gymfitApi.fetch(certification.evidence_image_url); if (!response.ok) return false;
       const url = URL.createObjectURL(await response.blob()); blobUrls.add(url);
       const image = document.createElement("img"); image.src = url; image.alt = `${certification.certification_name} 증빙`; image.addEventListener("click", () => window.open(url, "_blank", "noopener,noreferrer")); container.append(image); return true;
     } catch { return false; }

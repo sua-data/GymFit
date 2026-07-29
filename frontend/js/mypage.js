@@ -53,13 +53,7 @@ let toastTimer = null;
 const gymSearchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
 function getSessionUser() {
-  try {
-    const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-    const userId = Number(value?.user_id ?? value?.userId);
-    return Number.isInteger(userId) && userId > 0 ? { ...value, user_id: userId } : null;
-  } catch {
-    return null;
-  }
+  return window.gymfitApi.getUser();
 }
 
 function getErrorMessage(error, fallback) {
@@ -67,16 +61,7 @@ function getErrorMessage(error, fallback) {
 }
 
 async function requestJson(url, options = {}) {
-  const response = await fetch(url, options);
-  let body = null;
-  try { body = await response.json(); } catch { body = null; }
-  if (!response.ok) {
-    const detail = Array.isArray(body?.detail)
-      ? body.detail.map((item) => item.msg).filter(Boolean).join(" ")
-      : body?.detail;
-    throw new Error(detail || "요청을 처리하지 못했습니다.");
-  }
-  return body;
+  return window.gymfitApi.request(url, options);
 }
 
 function getDisplayName(user) {
@@ -273,13 +258,12 @@ async function loadTrainerActivity(user) {
     trainerActivity = null;
     return;
   }
-  const headers = { "X-User-Id": String(user.user_id) };
   try {
     const [memberData, assignedData, inProgressData, completedData] = await Promise.all([
-      requestJson("/api/pt/my-members", { headers }),
-      requestJson("/api/pt/assignments/trainer?status=ASSIGNED&limit=1", { headers }),
-      requestJson("/api/pt/assignments/trainer?status=IN_PROGRESS&limit=1", { headers }),
-      requestJson("/api/pt/assignments/trainer?status=COMPLETED&limit=1", { headers }),
+      requestJson("/api/pt/my-members"),
+      requestJson("/api/pt/assignments/trainer?status=ASSIGNED&limit=1"),
+      requestJson("/api/pt/assignments/trainer?status=IN_PROGRESS&limit=1"),
+      requestJson("/api/pt/assignments/trainer?status=COMPLETED&limit=1"),
     ]);
     trainerActivity = {
       memberCount: memberData.items.length,
@@ -294,11 +278,12 @@ async function loadTrainerActivity(user) {
 }
 
 async function loadProfile() {
-  const sessionUser = getSessionUser();
-  if (!sessionUser) {
-    window.location.replace("/login");
-    return;
-  }
+  const sessionUser = window.gymfitApi.requireRole([
+    "MEMBER",
+    "TRAINER",
+    "ADMIN",
+  ]);
+  if (!sessionUser) return;
   profileLoading.hidden = false;
   profileError.hidden = true;
   profileContent.hidden = true;
@@ -447,7 +432,6 @@ async function submitProfile(event) {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": String(currentUser.user_id),
       },
       body: JSON.stringify(payload),
     });
@@ -521,7 +505,6 @@ async function submitPasswordChange(event) {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": String(currentUser.user_id),
       },
       body: JSON.stringify({
         current_password: currentPassword,
@@ -581,7 +564,6 @@ async function submitWithdrawal(event) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": String(currentUser.user_id),
       },
       body: JSON.stringify({
         confirmation_phrase: phrase,
@@ -622,7 +604,7 @@ async function saveSelectedGym() {
   try {
     await requestJson("/api/users/me/gym", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-User-Id": String(currentUser.user_id) },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(selected),
     });
     closeGymSheet();

@@ -2,51 +2,14 @@
     const state = document.querySelector("#feedbackState");
     const list = document.querySelector("#feedbackList");
 
-    let user = null;
-
-    try {
-        user = JSON.parse(
-            sessionStorage.getItem("gymfitUser") || "null"
-        );
-    } catch {
-        user = null;
-    }
-
-    const userId = Number(
-        user?.user_id ?? user?.userId
-    );
-
-    if (!userId) {
-        location.replace("/login");
-        return;
-    }
-
-    if (user.account_type !== "MEMBER") {
-        location.replace("/trainer/assignments");
-        return;
-    }
+    const user = window.gymfitApi.requireRole("MEMBER");
+    if (!user) return;
 
     async function load() {
         try {
-            const response = await fetch(
-                "/api/pt/feedback/member",
-                {
-                    headers: {
-                        "X-User-Id": String(userId),
-                    },
-                }
+            const data = await window.gymfitApi.request(
+                "/api/pt/feedback/member"
             );
-
-            const data = await response
-                .json()
-                .catch(() => null);
-
-            if (!response.ok) {
-                throw new Error(
-                    data?.detail ||
-                    "피드백을 불러오지 못했습니다."
-                );
-            }
 
             list.innerHTML = "";
 

@@ -1,15 +1,6 @@
 (function () {
-  const sessionUser = (() => {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const userId = Number(value?.user_id ?? value?.userId);
-      return userId > 0 ? { ...value, user_id: userId } : null;
-    } catch { return null; }
-  })();
-  if (!sessionUser) {
-    window.location.replace("/login");
-    return;
-  }
+  const sessionUser = window.gymfitApi.requireRole(["MEMBER", "TRAINER"]);
+  if (!sessionUser) return;
 
   const elements = Object.fromEntries([
     "gymLoading", "gymError", "gymErrorMessage", "gymEmpty", "gymContent",
@@ -34,18 +25,7 @@
   const searchController = window.createGymSearch(document.querySelector("[data-gym-search]"));
 
   async function requestJson(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: { ...(options.headers || {}), "X-User-Id": String(sessionUser.user_id) },
-    });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) {
-      const detail = Array.isArray(body?.detail)
-        ? body.detail.map((item) => item.msg).filter(Boolean).join(" ")
-        : body?.detail;
-      throw new Error(detail || "요청을 처리하지 못했습니다.");
-    }
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   function showToast(message) {

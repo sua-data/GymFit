@@ -180,9 +180,7 @@ async function refreshGymfitCurrentUser(force = false) {
   }
 
   currentUserRefreshPromise = (async () => {
-    const response = await fetch(`/api/users/${userId}`, {
-      headers: { "X-User-Id": String(userId) },
-    });
+    const response = await window.gymfitApi.fetch(`/api/users/${userId}`);
     const profile = await response.json().catch(() => null);
     if (window.gymfitApi?.isLoggingOut?.()) {
       return null;
@@ -214,22 +212,7 @@ window.refreshGymfitCurrentUser = refreshGymfitCurrentUser;
 
 
 function getLoginUser() {
-  const savedUser =
-    sessionStorage.getItem(
-      "gymfitUser"
-    );
-
-  if (!savedUser) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(
-      savedUser
-    );
-  } catch {
-    return null;
-  }
+  return window.gymfitApi?.getUser?.() || null;
 }
 
 
@@ -807,9 +790,7 @@ async function refreshNotificationBadge() {
   const badge = document.querySelector("#notificationBadge");
   if (!badge || !user?.user_id) return;
   try {
-    const response = await fetch("/api/notifications/unread-count", {
-      headers: { "X-User-Id": String(user.user_id) },
-    });
+    const response = await window.gymfitApi.fetch("/api/notifications/unread-count");
     if (!response.ok) throw new Error("알림 개수를 불러오지 못했습니다.");
     const data = await response.json();
     const count = Math.max(0, Number(data.unread_count) || 0);

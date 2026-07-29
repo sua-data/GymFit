@@ -6,8 +6,8 @@
   const metricsOverlay = q("#recordMetricsOverlay"), deleteOverlay = q("#recordDeleteOverlay");
   let user = null, period = "all", itemSequence = 0, mediaObjectUrls = [], activeDetailId = null, activeDetailData = null;
 
-  function getUser() { try { const value=JSON.parse(sessionStorage.getItem("gymfitUser")||"null"); const id=Number(value?.user_id??value?.userId); return id>0?{...value,user_id:id}:null; } catch{return null;} }
-  async function api(url, options={}) { const response=await fetch(url,{...options,headers:{...(options.body && !(options.body instanceof FormData)?{"Content-Type":"application/json"}:{}),"X-User-Id":String(user.user_id),...(options.headers||{})}}); const body=response.status===204?null:await response.json().catch(()=>null); if(!response.ok) throw new Error(body?.detail||"요청을 처리하지 못했습니다."); return body; }
+  function getUser() { return window.gymfitApi.getUser(); }
+  async function api(url, options={}) { return window.gymfitApi.request(url,options); }
   const esc = value => String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
   function localDate(value){ const match=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return match?new Date(+match[1],+match[2]-1,+match[3],+match[4],+match[5]):null; }
   const formatDate=value=>{const date=localDate(value)||new Date(`${value}T00:00:00`);return new Intl.DateTimeFormat("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(date);};
@@ -28,7 +28,7 @@
   async function load(){state("loading");try{render(await api(`/api/workout-sessions?period=${period}&limit=100&offset=0`));}catch(error){state("error",error.message);}}
 
   function optionalRow(label,value){return value!==null&&value!==undefined&&value!==""?`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`:"";}
-  async function loadProtectedMedia(media, element){try{const response=await fetch(media.media_url,{headers:{"X-User-Id":String(user.user_id)}});if(!response.ok)throw new Error();const url=URL.createObjectURL(await response.blob());mediaObjectUrls.push(url);element.src=url;}catch{element.replaceWith(Object.assign(document.createElement("p"),{textContent:"미디어를 불러오지 못했습니다."}));}}
+  async function loadProtectedMedia(media, element){try{const response=await window.gymfitApi.fetch(media.media_url);if(!response.ok)throw new Error();const url=URL.createObjectURL(await response.blob());mediaObjectUrls.push(url);element.src=url;}catch{element.replaceWith(Object.assign(document.createElement("p"),{textContent:"미디어를 불러오지 못했습니다."}));}}
   function clearMediaUrls(){mediaObjectUrls.forEach(URL.revokeObjectURL);mediaObjectUrls=[];}
   async function openDetail(id, pushHistory=true){activeDetailId=id;clearMediaUrls();detailOverlay.hidden=false;document.body.classList.add("detail-open");q("#recordDetailLoading").hidden=false;q("#recordDetailError").hidden=true;detailContent.hidden=true;try{const data=await api(`/api/workout-sessions/${id}`);activeDetailData=data;q("#recordDetailTitle").textContent=data.title||"PT 수업";const typeBadge=q("#recordDetailType");typeBadge.textContent=data.record_type==="PT"?"PT":"일반 운동";typeBadge.className=`record-type ${data.record_type.toLowerCase()}`;const meta=[optionalRow("날짜",formatDate(data.workout_date)),optionalRow("시간",`${formatTime(data.started_at)}${data.completed_at?` ~ ${formatTime(data.completed_at)}`:""}`),optionalRow("운동 시간",workoutMinutesText(data.workout_minutes)),optionalRow("운동 부위",data.workout_part),optionalRow("트레이너",data.trainer_name),data.record_type==="PT"?"":optionalRow("장소",data.location),optionalRow("메모",data.memo)].join("");
         const workoutOnly = data.record_type === "WORKOUT" ? [optionalRow("예상 소모 칼로리",calorieText(data)),optionalRow("계산 기준",data.calorie_calculation_status==="CALCULATED"?"MET 기준과 체중, 운동시간을 바탕으로 계산한 예상값입니다.":null),optionalRow("평균 자세 점수",data.posture_score!==null?`${data.posture_score}점`:null),optionalRow("최고 자세 점수",data.best_posture_score!==null?`${data.best_posture_score}점`:null)].join("") : "";
@@ -132,6 +132,6 @@
   q("#recordDetailRetry").onclick=()=>activeDetailId&&openDetail(activeDetailId);
   filters.forEach(button=>button.onclick=()=>{period=button.dataset.period;filters.forEach(item=>item.classList.toggle("active",item===button));load();});
   addEventListener("popstate",()=>{const match=location.pathname.match(/^\/records\/(\d+)/);if(match)openDetail(Number(match[1]));else closeDetail(false);});
-  addEventListener("commonLayoutReady",()=>{user=getUser();if(!user){location.href="/login";return;}if(String(user.account_type??user.accountType??"").toUpperCase()==="TRAINER")q("#openRecordForm").hidden=true;load();const match=location.pathname.match(/^\/records\/(\d+)/);if(match)openDetail(Number(match[1]));});
+  addEventListener("commonLayoutReady",()=>{user=window.gymfitApi.requireRole(["MEMBER","TRAINER"]);if(!user)return;if(user.account_type==="TRAINER")q("#openRecordForm").hidden=true;load();const match=location.pathname.match(/^\/records\/(\d+)/);if(match)openDetail(Number(match[1]));});
   addEventListener("keydown",event=>{if(event.key==="Escape"){if(!deleteOverlay.hidden)closeDeleteConfirm();else if(!metricsOverlay.hidden)closeMetrics();else if(!detailOverlay.hidden)closeDetail();else if(!formOverlay.hidden)closeForm();}});
 })();

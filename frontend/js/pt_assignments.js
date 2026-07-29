@@ -9,27 +9,8 @@
   let busy = false;
   let manualAssignment = null;
 
-  function getUser() {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const userId = Number(value?.user_id ?? value?.userId);
-      return userId > 0 ? { ...value, user_id: userId } : null;
-    } catch {
-      return null;
-    }
-  }
-
   async function api(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        "X-User-Id": String(user.user_id),
-      },
-    });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   const statusName = value => ({ ASSIGNED: "진행 전", IN_PROGRESS: "진행 중", COMPLETED: "완료", CANCELLED: "취소" }[value] || value);
@@ -206,8 +187,7 @@
   document.querySelector("#manualRecordCancel").addEventListener("click", closeManualRecord);
   document.querySelector("#manualRecordBackdrop").addEventListener("click", closeManualRecord);
 
-  user = getUser();
-  if (!user) { location.replace("/login"); return; }
-  if (user.account_type !== "MEMBER") { location.replace("/trainer/assignments"); return; }
+  user = window.gymfitApi.requireRole("MEMBER");
+  if (!user) return;
   load();
 })();

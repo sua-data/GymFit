@@ -1,12 +1,6 @@
 (function () {
-  const user = (() => {
-    try {
-      const value = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const id = Number(value?.user_id ?? value?.userId);
-      return id > 0 ? { ...value, user_id: id } : null;
-    } catch { return null; }
-  })();
-  if (!user) { window.location.replace("/login"); return; }
+  const user = window.gymfitApi.requireRole(["MEMBER", "TRAINER"]);
+  if (!user) return;
 
   const byId = (id) => document.getElementById(id);
   const elements = Object.fromEntries([
@@ -36,24 +30,7 @@
   let toastTimer = null;
 
   async function api(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-        ...(options.headers || {}),
-        "X-User-Id": String(user.user_id),
-      },
-    });
-    const body = response.status === 204 ? null : await response.json().catch(() => null);
-    if (!response.ok) {
-      const detail = Array.isArray(body?.detail)
-        ? body.detail.map((item) => item.msg).filter(Boolean).join(" ")
-        : body?.detail;
-      const error = new Error(detail || "요청을 처리하지 못했습니다.");
-      error.status = response.status;
-      throw error;
-    }
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   function showToast(message) {
@@ -72,9 +49,7 @@
 
   async function loadProtectedImage(image, url) {
     try {
-      const response = await fetch(url, {
-        headers: { "X-User-Id": String(user.user_id) },
-      });
+      const response = await window.gymfitApi.fetch(url);
       if (!response.ok) return;
       const objectUrl = URL.createObjectURL(await response.blob());
       image.onload = () => URL.revokeObjectURL(objectUrl);

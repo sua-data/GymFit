@@ -7,29 +7,8 @@
   let sessionUser = null;
   let busy = false;
 
-  function getSessionUser() {
-    try {
-      const user = JSON.parse(sessionStorage.getItem("gymfitUser") || "null");
-      const userId = Number(user?.user_id ?? user?.userId);
-      return Number.isInteger(userId) && userId > 0 ? { ...user, user_id: userId } : null;
-    } catch {
-      return null;
-    }
-  }
-
   async function requestJson(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        "X-User-Id": String(sessionUser.user_id),
-        ...(options.headers || {}),
-      },
-    });
-    if (response.status === 204) return null;
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.detail || "요청을 처리하지 못했습니다.");
-    return body;
+    return window.gymfitApi.request(url, options);
   }
 
   function empty(message) {
@@ -235,9 +214,9 @@
   });
 
   document.querySelector("#ptRetryButton").addEventListener("click", loadData);
-  sessionUser = getSessionUser();
-  if (!sessionUser) window.location.replace("/login");
-  else if (
+  sessionUser = window.gymfitApi.requireRole(["MEMBER", "TRAINER"]);
+  if (!sessionUser) return;
+  if (
     window.location.pathname === "/pt/requests"
     && sessionUser.account_type === "TRAINER"
   ) {
