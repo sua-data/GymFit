@@ -172,14 +172,14 @@
       list.hidden = true;
       state.innerHTML = members.length
         ? "<strong>담당 회원을 선택해 주세요.</strong><p>회원을 선택하면 숙제와 수행 상태를 확인할 수 있어요.</p>"
-        : "<strong>아직 연결된 담당 회원이 없어요.</strong><p>회원 연결 요청이 승인되면 이곳에서 관리할 수 있어요.</p>";
+        : "<strong>아직 연결된 담당 회원이 없습니다.</strong><p>회원 연결 요청이 승인되면 이곳에서 관리할 수 있습니다.</p>";
       return;
     }
     const items = filteredAssignments();
     state.hidden = items.length > 0;
     list.hidden = items.length === 0;
     if (!items.length) {
-      state.innerHTML = "<strong>선택한 상태의 숙제가 없어요.</strong><p>다른 상태를 선택하거나 새 PT 숙제를 등록해 주세요.</p>";
+      state.innerHTML = "<strong>선택한 상태의 숙제가 없습니다.</strong><p>다른 상태를 선택하거나 새 PT 숙제를 등록해 주세요.</p>";
       return;
     }
     items.forEach(item => {
@@ -241,7 +241,7 @@
   async function loadData() {
     state.hidden = false;
     list.hidden = true;
-    state.textContent = "숙제를 불러오고 있습니다.";
+    state.textContent = "숙제를 불러오는 중입니다.";
     try {
       const [memberData, assignmentItems] = await Promise.all([
         api("/api/pt/my-members"),
@@ -258,7 +258,7 @@
     } catch (error) {
       console.error("PT 숙제 관리 정보 조회 실패:", error);
       state.hidden = false;
-      state.innerHTML = "<strong>담당 회원과 숙제를 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      state.innerHTML = "<strong>담당 회원과 숙제를 불러오지 못했습니다.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
       const retryButton = actionButton("다시 시도", loadData, "gymfit-state-action");
       state.append(retryButton);
     }
@@ -283,7 +283,7 @@
     exerciseItems = [];
     selectedExercise = null;
     updateSelectedExercise();
-    exerciseCardList.innerHTML = "<p>운동 목록을 불러오고 있습니다.</p>";
+    exerciseCardList.innerHTML = "<p>운동 목록을 불러오는 중입니다.</p>";
     if (!selectedMemberId) {
       exerciseCardList.innerHTML = "<p>회원을 먼저 선택해 주세요.</p>";
       return false;

@@ -33,7 +33,7 @@
   async function openResult(assignmentId) {
     overlay.hidden = false;
     document.body.classList.add("assignment-sheet-open");
-    content.innerHTML = '<p class="assignment-state">운동 결과를 불러오고 있습니다.</p>';
+    content.innerHTML = '<p class="assignment-state">운동 결과를 불러오는 중입니다.</p>';
     try {
       const result = await api(`/api/pt/assignments/${assignmentId}/result`);
       const sourceLabel = result.record_source === "PT_ASSIGNMENT_MANUAL" ? "수동 기록" : "실시간 코칭";
@@ -70,7 +70,7 @@
       document.querySelector("#trainerFeedbackForm").addEventListener("submit", event => saveFeedback(event, assignmentId, result.trainer_feedback_id));
     } catch (error) {
       console.error("PT 숙제 결과 조회 실패:", error);
-      content.innerHTML = '<div class="assignment-state gymfit-state"><strong>운동 결과를 불러오지 못했어요.</strong><p>목록으로 돌아간 뒤 다시 시도해 주세요.</p></div>';
+      content.innerHTML = '<div class="assignment-state gymfit-state"><strong>운동 결과를 불러오지 못했습니다.</strong><p>목록으로 돌아간 뒤 다시 시도해 주세요.</p></div>';
     }
   }
 

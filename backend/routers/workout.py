@@ -40,6 +40,7 @@ from backend.models import (
     PtAssignment,
 )
 from backend.services.notification_service import create_notification
+from backend.services.workout_plan_state_service import set_workout_plan_completion
 from backend.security import (
     enforce_self,
     get_current_user,
@@ -1558,9 +1559,11 @@ def complete_workout_plan(
                 display_order=1,
             ))
 
-        workout_plan.is_completed = True
-        for plan_set in plan_sets:
-            plan_set.is_completed = True
+        set_workout_plan_completion(
+            workout_plan,
+            plan_sets,
+            completed=True,
+        )
         db.commit()
         db.refresh(workout_plan)
 
@@ -1648,9 +1651,11 @@ def uncomplete_workout_plan(
             db.delete(linked_record)
             record_removed = True
 
-        workout_plan.is_completed = False
-        for plan_set in plan_sets:
-            plan_set.is_completed = False
+        set_workout_plan_completion(
+            workout_plan,
+            plan_sets,
+            completed=False,
+        )
         db.commit()
         db.refresh(workout_plan)
         return WorkoutPlanUncompleteResponse(
@@ -2015,7 +2020,10 @@ def create_workout_record(
         intensity, intensity_is_default = normalize_intensity(request.exercise_intensity)
         met_used = select_met(exercise, intensity)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail="운동 강도 값이 올바르지 않습니다.",
+        ) from exc
     member_weight = user.member_profile.weight_kg if user.member_profile else None
     calorie_result = calculate_for_record(met_used, member_weight, request.workout_minutes)
     calculated_calories = calorie_result.calories

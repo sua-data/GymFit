@@ -26,7 +26,7 @@ def feedback_query():
 def serialize_feedback(item: PtFeedback) -> PtFeedbackItem:
     exercise = item.assignment.exercise or item.assignment.user_exercise
     if exercise is None:
-        raise HTTPException(status_code=500, detail="피드백의 운동 정보를 찾을 수 없습니다.")
+        raise HTTPException(status_code=500, detail="피드백 운동 정보를 불러오지 못했습니다.")
     record = item.workout_record
     return PtFeedbackItem(
         feedback_id=item.feedback_id, assignment_id=item.assignment_id,
@@ -113,7 +113,7 @@ def create_feedback(assignment_id: int, payload: PtFeedbackWrite, current_user: 
     except HTTPException:
         db.rollback(); raise
     except Exception as exc:
-        db.rollback(); raise HTTPException(status_code=500, detail="피드백 저장에 실패했습니다.") from exc
+        db.rollback(); raise HTTPException(status_code=500, detail="피드백을 저장하지 못했습니다.") from exc
 
 
 @router.patch("/feedback/{feedback_id}", response_model=PtFeedbackItem)
@@ -144,7 +144,7 @@ def update_feedback(feedback_id: int, payload: PtFeedbackWrite, current_user: Us
     except HTTPException:
         db.rollback(); raise
     except Exception as exc:
-        db.rollback(); raise HTTPException(status_code=500, detail="피드백 수정에 실패했습니다.") from exc
+        db.rollback(); raise HTTPException(status_code=500, detail="피드백을 수정하지 못했습니다.") from exc
 
 
 @router.get("/assignments/{assignment_id}/feedback", response_model=PtFeedbackItem)

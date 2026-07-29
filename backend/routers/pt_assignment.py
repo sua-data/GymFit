@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
@@ -31,6 +32,29 @@ from backend.services.calorie_service import calculate_for_record, calculate_tra
 router = APIRouter(prefix="/api/pt/assignments", tags=["pt-assignments"])
 KST = ZoneInfo("Asia/Seoul")
 MUTABLE_STATUSES = ("ASSIGNED", "IN_PROGRESS")
+WORKOUT_RECORD_ALREADY_LINKED_MESSAGE = "이미 다른 PT 숙제에 연결된 운동 기록입니다."
+
+
+def require_unlinked_workout_record(
+    db: Session,
+    *,
+    workout_record_id: int,
+    assignment_id: int,
+) -> None:
+    linked_assignment_id = db.scalar(
+        select(PtAssignment.assignment_id)
+        .where(
+            PtAssignment.workout_record_id == workout_record_id,
+            PtAssignment.assignment_id != assignment_id,
+        )
+        .limit(1)
+        .with_for_update()
+    )
+    if linked_assignment_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=WORKOUT_RECORD_ALREADY_LINKED_MESSAGE,
+        )
 
 
 @router.get("/exercises", response_model=PtAssignmentExerciseList)
@@ -133,7 +157,7 @@ def create_member_custom_exercise(payload: PtCustomExerciseCreate, current_user:
     except HTTPException:
         db.rollback(); raise
     except Exception as exc:
-        db.rollback(); raise HTTPException(status_code=500, detail="회원 운동 등록에 실패했습니다.") from exc
+        db.rollback(); raise HTTPException(status_code=500, detail="회원 운동을 등록하지 못했습니다.") from exc
 
 
 def now_kst() -> datetime:
@@ -230,7 +254,7 @@ def create_assignment(payload: PtAssignmentCreate, current_user: User = Depends(
     except HTTPException:
         db.rollback(); raise
     except Exception as exc:
-        db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제 등록에 실패했습니다.") from exc
+        db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제를 등록하지 못했습니다.") from exc
 
 
 def list_assignments(db: Session, owner_field, owner_id: int, assignment_status: str | None, member_id: int | None, date_from: date | None, date_to: date | None, limit: int, offset: int, current_user: User) -> PtAssignmentList:
@@ -331,7 +355,7 @@ def update_assignment(assignment_id: int, payload: PtAssignmentUpdate, current_u
         create_notification(db, user_id=item.member_id, title="PT 숙제가 수정되었어요", message=f"'{item.title}' 숙제 내용이 변경되었습니다.", notification_type="PT_ASSIGNMENT_UPDATED", target_url="/pt/assignments", reference_id=item.assignment_id)
         db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)
     except HTTPException: db.rollback(); raise
-    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제 수정에 실패했습니다.") from exc
+    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제를 수정하지 못했습니다.") from exc
 
 
 @router.patch("/{assignment_id}/cancel", response_model=PtAssignmentItem)
@@ -357,7 +381,7 @@ def start_assignment(assignment_id: int, current_user: User = Depends(get_curren
         if item.status != "ASSIGNED": raise HTTPException(status_code=409, detail="배정 상태의 숙제만 시작할 수 있습니다.")
         item.status = "IN_PROGRESS"; db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)
     except HTTPException: db.rollback(); raise
-    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제 시작 처리에 실패했습니다.") from exc
+    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제를 시작하지 못했습니다.") from exc
 
 
 @router.patch("/{assignment_id}/complete", response_model=PtAssignmentItem)
@@ -368,13 +392,32 @@ def complete_assignment(assignment_id: int, payload: PtAssignmentComplete, curre
         if item.member_id != current_user.user_id: raise HTTPException(status_code=404, detail="PT 숙제를 찾을 수 없습니다.")
         require_active_for_change(db, item, current_user)
         if item.user_exercise_id is not None: raise HTTPException(status_code=400, detail="사용자 운동 숙제에는 기존 운동 기록을 연결할 수 없습니다.")
-        record = db.scalar(select(WorkoutRecord).where(WorkoutRecord.workout_record_id == payload.workout_record_id, WorkoutRecord.user_id == current_user.user_id, WorkoutRecord.exercise_id == item.exercise_id))
+        record = db.scalar(
+            select(WorkoutRecord)
+            .where(
+                WorkoutRecord.workout_record_id == payload.workout_record_id,
+                WorkoutRecord.user_id == current_user.user_id,
+                WorkoutRecord.exercise_id == item.exercise_id,
+            )
+            .with_for_update()
+        )
         if record is None: raise HTTPException(status_code=404, detail="연결할 운동 기록을 찾을 수 없습니다.")
+        require_unlinked_workout_record(
+            db,
+            workout_record_id=payload.workout_record_id,
+            assignment_id=item.assignment_id,
+        )
         item.status = "COMPLETED"; item.completed_at = now_kst(); item.workout_record_id = payload.workout_record_id
         create_notification(db, user_id=item.trainer_id, title="PT 숙제를 완료했어요", message=f"{current_user.name} 회원이 '{item.title}' 숙제를 완료했습니다.", notification_type="PT_ASSIGNMENT_COMPLETED", target_url="/trainer/assignments", reference_id=item.assignment_id)
         db.commit(); item = db.scalar(assignment_query().where(PtAssignment.assignment_id == assignment_id)); return serialize_assignment(item)
     except HTTPException: db.rollback(); raise
-    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제 완료 처리에 실패했습니다.") from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=WORKOUT_RECORD_ALREADY_LINKED_MESSAGE,
+        ) from exc
+    except Exception as exc: db.rollback(); raise HTTPException(status_code=500, detail="PT 숙제를 완료하지 못했습니다.") from exc
 
 
 @router.post("/{assignment_id}/manual-record", response_model=PtAssignmentItem, status_code=status.HTTP_201_CREATED)
@@ -449,4 +492,4 @@ def create_manual_assignment_record(assignment_id: int, payload: PtManualRecordC
     except HTTPException:
         db.rollback(); raise
     except Exception as exc:
-        db.rollback(); raise HTTPException(status_code=500, detail="수동 운동 기록 저장에 실패했습니다.") from exc
+        db.rollback(); raise HTTPException(status_code=500, detail="수동 운동 기록을 저장하지 못했습니다.") from exc

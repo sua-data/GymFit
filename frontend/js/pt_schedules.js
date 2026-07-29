@@ -53,7 +53,7 @@
     list.replaceChildren(); list.hidden = !items.length; stateBox.hidden = !!items.length;
     if (!items.length) {
       stateBox.innerHTML = selectedMemberId || !isTrainerPage
-        ? "<strong>예정된 PT 일정이 없어요.</strong><p>다른 일정 구분을 선택해 확인해보세요.</p>"
+        ? "<strong>예정된 PT 일정이 없습니다.</strong><p>다른 일정 구분을 선택해 확인해 보세요.</p>"
         : "<strong>담당 회원을 선택해 주세요.</strong><p>회원을 선택하면 PT 일정을 확인하고 등록할 수 있어요.</p>";
       return;
     }
@@ -89,7 +89,7 @@
     const box = document.querySelector("#nextSchedule"); if (!box) return;
     const item = schedules.filter(isUpcoming).sort((a,b) => timeValue(a.start_at)-timeValue(b.start_at))[0];
     box.replaceChildren();
-    if (!item) { box.textContent = "예정된 PT 일정이 없어요."; return; }
+    if (!item) { box.textContent = "예정된 PT 일정이 없습니다."; return; }
     const content = makeText("div", "", "next-schedule-content");
     content.append(makeText("strong", dateTime(item.start_at)), makeText("p", `${item.trainer_name} 트레이너 · ${timeOnly(item.start_at)} ~ ${timeOnly(item.end_at)}${item.memo ? `\n${item.memo}` : ""}`));
     box.append(content);
@@ -103,7 +103,7 @@
   }
 
   async function load() {
-    stateBox.hidden = false; list.hidden = true; stateBox.textContent = "일정을 불러오고 있습니다.";
+    stateBox.hidden = false; list.hidden = true; stateBox.textContent = "일정을 불러오는 중입니다.";
     try {
       if (isTrainerPage) {
         const [memberData, scheduleData] = await Promise.all([api("/api/pt/my-members"), api("/api/pt/schedules/trainer")]);
@@ -114,7 +114,7 @@
       renderNext(); renderList();
     } catch (error) {
       stateBox.hidden = false;
-      stateBox.innerHTML = "<strong>PT 일정을 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      stateBox.innerHTML = "<strong>PT 일정을 불러오지 못했습니다.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
       const retryButton = makeText("button", "다시 시도", "gymfit-state-action");
       retryButton.type = "button";
       retryButton.addEventListener("click", load);

@@ -141,7 +141,7 @@
     const hasFilter = Boolean(selectedPart || elements.machineSearch.value.trim());
     elements.machineEmpty.hidden = machines.length > 0;
     if (!machines.length) {
-      elements.machineEmptyTitle.textContent = hasFilter ? "검색 결과가 없어요." : "아직 등록된 머신이 없어요.";
+      elements.machineEmptyTitle.textContent = hasFilter ? "검색 결과가 없습니다." : "아직 등록된 머신이 없습니다.";
       elements.machineEmptyDescription.textContent = hasFilter
         ? "검색어나 운동 부위 필터를 변경해 보세요."
         : canManage ? "헬스장에 있는 첫 머신을 등록해보세요." : "헬스장 트레이너가 머신 정보를 등록하면 확인할 수 있어요.";

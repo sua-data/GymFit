@@ -19,15 +19,15 @@
     <section class="records-summary"><div><span>WORKOUT HISTORY</span><h1>나의 운동 기록</h1></div><strong><b id="recordTotalCount">0</b>회</strong></section>
     <button id="openRecordForm" class="record-create-button" type="button">+ 운동 기록 추가</button>
     <nav class="record-filters" aria-label="기록 기간 필터"><button type="button" class="active" data-period="all">전체</button><button type="button" data-period="today">오늘</button><button type="button" data-period="7d">최근 7일</button><button type="button" data-period="30d">최근 30일</button></nav>
-    <section class="records-state gymfit-state" id="recordsLoading" role="status" aria-live="polite">운동 기록을 불러오고 있습니다.</section>
-    <section class="records-state gymfit-state" id="recordsEmpty" hidden><strong>아직 저장된 운동 기록이 없어요.</strong><p>첫 운동을 시작하고 기록을 남겨보세요.</p><a class="gymfit-state-action" href="/routine">운동 시작하기</a></section>
-    <section class="records-state gymfit-state error" id="recordsError" hidden role="alert"><strong>운동 기록을 불러오지 못했어요.</strong><p id="recordsErrorMessage">네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p><button type="button" id="recordsRetryButton">다시 시도</button></section>
+    <section class="records-state gymfit-state" id="recordsLoading" role="status" aria-live="polite">운동 기록을 불러오는 중입니다.</section>
+    <section class="records-state gymfit-state" id="recordsEmpty" hidden><strong>아직 저장된 운동 기록이 없습니다.</strong><p>첫 운동을 시작하고 기록을 남겨보세요.</p><a class="gymfit-state-action" href="/routine">운동 시작하기</a></section>
+    <section class="records-state gymfit-state error" id="recordsError" hidden role="alert"><strong>운동 기록을 불러오지 못했습니다.</strong><p id="recordsErrorMessage">네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p><button type="button" id="recordsRetryButton">다시 시도</button></section>
     <section class="records-list" id="recordsList" hidden></section>
   </div>
 
   <div class="record-detail-overlay" id="recordDetailOverlay" hidden><button type="button" class="record-detail-backdrop" id="recordDetailBackdrop" aria-label="상세 닫기"></button>
     <section class="record-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="recordDetailTitle"><header><div class="record-detail-title-row"><h2 id="recordDetailTitle">운동 기록</h2><span id="recordDetailType" class="record-type workout">일반 운동</span></div><button type="button" id="recordDetailClose" class="sheet-icon-close" aria-label="닫기"><img src="/static/assets/icons/no.svg" alt=""></button></header>
-      <div class="detail-state" id="recordDetailLoading">상세 기록을 불러오고 있습니다.</div><div class="detail-state error" id="recordDetailError" hidden><strong>상세 기록을 불러오지 못했습니다.</strong><p id="recordDetailErrorMessage"></p><button type="button" id="recordDetailRetry">다시 시도</button></div>
+      <div class="detail-state" id="recordDetailLoading">상세 기록을 불러오는 중입니다.</div><div class="detail-state error" id="recordDetailError" hidden><strong>상세 기록을 불러오지 못했습니다.</strong><p id="recordDetailErrorMessage"></p><button type="button" id="recordDetailRetry">다시 시도</button></div>
       <div class="record-detail-content" id="recordDetailContent" hidden></div>
     </section>
   </div>

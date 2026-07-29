@@ -192,7 +192,7 @@ findPasswordForm.addEventListener(
       if (!response.ok) {
         throw new Error(
           data.detail ||
-          "임시 비밀번호 발급에 실패했습니다."
+          "임시 비밀번호를 발급하지 못했습니다."
         );
       }
 
@@ -206,7 +206,7 @@ findPasswordForm.addEventListener(
 
       showMessage(
         error.message ||
-        "임시 비밀번호 발급 중 오류가 발생했습니다."
+        "임시 비밀번호를 발급하지 못했습니다."
       );
 
       sendButton.disabled = false;

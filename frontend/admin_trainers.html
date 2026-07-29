@@ -13,8 +13,8 @@
   <nav class="admin-tabs" aria-label="관리자 메뉴"><a href="/admin/dashboard">대시보드</a><a class="active" href="/admin/trainers" aria-current="page">트레이너 승인</a><a href="/admin/employments">소속 승인</a></nav>
   <section class="admin-page-header"><span>TRAINER REVIEW</span><h1>트레이너 승인 관리</h1><p>자격 자료와 현재 승인 상태를 확인합니다.</p></section>
   <nav class="admin-status-tabs" aria-label="승인 상태 필터"><button data-status="PENDING" type="button">대기</button><button data-status="APPROVED" type="button">승인</button><button data-status="REJECTED" type="button">거절</button><button data-status="ALL" type="button">전체</button></nav>
-  <section class="admin-state" id="adminLoading">트레이너 신청을 불러오고 있어요.</section>
-  <section class="admin-state" id="adminError" hidden><strong>신청 목록을 불러오지 못했어요.</strong><p id="adminErrorMessage"></p><button id="adminRetry" type="button">다시 시도</button></section>
+  <section class="admin-state" id="adminLoading">트레이너 신청을 불러오는 중입니다.</section>
+  <section class="admin-state" id="adminError" hidden><strong>신청 목록을 불러오지 못했습니다.</strong><p id="adminErrorMessage"></p><button id="adminRetry" type="button">다시 시도</button></section>
   <section class="admin-state" id="adminEmpty" hidden><strong>해당 상태의 신청이 없습니다.</strong></section>
   <section class="admin-list" id="trainerList" aria-live="polite"></section>
 </div>

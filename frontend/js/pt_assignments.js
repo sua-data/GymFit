@@ -109,7 +109,7 @@
     state.hidden = items.length > 0;
     list.hidden = items.length === 0;
     if (!items.length) {
-      state.innerHTML = "<strong>예정된 PT 숙제가 없어요.</strong><p>새 숙제가 등록되면 여기에서 확인할 수 있어요.</p>";
+      state.innerHTML = "<strong>예정된 PT 숙제가 없습니다.</strong><p>새 숙제가 등록되면 여기에서 확인할 수 있습니다.</p>";
       return;
     }
     items.forEach(item => {
@@ -150,12 +150,12 @@
   async function load() {
     state.hidden = false;
     list.hidden = true;
-    state.textContent = "숙제를 불러오고 있습니다.";
+    state.textContent = "숙제를 불러오는 중입니다.";
     try {
       const query = statusFilter ? `?status=${statusFilter}` : "";
       render((await api(`/api/pt/assignments/member${query}`)).items);
     } catch (error) {
-      state.innerHTML = "<strong>PT 숙제를 불러오지 못했어요.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
+      state.innerHTML = "<strong>PT 숙제를 불러오지 못했습니다.</strong><p>네트워크 연결을 확인한 뒤 다시 시도해 주세요.</p>";
       const retryButton = button("다시 시도", load);
       retryButton.className = "gymfit-state-action";
       state.append(retryButton);

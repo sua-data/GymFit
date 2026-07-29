@@ -12,8 +12,8 @@
   <header class="admin-header"><a class="admin-brand" href="/admin/dashboard"><strong>GYMFIT</strong><span class="admin-badge">ADMIN</span></a><button class="admin-logout" id="adminLogout" type="button">로그아웃</button></header>
   <nav class="admin-tabs" aria-label="관리자 메뉴"><a class="active" href="/admin/dashboard" aria-current="page">대시보드</a><a href="/admin/trainers">트레이너 승인</a><a href="/admin/employments">소속 승인</a></nav>
   <section class="admin-page-header"><span>DASHBOARD</span><h1>관리자 대시보드</h1><p>트레이너와 헬스장 소속 승인 현황을 관리합니다.</p></section>
-  <section class="admin-state" id="dashboardLoading">관리자 정보를 불러오고 있어요.</section>
-  <section class="admin-state" id="dashboardError" hidden><strong>관리자 정보를 불러오지 못했어요.</strong><p id="dashboardErrorMessage"></p><button id="dashboardRetry" type="button">다시 시도</button></section>
+  <section class="admin-state" id="dashboardLoading">관리자 정보를 불러오는 중입니다.</section>
+  <section class="admin-state" id="dashboardError" hidden><strong>관리자 정보를 불러오지 못했습니다.</strong><p id="dashboardErrorMessage"></p><button id="dashboardRetry" type="button">다시 시도</button></section>
   <div id="dashboardContent" hidden>
     <section class="admin-section"><div class="admin-section-head"><div><span class="admin-section-label">TRAINER REVIEW</span><h2>트레이너 승인 요약</h2></div><a href="/admin/trainers">전체 보기</a></div>
       <div class="admin-summary-grid"><a class="admin-summary-card pending" href="/admin/trainers?status=PENDING"><span>대기</span><strong id="trainerPendingCount">0</strong></a><a class="admin-summary-card approved" href="/admin/trainers?status=APPROVED"><span>승인</span><strong id="trainerApprovedCount">0</strong></a><a class="admin-summary-card rejected" href="/admin/trainers?status=REJECTED"><span>거절</span><strong id="trainerRejectedCount">0</strong></a></div>

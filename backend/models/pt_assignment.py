@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
@@ -15,6 +15,10 @@ class PtAssignment(Base):
         Index("ix_pt_assignment_trainer_status_assigned", "trainer_id", "status", "assigned_date"),
         Index("ix_pt_assignment_member_status_due", "member_id", "status", "due_date"),
         Index("ix_pt_assignment_trainer_member", "trainer_member_id"),
+        UniqueConstraint(
+            "workout_record_id",
+            name="uq_pt_assignment_workout_record",
+        ),
         CheckConstraint(
             "weight_kg IS NULL OR weight_kg > 0",
             name="chk_pt_assignment_weight_kg",

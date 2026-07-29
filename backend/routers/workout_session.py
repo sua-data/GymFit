@@ -25,6 +25,10 @@ from backend.services.calorie_service import (
     calculate_for_record, normalize_intensity, safe_decimal, select_met,
     calculate_training_volume,
 )
+from backend.services.pt_assignment_state_service import (
+    restore_assignments_for_deleted_workout_record,
+)
+from backend.services.workout_plan_state_service import set_workout_plan_completion
 from backend.security import (
     get_current_user,
     require_account_type,
@@ -413,7 +417,10 @@ def update_record_metrics(
         raise
     except ValueError as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail="운동 기록 입력값이 올바르지 않습니다.",
+        ) from exc
     except Exception as exc:
         db.rollback()
         raise HTTPException(
@@ -452,6 +459,10 @@ def delete_session(record_id: int, user: User = Depends(require_member), db: Ses
             for path in (media.storage_path, media.thumbnail_storage_path)
             if path
         ]
+        restore_assignments_for_deleted_workout_record(
+            db,
+            workout_record_id=record.workout_record_id,
+        )
         if record.workout_plan_id is not None:
             plan = db.scalar(
                 select(WorkoutPlan)
@@ -462,14 +473,16 @@ def delete_session(record_id: int, user: User = Depends(require_member), db: Ses
                 .with_for_update()
             )
             if plan is not None:
-                plan.is_completed = False
                 plan_sets = db.scalars(
                     select(WorkoutPlanSet)
                     .where(WorkoutPlanSet.workout_plan_id == plan.workout_plan_id)
                     .with_for_update()
                 ).all()
-                for plan_set in plan_sets:
-                    plan_set.is_completed = False
+                set_workout_plan_completion(
+                    plan,
+                    plan_sets,
+                    completed=False,
+                )
         db.delete(record)
         db.commit()
     except HTTPException:
