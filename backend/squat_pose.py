@@ -134,7 +134,176 @@ class SquatAnalyzer:
             "debug_file": saved_path,
         })
 
-    def _update_best_pose(self, frame, average_angle, torso_angle):
+    def _draw_best_pose_capture(
+        self,
+        frame,
+        pose_overlay,
+        knee_angle,
+        posture_score,
+    ):
+        """Annotate a copy of the locked DOWN frame only."""
+        capture_frame = frame.copy()
+        frame_height, frame_width = capture_frame.shape[:2]
+        bbox = pose_overlay["bbox"]
+        all_x = [bbox["x1"], bbox["x2"]] + [
+            point["x"] for point in pose_overlay["keypoints"]
+        ]
+        all_y = [bbox["y1"], bbox["y2"]] + [
+            point["y"] for point in pose_overlay["keypoints"]
+        ]
+        content_x1, content_x2 = min(all_x), max(all_x)
+        content_y1, content_y2 = min(all_y), max(all_y)
+        content_width = max(1.0, content_x2 - content_x1)
+        content_height = max(1.0, content_y2 - content_y1)
+        margin_x = content_width * 0.12
+        margin_y = content_height * 0.12
+        crop_x1 = content_x1 - margin_x
+        crop_x2 = content_x2 + margin_x
+        crop_y1 = content_y1 - margin_y
+        crop_y2 = content_y2 + margin_y
+
+        target_aspect_ratio = 16 / 10
+        crop_width = crop_x2 - crop_x1
+        crop_height = crop_y2 - crop_y1
+        if crop_width / crop_height < target_aspect_ratio:
+            required_width = crop_height * target_aspect_ratio
+            extra = required_width - crop_width
+            crop_x1 -= extra / 2
+            crop_x2 += extra / 2
+        else:
+            required_height = crop_width / target_aspect_ratio
+            extra = required_height - crop_height
+            crop_y1 -= extra / 2
+            crop_y2 += extra / 2
+
+        def fit_axis(start, end, limit):
+            desired = min(float(limit), end - start)
+            if start < 0:
+                end -= start
+                start = 0
+            if end > limit:
+                start -= end - limit
+                end = float(limit)
+            start = max(0.0, start)
+            end = min(float(limit), end)
+            if end - start < desired:
+                if start <= 0:
+                    end = min(float(limit), desired)
+                else:
+                    start = max(0.0, float(limit) - desired)
+            return start, end
+
+        crop_x1, crop_x2 = fit_axis(crop_x1, crop_x2, frame_width)
+        crop_y1, crop_y2 = fit_axis(crop_y1, crop_y2, frame_height)
+        ix1 = max(0, int(math.floor(crop_x1)))
+        iy1 = max(0, int(math.floor(crop_y1)))
+        ix2 = min(frame_width, int(math.ceil(crop_x2)))
+        iy2 = min(frame_height, int(math.ceil(crop_y2)))
+        cropped = capture_frame[iy1:iy2, ix1:ix2]
+        output_width, output_height = 640, 400
+        cropped_width = max(1, ix2 - ix1)
+        cropped_height = max(1, iy2 - iy1)
+        cropped_ratio = cropped_width / cropped_height
+        if abs(cropped_ratio - target_aspect_ratio) <= 0.02:
+            capture_frame = cv2.resize(
+                cropped,
+                (output_width, output_height),
+                interpolation=cv2.INTER_AREA,
+            )
+            scale_x = output_width / cropped_width
+            scale_y = output_height / cropped_height
+            content_offset_x = 0
+            content_offset_y = 0
+        else:
+            # A portrait source cannot contain a full body in a 16:10 crop
+            # without cutting joints. Fill the sides with the same blurred
+            # frame while keeping the person layer undistorted.
+            background = cv2.resize(
+                cropped,
+                (output_width, output_height),
+                interpolation=cv2.INTER_AREA,
+            )
+            capture_frame = cv2.GaussianBlur(background, (31, 31), 0)
+            uniform_scale = min(
+                output_width / cropped_width,
+                output_height / cropped_height,
+            )
+            foreground_width = max(1, int(round(cropped_width * uniform_scale)))
+            foreground_height = max(1, int(round(cropped_height * uniform_scale)))
+            foreground = cv2.resize(
+                cropped,
+                (foreground_width, foreground_height),
+                interpolation=cv2.INTER_AREA,
+            )
+            content_offset_x = (output_width - foreground_width) // 2
+            content_offset_y = (output_height - foreground_height) // 2
+            capture_frame[
+                content_offset_y:content_offset_y + foreground_height,
+                content_offset_x:content_offset_x + foreground_width,
+            ] = foreground
+            scale_x = uniform_scale
+            scale_y = uniform_scale
+
+        def transform_point(x, y):
+            return (
+                int(round((x - ix1) * scale_x + content_offset_x)),
+                int(round((y - iy1) * scale_y + content_offset_y)),
+            )
+
+        points = {
+            point["id"]: transform_point(point["x"], point["y"])
+            for point in pose_overlay["keypoints"]
+        }
+        connections = (
+            (0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6),
+            (5, 6), (5, 7), (7, 9), (6, 8), (8, 10),
+            (5, 11), (6, 12), (11, 12),
+            (11, 13), (13, 15), (12, 14), (14, 16),
+        )
+        left_ids = {1, 3, 5, 7, 9, 11, 13, 15}
+        right_ids = {2, 4, 6, 8, 10, 12, 14, 16}
+
+        def color_for(start, end=None):
+            end = start if end is None else end
+            if start in left_ids and end in left_ids:
+                return (80, 220, 255)
+            if start in right_ids and end in right_ids:
+                return (255, 150, 70)
+            return (80, 255, 120)
+
+        for start, end in connections:
+            if start not in points or end not in points:
+                continue
+            cv2.line(
+                capture_frame,
+                points[start],
+                points[end],
+                color_for(start, end),
+                2,
+                cv2.LINE_AA,
+            )
+        for index, point in points.items():
+            cv2.circle(
+                capture_frame, point, 3, color_for(index), -1, cv2.LINE_AA
+            )
+
+        height, width = capture_frame.shape[:2]
+        x1, y1 = transform_point(bbox["x1"], bbox["y1"])
+        x2, y2 = transform_point(bbox["x2"], bbox["y2"])
+        x1 = max(0, min(width - 1, x1))
+        y1 = max(0, min(height - 1, y1))
+        x2 = max(0, min(width - 1, x2))
+        y2 = max(0, min(height - 1, y2))
+        cv2.rectangle(capture_frame, (x1, y1), (x2, y2), (168, 255, 53), 1)
+        return capture_frame
+
+    def _update_best_pose(
+        self,
+        frame,
+        average_angle,
+        torso_angle,
+        pose_overlay=None,
+    ):
         if not self._is_capture_candidate(average_angle, torso_angle):
             return
 
@@ -142,7 +311,15 @@ class SquatAnalyzer:
         if score <= self.best_pose_score:
             return
 
-        locked_frame = frame.copy()
+        if pose_overlay is None or not pose_overlay.get("keypoints"):
+            return
+
+        locked_frame = self._draw_best_pose_capture(
+            frame,
+            pose_overlay,
+            average_angle,
+            score,
+        )
         encoded, jpeg_buffer = cv2.imencode(
             ".jpg", locked_frame, [cv2.IMWRITE_JPEG_QUALITY, 82]
         )
@@ -162,6 +339,9 @@ class SquatAnalyzer:
             "torso_angle": float(torso_angle),
             "feedback": self.feedback,
             "stage": self.stage,
+            "bbox": copy.deepcopy(pose_overlay["bbox"]),
+            "person_confidence": pose_overlay["bbox"].get("confidence"),
+            "keypoints": copy.deepcopy(pose_overlay["keypoints"]),
         }
         self.best_pose_snapshot = snapshot
         self.best_pose_score = snapshot["score"]
@@ -616,6 +796,7 @@ class SquatAnalyzer:
         average_angle,
         torso_angle,
         frame,
+        pose_overlay=None,
     ):
         """스쿼트 상태와 카운트를 갱신합니다."""
 
@@ -664,7 +845,12 @@ class SquatAnalyzer:
                 self.stage == "DOWN"
                 and self.down_frames >= self.required_frames
             ):
-                self._update_best_pose(frame, average_angle, torso_angle)
+                self._update_best_pose(
+                    frame,
+                    average_angle,
+                    torso_angle,
+                    pose_overlay,
+                )
 
         # UP 상태 확인
         elif average_angle > self.up_angle:
@@ -874,6 +1060,7 @@ class SquatAnalyzer:
                 average_angle,
                 torso_angle,
                 frame,
+                pose_overlay,
             )
 
         else:

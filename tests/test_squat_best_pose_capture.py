@@ -21,6 +21,30 @@ def analyzer_without_model():
     return analyzer
 
 
+def capture_pose_overlay(width=8, height=8):
+    return {
+        "source_width": width,
+        "source_height": height,
+        "selected_side": "BOTH",
+        "keypoints": [
+            {
+                "id": index,
+                "x": max(1.0, width / 2),
+                "y": max(1.0, height / 2),
+                "confidence": 0.9,
+            }
+            for index in range(17)
+        ],
+        "bbox": {
+            "x1": 1.0,
+            "y1": 1.0,
+            "x2": float(width - 1),
+            "y2": float(height - 1),
+            "confidence": 0.9,
+        },
+    }
+
+
 def test_best_valid_score_wins_and_frame_is_copied():
     analyzer = analyzer_without_model()
     analyzer.stage = "DOWN"
@@ -29,9 +53,9 @@ def test_best_valid_score_wins_and_frame_is_copied():
     best = np.full((2, 2, 3), 20, dtype=np.uint8)
 
     analyzer.feedback = "first"
-    analyzer._update_best_pose(first, 105, 20)
+    analyzer._update_best_pose(first, 105, 20, capture_pose_overlay(2, 2))
     analyzer.feedback = "best"
-    analyzer._update_best_pose(best, 95, 20)
+    analyzer._update_best_pose(best, 95, 20, capture_pose_overlay(2, 2))
     locked_image = analyzer.best_pose_snapshot["image"]
     best[:] = 99
 
@@ -46,16 +70,16 @@ def test_standing_and_missing_torso_are_not_candidates():
     analyzer = analyzer_without_model()
     frame = np.zeros((2, 2, 3), dtype=np.uint8)
 
-    analyzer._update_best_pose(frame, 156, 10)
-    analyzer._update_best_pose(frame, 100, None)
+    analyzer._update_best_pose(frame, 156, 10, capture_pose_overlay(2, 2))
+    analyzer._update_best_pose(frame, 100, None, capture_pose_overlay(2, 2))
 
     assert analyzer.best_pose_snapshot is None
 
 
 def test_high_scoring_standing_frame_is_excluded_by_stage_and_depth():
     analyzer = analyzer_without_model()
-    standing = np.full((2, 2, 3), 240, dtype=np.uint8)
-    squat = np.full((2, 2, 3), 40, dtype=np.uint8)
+    standing = np.full((32, 32, 3), 240, dtype=np.uint8)
+    squat = np.full((32, 32, 3), 40, dtype=np.uint8)
 
     # Even an artificially high-scoring UP frame cannot become a candidate.
     analyzer._calculate_posture_score = lambda angle, torso: (
@@ -63,11 +87,11 @@ def test_high_scoring_standing_frame_is_excluded_by_stage_and_depth():
     )
     analyzer.stage = "UP"
     analyzer.down_frames = 0
-    analyzer._update_best_pose(standing, 170, 10)
+    analyzer._update_best_pose(standing, 170, 10, capture_pose_overlay(32, 32))
 
     analyzer.stage = "DOWN"
     analyzer.down_frames = analyzer.required_frames
-    analyzer._update_best_pose(squat, 100, 20)
+    analyzer._update_best_pose(squat, 100, 20, capture_pose_overlay(32, 32))
 
     assert analyzer.best_pose_snapshot["stage"] == "DOWN"
     assert analyzer.best_pose_snapshot["knee_angle"] == 100
@@ -88,7 +112,7 @@ def test_completed_repetition_exposes_best_once_and_resets_active_state():
     analyzer.stage = "DOWN"
     analyzer.down_frames = analyzer.required_frames
     analyzer.feedback = "best frame feedback"
-    analyzer._update_best_pose(frame, 105, 20)
+    analyzer._update_best_pose(frame, 105, 20, capture_pose_overlay(2, 2))
     locked_image = analyzer.best_pose_snapshot["image"]
     analyzer.best_pose_snapshot.update({
         "score": 90.0,
@@ -111,6 +135,18 @@ def test_completed_repetition_exposes_best_once_and_resets_active_state():
     assert capture["knee_angle"] == 105
     assert capture["feedback"] == "best frame feedback"
     assert capture["image"] == locked_image
+    assert capture["stage"] == "DOWN"
+    assert capture["person_confidence"] == 0.9
+    assert capture["bbox"]["confidence"] == 0.9
+    assert len(capture["keypoints"]) == 17
+    capture_pixels = cv2.imdecode(
+        np.frombuffer(
+            base64.b64decode(capture["image"].split(",", 1)[1]),
+            dtype=np.uint8,
+        ),
+        cv2.IMREAD_COLOR,
+    )
+    assert capture_pixels.shape[:2] == (400, 640)
     # The API must encode first and explicitly clear afterward.
     assert analyzer.best_pose_snapshot is not None
     analyzer.clear_completed_pose_capture()
@@ -134,7 +170,9 @@ def test_up_down_up_encodes_only_down_and_returns_locked_image(monkeypatch):
 
     analyzer._update_squat_state(170, 20, up_a)
     for _ in range(analyzer.required_frames):
-        analyzer._update_squat_state(100, 20, down_b)
+        analyzer._update_squat_state(
+            100, 20, down_b, capture_pose_overlay(8, 8)
+        )
     locked_image = analyzer.best_pose_snapshot["image"]
     locked_hash = analyzer.best_pose_snapshot["image_hash"]
 
@@ -142,7 +180,8 @@ def test_up_down_up_encodes_only_down_and_returns_locked_image(monkeypatch):
         analyzer._update_squat_state(170, 20, up_c)
 
     capture = analyzer.get_completed_pose_capture()
-    assert encoded_means == [30.0]
+    assert len(encoded_means) == 1
+    assert encoded_means[0] != 180.0
     assert capture["image"] == locked_image
     assert capture["image_hash"] == locked_hash
 
