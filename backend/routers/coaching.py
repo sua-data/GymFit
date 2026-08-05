@@ -138,11 +138,58 @@ async def analyze_coaching_frame(
             session_id, user_id=user.user_id
         ) as session:
             _, status = session.analyzer.process_frame(frame)
+            normalized = normalize_analysis_status(
+                session.exercise_code, status, session.analyzer
+            )
+            if session.exercise_code == "SQUAT":
+                capture = session.analyzer.get_completed_pose_capture()
+                if capture is not None:
+                    try:
+                        normalized["completed_pose_capture"] = {
+                            "image": capture["image"],
+                            "image_hash": capture["image_hash"],
+                            "score": capture["score"],
+                            "knee_angle": round(capture["knee_angle"], 1),
+                            "torso_angle": round(capture["torso_angle"], 1),
+                            "feedback": capture["feedback"],
+                            "stage": capture["stage"],
+                        }
+                        if os.getenv("POSE_DEBUG", "").strip().lower() in {
+                            "1", "true", "yes", "on"
+                        }:
+                            print({
+                                "count": status.get("count"),
+                                "best_score": capture["score"],
+                                "best_angle": capture["knee_angle"],
+                                "has_best_frame": True,
+                                "has_completed_capture": bool(capture["image"]),
+                                "capture_format": (
+                                    "data-url"
+                                    if capture["image"].startswith("data:image/")
+                                    else "empty"
+                                ),
+                            })
+                    finally:
+                        # Encoding and response payload construction must happen
+                        # before the repetition frame is released.
+                        session.analyzer.clear_completed_pose_capture()
+                elif status.get("repetition_completed"):
+                    normalized["capture_fallback_reason"] = "no-valid-down-pose"
+                    if os.getenv("POSE_DEBUG", "").strip().lower() in {
+                        "1", "true", "yes", "on"
+                    }:
+                        print({
+                            "count": status.get("count"),
+                            "best_score": session.analyzer.best_pose_score,
+                            "best_angle": session.analyzer.best_pose_angle,
+                            "has_best_frame": False,
+                            "has_completed_capture": False,
+                            "capture_format": "empty",
+                            "fallback_reason": "no-valid-down-pose",
+                        })
             return {
                 "success": True,
-                **normalize_analysis_status(
-                    session.exercise_code, status, session.analyzer
-                ),
+                **normalized,
             }
 
     return await asyncio.to_thread(process)

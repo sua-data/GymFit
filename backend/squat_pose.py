@@ -1,6 +1,12 @@
+import base64
+import copy
+import hashlib
 import math
+import os
+from pathlib import Path
 from typing import Any
 
+import cv2
 from ultralytics import YOLO
 
 
@@ -53,6 +59,118 @@ class SquatAnalyzer:
         self.down_frames = 0
         self.up_frames = 0
         self.missing_frames = 0
+
+        self._reset_best_pose()
+        self._completed_pose_capture = None
+
+    def _reset_best_pose(self):
+        """Clear frame-level state that must never leak into another repetition."""
+        self.best_pose_snapshot = None
+        self.best_pose_score = -1
+        self.best_pose_frame = None
+        self.best_pose_angle = None
+        self.best_pose_feedback = None
+        self.best_pose_torso_angle = None
+
+    def _calculate_posture_score(self, average_angle, torso_angle):
+        """Use the squat scoring rules already exposed by the coaching API."""
+        score = 70
+        if average_angle < self.deep_angle:
+            score = 95
+        else:
+            # Candidates are already limited to good_angle or deeper.
+            score = 90
+
+        if torso_angle >= self.torso_warning_angle:
+            score -= 20
+        elif torso_angle >= self.torso_check_angle:
+            score -= 10
+        return max(0, min(100, score))
+
+    def _is_capture_candidate(self, average_angle, torso_angle):
+        minimum_angle = self.deep_angle - 10
+        return (
+            self.stage == "DOWN"
+            and self.down_frames >= self.required_frames
+            and minimum_angle <= average_angle <= self.good_angle
+            and torso_angle is not None
+        )
+
+    def _debug_best_pose_candidate(self, snapshot):
+        if os.getenv("POSE_DEBUG", "").strip().lower() not in {
+            "1", "true", "yes", "on"
+        }:
+            return
+
+        debug_dir = Path(__file__).resolve().parents[1] / "results" / "pose_debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        filename = (
+            f"squat_{self.squat_count + 1}_df{self.down_frames}_"
+            f"angle{snapshot['knee_angle']:.1f}_{snapshot['image_hash']}.jpg"
+        )
+        jpeg_bytes = base64.b64decode(snapshot["image"].split(",", 1)[1])
+        debug_path = debug_dir / filename
+        try:
+            debug_path.write_bytes(jpeg_bytes)
+            saved_path = str(debug_path)
+        except OSError:
+            saved_path = None
+        print({
+            "event": "capture locked",
+            "stage": snapshot["stage"],
+            "down_frames": self.down_frames,
+            "up_frames": self.up_frames,
+            "angle": snapshot["knee_angle"],
+            "score": snapshot["score"],
+            "image_hash": snapshot["image_hash"],
+            "debug_file": saved_path,
+        })
+
+    def _update_best_pose(self, frame, average_angle, torso_angle):
+        if not self._is_capture_candidate(average_angle, torso_angle):
+            return
+
+        score = self._calculate_posture_score(average_angle, torso_angle)
+        if score <= self.best_pose_score:
+            return
+
+        locked_frame = frame.copy()
+        encoded, jpeg_buffer = cv2.imencode(
+            ".jpg", locked_frame, [cv2.IMWRITE_JPEG_QUALITY, 82]
+        )
+        if not encoded:
+            return
+        jpeg_bytes = jpeg_buffer.tobytes()
+        image = (
+            "data:image/jpeg;base64,"
+            + base64.b64encode(jpeg_bytes).decode("ascii")
+        )
+        image_hash = hashlib.sha256(jpeg_bytes).hexdigest()[:16]
+        snapshot = {
+            "image": image,
+            "image_hash": image_hash,
+            "score": float(score),
+            "knee_angle": float(average_angle),
+            "torso_angle": float(torso_angle),
+            "feedback": self.feedback,
+            "stage": self.stage,
+        }
+        self.best_pose_snapshot = snapshot
+        self.best_pose_score = snapshot["score"]
+        self.best_pose_frame = None
+        self.best_pose_angle = snapshot["knee_angle"]
+        self.best_pose_torso_angle = snapshot["torso_angle"]
+        self.best_pose_feedback = snapshot["feedback"]
+        self._debug_best_pose_candidate(snapshot)
+
+    def get_completed_pose_capture(self):
+        """Expose the already encoded DOWN capture for the API response."""
+        return self._completed_pose_capture
+
+    def clear_completed_pose_capture(self):
+        """Release completed and active state after response serialization."""
+        self._completed_pose_capture = None
+        self._reset_best_pose()
 
     @staticmethod
     def calculate_angle(a, b, c):
@@ -315,8 +433,17 @@ class SquatAnalyzer:
         self,
         average_angle,
         torso_angle,
+        frame,
     ):
         """스쿼트 상태와 카운트를 갱신합니다."""
+
+        if (
+            self.stage == "UP"
+            and average_angle < self.down_angle
+            and self.down_frames == 0
+        ):
+            # First confirmed frame of a new descent/attempt.
+            self._reset_best_pose()
 
         if (
             average_angle
@@ -351,6 +478,12 @@ class SquatAnalyzer:
             ):
                 self.stage = "DOWN"
 
+            if (
+                self.stage == "DOWN"
+                and self.down_frames >= self.required_frames
+            ):
+                self._update_best_pose(frame, average_angle, torso_angle)
+
         # UP 상태 확인
         elif average_angle > self.up_angle:
             self.up_frames += 1
@@ -375,8 +508,49 @@ class SquatAnalyzer:
 
                 self._set_completed_feedback()
 
+                snapshot = self.best_pose_snapshot
+                minimum_angle = self.deep_angle - 10
+                snapshot_valid = (
+                    snapshot is not None
+                    and snapshot["stage"] == "DOWN"
+                    and minimum_angle
+                    <= snapshot["knee_angle"]
+                    <= self.good_angle
+                )
+                if snapshot_valid:
+                    self._completed_pose_capture = copy.deepcopy(snapshot)
+                    if os.getenv("POSE_DEBUG", "").strip().lower() in {
+                        "1", "true", "yes", "on"
+                    }:
+                        print({
+                            "event": "repetition completed",
+                            "stage": self.stage,
+                            "using_locked_capture": True,
+                            "locked_angle": snapshot["knee_angle"],
+                            "locked_hash": snapshot["image_hash"],
+                        })
+                else:
+                    if os.getenv("POSE_DEBUG", "").strip().lower() in {
+                        "1", "true", "yes", "on"
+                    }:
+                        print({
+                            "event": "invalid-best-pose-at-completion",
+                            "count": self.squat_count,
+                            "stage": snapshot.get("stage") if snapshot else None,
+                            "knee_angle": (
+                                snapshot.get("knee_angle") if snapshot else None
+                            ),
+                            "score": snapshot.get("score") if snapshot else None,
+                            "fallback_reason": "no-valid-down-pose",
+                        })
+                    self._reset_best_pose()
+
                 self.current_min_angle = 180
                 self.current_max_torso_angle = 0
+
+            elif self.up_frames >= self.required_frames:
+                # A descent that never became DOWN is not a repetition.
+                self._reset_best_pose()
 
         else:
             self.down_frames = 0
@@ -443,6 +617,7 @@ class SquatAnalyzer:
         right_angle = None
         average_angle = None
         torso_angle = None
+        count_before_frame = self.squat_count
 
         valid_person = False
         valid_pose = False
@@ -501,6 +676,7 @@ class SquatAnalyzer:
             self._update_squat_state(
                 average_angle,
                 torso_angle,
+                frame,
             )
 
         else:
@@ -512,6 +688,7 @@ class SquatAnalyzer:
             ):
                 self.down_frames = 0
                 self.up_frames = 0
+                self._reset_best_pose()
 
                 self.feedback = (
                     "전신이 화면에 나오도록 이동하세요"
@@ -599,6 +776,7 @@ class SquatAnalyzer:
             "pose_valid": valid_pose,
             "person_valid": valid_person,
             "status_text": status_text,
+            "repetition_completed": self.squat_count > count_before_frame,
         }
 
         return annotated_frame, status

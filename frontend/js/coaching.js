@@ -1082,7 +1082,9 @@ function updatePostureFeedback(
 ========================= */
 
 function registerRepetition(
-  score
+  score,
+  captureImage = null,
+  fallbackImage = null
 ) {
   if (
     !isWorkoutActive
@@ -1110,12 +1112,11 @@ function registerRepetition(
 
   postureScores.push(score);
 
-  if (score > bestCapturedPostureScore && captureCanvas.width && captureCanvas.height) {
-    try {
-      bestPostureImageDataUrl = captureCanvas.toDataURL("image/jpeg", 0.82);
+  if (score > bestCapturedPostureScore) {
+    const selectedImage = captureImage || fallbackImage;
+    if (selectedImage) {
+      bestPostureImageDataUrl = selectedImage;
       bestCapturedPostureScore = score;
-    } catch (error) {
-      console.warn("대표 자세 이미지 캡처 실패:", error);
     }
   }
 
@@ -1290,7 +1291,8 @@ function getPostureScoreFromStatus(
 
 
 function applyPoseStatus(
-  status
+  status,
+  submittedFrameDataUrl = null
 ) {
   if (isWorkoutPaused) {
     return;
@@ -1305,17 +1307,44 @@ function applyPoseStatus(
       serverCount - lastServerCount
     );
 
-  const score =
-    getPostureScoreFromStatus(
-      status
-    );
+  const completedCapture = status.completed_pose_capture;
+  const backendImageValue = String(completedCapture?.image || "").trim();
+  const backendImage = backendImageValue
+    ? (backendImageValue.startsWith("data:")
+      ? backendImageValue
+      : `data:image/jpeg;base64,${backendImageValue}`)
+    : null;
+  const captureSource = backendImage
+    ? "backend-best-pose"
+    : (selectedExerciseCode === "SQUAT"
+      ? "no-valid-squat-capture"
+      : "frontend-current-frame-fallback");
+  const repetitionCaptureImage = backendImage
+    || (selectedExerciseCode === "SQUAT" ? null : submittedFrameDataUrl);
+
+  if (repetitionDifference > 0) {
+    console.log("[capture source]", captureSource, {
+      count: serverCount,
+      score: completedCapture?.score ?? null,
+      knee_angle: completedCapture?.knee_angle ?? null,
+      has_image: Boolean(backendImage),
+      fallback_reason: status.capture_fallback_reason ?? null,
+    });
+  }
+
+  const score = completedCapture?.score
+    ?? getPostureScoreFromStatus(status);
 
   for (
     let index = 0;
     index < repetitionDifference;
     index += 1
   ) {
-    registerRepetition(score);
+    registerRepetition(
+      score,
+      backendImage,
+      backendImage ? null : repetitionCaptureImage
+    );
   }
 
   lastServerCount =
@@ -1484,6 +1513,12 @@ async function sendFrameForAnalysis() {
       return;
     }
 
+    // Freeze this request's frame before awaiting the backend. It is used only
+    // when the backend explicitly has no completed best-pose image.
+    const submittedFrameDataUrl = selectedExerciseCode === "SQUAT"
+      ? null
+      : captureCanvas.toDataURL("image/jpeg", 0.82);
+
     const formData =
       new FormData();
 
@@ -1522,7 +1557,7 @@ async function sendFrameForAnalysis() {
       );
     }
 
-    applyPoseStatus(data);
+    applyPoseStatus(data, submittedFrameDataUrl);
 
   } catch (error) {
     console.error(
@@ -1715,6 +1750,8 @@ async function startWorkout() {
     );
 
     postureScores = [];
+    bestCapturedPostureScore = -1;
+    bestPostureImageDataUrl = null;
 
     updateCounterDisplay();
 
