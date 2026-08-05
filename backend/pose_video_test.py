@@ -16,7 +16,7 @@ from pathlib import Path
 
 import cv2
 
-from backend.exercise_pose import create_pose_analyzers, get_pose_analyzer
+from backend.pose_factory import create_pose_analyzers, get_pose_analyzer
 
 
 def _flag(name: str) -> bool:

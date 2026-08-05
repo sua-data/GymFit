@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from backend.exercise_pose import create_pose_analyzer
+from backend.pose_factory import create_pose_analyzer
 
 
 def utc_now() -> datetime:
