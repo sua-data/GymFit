@@ -69,3 +69,6 @@ gymfit_before_*.sql
 *_backup_*.sql
 *.dump
 *.bak
+
+# GYMFIT workout capture images
+frontend/captures/
