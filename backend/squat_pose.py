@@ -1177,3 +1177,10 @@ class SquatAnalyzer:
         }
 
         return annotated_frame, status
+
+
+def render_pose_capture(frame, pose_overlay):
+    """Render the shared 640x400 bbox/skeleton capture without mutating input."""
+    return SquatAnalyzer._draw_best_pose_capture(
+        None, frame, pose_overlay, None, None
+    )

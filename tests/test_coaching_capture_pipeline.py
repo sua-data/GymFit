@@ -35,8 +35,8 @@ def test_frontend_backend_capture_branch_never_reads_canvas():
     assert "captureImage || fallbackImage" in register_source
     assert '"backend-best-pose"' in source
     assert '"frontend-current-frame-fallback"' in source
-    assert 'selectedExerciseCode === "SQUAT" ? null : submittedFrameDataUrl' in source
-    assert 'selectedExerciseCode === "SQUAT"\n      ? null\n      : captureCanvas.toDataURL' in source
+    assert '["SQUAT", "PUSHUP"].includes(selectedExerciseCode)' in source
+    assert "? null\n      : submittedFrameDataUrl" in source
     assert "completedCapture?.image" in source
 
 

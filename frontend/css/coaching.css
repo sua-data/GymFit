@@ -321,6 +321,69 @@ button {
   object-fit: cover;
 }
 
+.pushup-orientation-guide {
+  position: absolute;
+  top: max(68px, calc(env(safe-area-inset-top) + 54px));
+  left: 50%;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(calc(100% - 28px), 440px);
+  padding: 10px 13px;
+  color: #fff;
+  background: rgba(8, 8, 8, 0.78);
+  border: 1px solid rgba(168, 255, 53, 0.35);
+  border-radius: 14px;
+  text-align: left;
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.pushup-orientation-guide[hidden] {
+  display: none;
+}
+
+.pushup-orientation-guide strong {
+  font-size: 14px;
+}
+
+.pushup-orientation-guide p {
+  max-width: 420px;
+  margin: 2px 0 0;
+  color: var(--gymfit-green);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.pushup-rotate-icon {
+  position: relative;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 34px;
+}
+
+.pushup-rotate-icon span {
+  position: absolute;
+  top: 8px;
+  left: 3px;
+  width: 29px;
+  height: 17px;
+  border: 2px solid #fff;
+  border-radius: 5px;
+}
+
+.pushup-rotate-icon b {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: var(--gymfit-green);
+  font-size: 19px;
+  line-height: 1;
+}
+
 
 .camera-card video {
   transform: scaleX(-1);
@@ -971,6 +1034,53 @@ body.coaching-active .camera-card::after {
 body.coaching-active .camera-card video,
 body.coaching-active .camera-card canvas {
   object-fit: cover;
+}
+
+@media (orientation: landscape) and (pointer: coarse) {
+  body.coaching-active.pushup-landscape-mode .workout-camera-overlay {
+    padding:
+      calc(max(44px, env(safe-area-inset-top) + 32px))
+      calc(max(16px, env(safe-area-inset-right) + 12px))
+      calc(max(74px, env(safe-area-inset-bottom) + 62px))
+      calc(max(16px, env(safe-area-inset-left) + 12px));
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-top {
+    justify-content: flex-end;
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-top strong {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-center {
+    margin: auto 0 auto auto;
+    align-items: flex-end;
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-center strong {
+    font-size: clamp(48px, 12vh, 78px);
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-center span {
+    margin-top: 3px;
+    font-size: clamp(16px, 4vh, 24px);
+  }
+
+  body.coaching-active.pushup-landscape-mode .workout-overlay-feedback {
+    width: min(46vw, 430px);
+    min-height: 36px;
+    margin-left: auto;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  body.coaching-active.pushup-landscape-mode .coaching-actions {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(9px, env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+  }
 }
 
 body.coaching-active .live-badge {

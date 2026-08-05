@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -36,22 +37,43 @@ class CoachingSessionCreate(BaseModel):
         return value.strip().upper()
 
 
-async def decode_uploaded_image(image: UploadFile):
+def pose_debug_enabled():
+    return os.getenv("POSE_DEBUG", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+async def decode_uploaded_image(image: UploadFile, *, include_bytes=False):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="이미지 파일만 전송할 수 있습니다.")
     image_bytes = await image.read()
     if not image_bytes:
+        if pose_debug_enabled():
+            print({"event": "pushup-upload", "reason": "empty-upload"})
         raise HTTPException(status_code=400, detail="빈 이미지가 전송되었습니다.")
     frame = cv2.imdecode(
         np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR
     )
     if frame is None:
-        if os.getenv("POSE_DEBUG", "").strip().lower() in {
-            "1", "true", "yes", "on"
-        }:
-            print({"event": "pose-detection", "reason": "frame-decode-failed"})
+        if pose_debug_enabled():
+            print({
+                "event": "pushup-upload",
+                "reason": "decode-failed",
+                "upload_bytes": len(image_bytes),
+            })
         raise HTTPException(status_code=400, detail="이미지를 읽을 수 없습니다.")
-    return frame
+    if pose_debug_enabled():
+        blank_frame = float(frame.max()) - float(frame.min()) < 3
+        print({
+            "event": "pushup-upload",
+            "reason": "blank-frame" if blank_frame else "decoded-frame",
+            "upload_bytes": len(image_bytes),
+            "shape": list(frame.shape),
+            "mean_brightness": round(float(frame.mean()), 2),
+            "min_pixel": int(frame.min()),
+            "max_pixel": int(frame.max()),
+        })
+    return (frame, image_bytes) if include_bytes else frame
 
 
 def normalize_analysis_status(exercise_code: str, status: dict, analyzer):
@@ -135,16 +157,42 @@ async def analyze_coaching_frame(
     session_id: str,
     image: UploadFile = File(...),
     frame_id: int = Form(..., ge=0),
+    frame_mean_brightness: float | None = Form(default=None, ge=0, le=255),
+    brightness_adjusted: bool = Form(default=False),
     user: User = Depends(require_member),
 ):
-    frame = await decode_uploaded_image(image)
+    frame, uploaded_jpeg = await decode_uploaded_image(image, include_bytes=True)
 
     def process():
         with coaching_session_store.locked(
             session_id, user_id=user.user_id
         ) as session:
             inference_started_at = time.perf_counter()
-            _, status = session.analyzer.process_frame(frame)
+            if session.exercise_code == "PUSHUP":
+                if pose_debug_enabled() and not getattr(
+                    session.analyzer, "_debug_received_frame_saved", False
+                ):
+                    debug_path = (
+                        Path(__file__).resolve().parents[2]
+                        / "debug"
+                        / "pushup_received_frame.jpg"
+                    )
+                    debug_path.parent.mkdir(parents=True, exist_ok=True)
+                    debug_path.write_bytes(uploaded_jpeg)
+                    session.analyzer._debug_received_frame_saved = True
+                    print({
+                        "event": "pushup-received-frame-saved",
+                        "path": str(debug_path),
+                        "upload_bytes": len(uploaded_jpeg),
+                        "shape": list(frame.shape),
+                    })
+                _, status = session.analyzer.process_frame(
+                    frame,
+                    frame_mean_brightness=frame_mean_brightness,
+                    brightness_adjusted=brightness_adjusted,
+                )
+            else:
+                _, status = session.analyzer.process_frame(frame)
             inference_ms = (time.perf_counter() - inference_started_at) * 1000
             normalized = normalize_analysis_status(
                 session.exercise_code, status, session.analyzer
@@ -163,26 +211,30 @@ async def analyze_coaching_frame(
                     "debug": status.get("detection_debug"),
                     "failure_counts": status.get("detection_failure_counts"),
                 })
-            if session.exercise_code == "SQUAT":
+            if session.exercise_code in {"SQUAT", "PUSHUP"}:
                 capture = session.analyzer.get_completed_pose_capture()
                 if capture is not None:
                     try:
-                        normalized["completed_pose_capture"] = {
-                            "image": capture["image"],
-                            "image_hash": capture["image_hash"],
-                            "score": capture["score"],
-                            "knee_angle": round(capture["knee_angle"], 1),
-                            "torso_angle": round(capture["torso_angle"], 1),
-                            "feedback": capture["feedback"],
-                            "stage": capture["stage"],
-                        }
+                        normalized_capture = dict(capture)
+                        for angle_field in (
+                            "knee_angle",
+                            "torso_angle",
+                            "elbow_angle",
+                            "body_alignment_angle",
+                        ):
+                            if normalized_capture.get(angle_field) is not None:
+                                normalized_capture[angle_field] = round(
+                                    normalized_capture[angle_field], 1
+                                )
+                        normalized["completed_pose_capture"] = normalized_capture
                         if os.getenv("POSE_DEBUG", "").strip().lower() in {
                             "1", "true", "yes", "on"
                         }:
                             print({
                                 "count": status.get("count"),
                                 "best_score": capture["score"],
-                                "best_angle": capture["knee_angle"],
+                                "best_angle": capture.get("knee_angle")
+                                or capture.get("elbow_angle"),
                                 "has_best_frame": True,
                                 "has_completed_capture": bool(capture["image"]),
                                 "capture_format": (
@@ -202,8 +254,24 @@ async def analyze_coaching_frame(
                     }:
                         print({
                             "count": status.get("count"),
-                            "best_score": session.analyzer.best_pose_score,
-                            "best_angle": session.analyzer.best_pose_angle,
+                            "best_score": getattr(
+                                session.analyzer,
+                                "best_pose_score",
+                                getattr(
+                                    session.analyzer,
+                                    "repetition_best_posture_score",
+                                    -1,
+                                ),
+                            ),
+                            "best_angle": getattr(
+                                session.analyzer,
+                                "best_pose_angle",
+                                getattr(
+                                    session.analyzer,
+                                    "current_min_elbow_angle",
+                                    None,
+                                ),
+                            ),
                             "has_best_frame": False,
                             "has_completed_capture": False,
                             "capture_format": "empty",

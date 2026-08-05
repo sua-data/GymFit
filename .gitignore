@@ -48,6 +48,11 @@ uploads/*
 results/*
 !results/.gitkeep
 
+# POSE_DEBUG may contain identifiable camera frames.
+debug/*.jpg
+debug/*.jpeg
+debug/*.png
+
 # =========================
 # 로컬 DB
 # =========================

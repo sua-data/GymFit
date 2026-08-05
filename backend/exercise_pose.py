@@ -81,6 +81,7 @@ class UpperBodyExerciseAnalyzer:
         self.min_keypoint_conf = float(
             self.config.get("min_keypoint_confidence", 0.35)
         )
+        self.overlay_min_keypoint_conf = 0.30
         self.min_box_width = 70
         self.min_box_height = 120
         self.required_frames = int(self.config.get("required_frames", 3))
@@ -148,7 +149,7 @@ class UpperBodyExerciseAnalyzer:
     def stage_text(self):
         return self.stage
 
-    def _update_state(self, metrics):
+    def _update_state(self, metrics, frame=None, pose_overlay=None):
         self.last_counted = False
         target_stage, feedback, score = self._evaluate(metrics)
         self.feedback = feedback
@@ -159,10 +160,63 @@ class UpperBodyExerciseAnalyzer:
             self.best_posture_score, self.last_posture_score
         )
         self._accept_stable_stage(target_stage)
+        self._after_state_update(metrics, target_stage, frame, pose_overlay)
+
+    def _after_state_update(self, metrics, target_stage, frame, pose_overlay):
+        """Exercise-specific post-processing hook for the same analyzed frame."""
+
+    def _on_tracking_lost(self):
+        """Exercise-specific cleanup after an extended detection gap."""
+
+    def _build_pose_overlay(self, result, person_index, frame_width, frame_height):
+        if result.keypoints.conf is None:
+            return None
+        person = result.keypoints.xy[person_index]
+        confidences = result.keypoints.conf[person_index]
+        keypoints = []
+        for index in range(min(17, len(person))):
+            x, y = person[index].tolist()
+            confidence = float(confidences[index])
+            if (
+                confidence < self.overlay_min_keypoint_conf
+                or x <= 0
+                or y <= 0
+                or x >= frame_width
+                or y >= frame_height
+            ):
+                continue
+            keypoints.append({
+                "id": index,
+                "x": round(float(x), 2),
+                "y": round(float(y), 2),
+                "confidence": round(confidence, 3),
+            })
+        x1, y1, x2, y2 = result.boxes.xyxy[person_index].tolist()
+        person_confidence = (
+            float(result.boxes.conf[person_index])
+            if result.boxes.conf is not None
+            else None
+        )
+        return {
+            "source_width": frame_width,
+            "source_height": frame_height,
+            "keypoints": keypoints,
+            "selected_side": None,
+            "bbox": {
+                "x1": round(float(x1), 2),
+                "y1": round(float(y1), 2),
+                "x2": round(float(x2), 2),
+                "y2": round(float(y2), 2),
+                "confidence": round(person_confidence, 3)
+                if person_confidence is not None
+                else None,
+            },
+        }
 
     def process_frame(self, frame) -> tuple[Any, dict]:
         valid_person = False
         metrics = {"pose_valid": False, "missing_reason": "PERSON_NOT_FOUND"}
+        pose_overlay = None
         results = self.model(frame, conf=0.5, classes=[0], verbose=False)
         annotated_frame = frame.copy()
 
@@ -184,19 +238,25 @@ class UpperBodyExerciseAnalyzer:
                 result.keypoints.xy[person_index],
                 result.keypoints.conf[person_index],
             )
+            pose_overlay = self._build_pose_overlay(
+                result, person_index, frame.shape[1], frame.shape[0]
+            )
+            if pose_overlay is not None:
+                pose_overlay["selected_side"] = metrics.get("selected_side")
             break
 
         valid_pose = bool(metrics.get("pose_valid"))
         if valid_pose:
             self.missing_frames = 0
             self.last_missing_reason = None
-            self._update_state(metrics)
+            self._update_state(metrics, frame, pose_overlay)
         else:
             self.missing_frames += 1
             self.last_missing_reason = metrics.get("missing_reason")
             if self.missing_frames > self.max_missing_frames:
                 self.transition_frames = 0
                 self.candidate_stage = None
+                self._on_tracking_lost()
                 self.feedback = self.missing_feedback
 
         status_text = (
@@ -236,6 +296,19 @@ class UpperBodyExerciseAnalyzer:
             "person_valid": valid_person,
             "landmarks_detected": valid_pose,
             "status_text": status_text,
+            "pose_overlay": pose_overlay if valid_pose else None,
+            "source_width": frame.shape[1],
+            "source_height": frame.shape[0],
+            "bbox": pose_overlay.get("bbox") if pose_overlay else None,
+            "person_confidence": (
+                pose_overlay.get("bbox", {}).get("confidence")
+                if pose_overlay
+                else None
+            ),
+            "keypoints": pose_overlay.get("keypoints", []) if pose_overlay else [],
+            "person_detected": valid_person,
+            "pose_detected": valid_pose,
+            "repetition_completed": self.last_counted,
             **{
                 key: round(value, 1) if isinstance(value, float) else value
                 for key, value in metrics.items()
@@ -244,6 +317,8 @@ class UpperBodyExerciseAnalyzer:
         }
         if self.debug_enabled:
             result["debug"] = debug
+        if hasattr(self, "capture_fallback_reason"):
+            result["capture_fallback_reason"] = self.capture_fallback_reason
         return annotated_frame, result
 
 

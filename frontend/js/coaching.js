@@ -73,6 +73,9 @@ const finishButton =
     "#finishButton"
   );
 
+const pushupOrientationGuide =
+  document.querySelector("#pushupOrientationGuide");
+
 const poseContext = poseCanvas.getContext("2d");
 
 const POSE_SKELETON_CONNECTIONS = [
@@ -201,7 +204,7 @@ function drawLivePoseOverlay(status) {
   const sourceWidth = Number(overlay?.source_width);
   const sourceHeight = Number(overlay?.source_height);
   const keypoints = Array.isArray(overlay?.keypoints) ? overlay.keypoints : [];
-  if (!status.pose_valid || !sourceWidth || !sourceHeight || keypoints.length === 0) {
+  if (!status.person_detected || !sourceWidth || !sourceHeight || keypoints.length === 0) {
     clearPoseOverlay();
     return;
   }
@@ -486,6 +489,9 @@ let workoutFinishedAt = null;
 let pauseStartedAt = null;
 let accumulatedPausedMilliseconds = 0;
 let cameraStream = null;
+let currentFacingMode = "user";
+let orientationListenersAttached = false;
+let orientationUpdateFrame = null;
 
 let isWorkoutActive = false;
 let isGoalCompleted = false;
@@ -514,6 +520,81 @@ const posePerformanceSamples = [];
 let lastPoseResponseAt = null;
 let posePerformanceResponseCount = 0;
 
+function isMobileTouchDevice() {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
+  const touchPoints = Number(navigator.maxTouchPoints || 0);
+  const userAgent = String(navigator.userAgent || "");
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  const iPadDesktopMode = /Macintosh/i.test(userAgent) && touchPoints > 1;
+  return (coarsePointer || touchPoints > 0) && (mobileUserAgent || iPadDesktopMode);
+}
+
+function shouldShowPushupPortraitAdvisory() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+  return selectedExerciseCode === "PUSHUP"
+    && isMobileTouchDevice()
+    && isPortrait;
+}
+
+function resizePoseCanvasToCamera() {
+  const rect = poseCanvas.getBoundingClientRect();
+  const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
+  const width = Math.max(1, Math.round(rect.width * pixelRatio));
+  const height = Math.max(1, Math.round(rect.height * pixelRatio));
+  if (poseCanvas.width !== width || poseCanvas.height !== height) {
+    poseCanvas.width = width;
+    poseCanvas.height = height;
+  }
+}
+
+function updatePushupOrientationAdvisory() {
+  const showAdvisory = shouldShowPushupPortraitAdvisory();
+  pushupOrientationGuide.hidden = !showAdvisory;
+  document.body.classList.toggle(
+    "pushup-landscape-mode",
+    selectedExerciseCode === "PUSHUP"
+      && isMobileTouchDevice()
+      && !showAdvisory
+  );
+
+const brightnessCanvas = document.createElement("canvas");
+brightnessCanvas.width = 32;
+brightnessCanvas.height = 32;
+const brightnessContext = brightnessCanvas.getContext("2d", {
+  willReadFrequently: true
+});
+
+  resizePoseCanvasToCamera();
+}
+
+function scheduleOrientationAdvisoryUpdate() {
+  if (orientationUpdateFrame !== null) {
+    window.cancelAnimationFrame(orientationUpdateFrame);
+  }
+  orientationUpdateFrame = window.requestAnimationFrame(() => {
+    orientationUpdateFrame = null;
+    updatePushupOrientationAdvisory();
+  });
+}
+
+function attachOrientationListeners() {
+  if (orientationListenersAttached) return;
+  window.addEventListener("orientationchange", scheduleOrientationAdvisoryUpdate);
+  window.addEventListener("resize", scheduleOrientationAdvisoryUpdate);
+  orientationListenersAttached = true;
+}
+
+function detachOrientationListeners() {
+  if (!orientationListenersAttached) return;
+  window.removeEventListener("orientationchange", scheduleOrientationAdvisoryUpdate);
+  window.removeEventListener("resize", scheduleOrientationAdvisoryUpdate);
+  orientationListenersAttached = false;
+  if (orientationUpdateFrame !== null) {
+    window.cancelAnimationFrame(orientationUpdateFrame);
+    orientationUpdateFrame = null;
+  }
+}
+
 function recordPosePerformance({
   roundTripMs,
   inferenceMs,
@@ -521,6 +602,8 @@ function recordPosePerformance({
   detectionReason,
   detectionDebug,
   detectionFailureCounts,
+  frameBrightness,
+  brightnessAdjusted,
 }) {
   const now = performance.now();
   const responseIntervalMs = lastPoseResponseAt === null
@@ -572,6 +655,10 @@ function recordPosePerformance({
       detectionDebug?.required_joint_confidences ?? null,
     keypoint_confidences: detectionDebug?.keypoint_confidences ?? null,
     selected_bbox: detectionDebug?.selected_bbox ?? null,
+    frame_brightness: Number.isFinite(frameBrightness)
+      ? Number(frameBrightness.toFixed(1))
+      : null,
+    brightness_adjusted: Boolean(brightnessAdjusted),
   });
 }
 const COACHING_REST_STORAGE_KEY =
@@ -1187,6 +1274,12 @@ function selectExerciseTab(exerciseCode) {
   if (poseInitialNotice) {
     poseInitialNotice.hidden = !analyzer?.initialTest;
   }
+  if (selectedExerciseCode === "PUSHUP") {
+    attachOrientationListeners();
+  } else if (!isWorkoutActive) {
+    detachOrientationListeners();
+  }
+  updatePushupOrientationAdvisory();
   return true;
 }
 
@@ -1266,7 +1359,7 @@ async function startCamera() {
     await navigator.mediaDevices
       .getUserMedia({
         video: {
-          facingMode: "user",
+          facingMode: currentFacingMode,
           width: {
             ideal: 720
           },
@@ -1305,6 +1398,9 @@ function stopCamera() {
   stopSpeech();
   clearPoseOverlay();
   window.clearTimeout(poseStaleTimer);
+  detachOrientationListeners();
+  pushupOrientationGuide.hidden = true;
+  document.body.classList.remove("pushup-landscape-mode");
 
   if (!cameraStream) {
     return;
@@ -1617,17 +1713,20 @@ function applyPoseStatus(
     : null;
   const captureSource = backendImage
     ? "backend-best-pose"
-    : (selectedExerciseCode === "SQUAT"
-      ? "no-valid-squat-capture"
+    : (["SQUAT", "PUSHUP"].includes(selectedExerciseCode)
+      ? "no-valid-down-pose-capture"
       : "frontend-current-frame-fallback");
   const repetitionCaptureImage = backendImage
-    || (selectedExerciseCode === "SQUAT" ? null : submittedFrameDataUrl);
+    || (["SQUAT", "PUSHUP"].includes(selectedExerciseCode)
+      ? null
+      : submittedFrameDataUrl);
 
   if (repetitionDifference > 0) {
     console.log("[capture source]", captureSource, {
       count: serverCount,
       score: completedCapture?.score ?? null,
       knee_angle: completedCapture?.knee_angle ?? null,
+      elbow_angle: completedCapture?.elbow_angle ?? null,
       has_image: Boolean(backendImage),
       fallback_reason: status.capture_fallback_reason ?? null,
     });
@@ -1688,7 +1787,7 @@ function applyPoseStatus(
 
     const angleTexts = [];
 
-    if (status.average_angle != null) {
+    if (selectedExerciseCode === "SQUAT" && status.average_angle != null) {
       angleTexts.push(
         `무릎 ${Math.round(
           status.average_angle
@@ -1696,7 +1795,7 @@ function applyPoseStatus(
       );
     }
 
-    if (status.torso_angle != null) {
+    if (selectedExerciseCode === "SQUAT" && status.torso_angle != null) {
       angleTexts.push(
         `상체 기울기 ${Math.round(
           status.torso_angle
@@ -1707,6 +1806,12 @@ function applyPoseStatus(
     if (status.elbow_angle != null) {
       angleTexts.push(
         `팔꿈치 ${Math.round(status.elbow_angle)}도`
+      );
+    }
+
+    if (status.body_alignment_angle != null) {
+      angleTexts.push(
+        `몸 정렬 ${Math.round(status.body_alignment_angle)}도`
       );
     }
 
@@ -1757,6 +1862,7 @@ async function sendFrameForAnalysis() {
   if (
     !isWorkoutActive
     || isWorkoutPaused
+    || isResting
     || analysisInProgress
     || !coachingSessionId
     || !cameraVideo.videoWidth
@@ -1767,6 +1873,8 @@ async function sendFrameForAnalysis() {
 
   analysisInProgress = true;
   const framePreparationStartedAt = performance.now();
+  let frameBrightness = null;
+  let brightnessAdjusted = false;
 
   try {
     const sourceWidth =
@@ -1792,13 +1900,41 @@ async function sendFrameForAnalysis() {
     captureCanvas.height =
       targetHeight;
 
+    captureContext.filter = "none";
     captureContext.drawImage(
       cameraVideo,
+      0,
+      0,
+      sourceWidth,
+      sourceHeight,
       0,
       0,
       targetWidth,
       targetHeight
     );
+
+    if (selectedExerciseCode === "PUSHUP") {
+      brightnessContext.drawImage(
+        cameraVideo, 0, 0, brightnessCanvas.width, brightnessCanvas.height
+      );
+      const pixels = brightnessContext.getImageData(
+        0, 0, brightnessCanvas.width, brightnessCanvas.height
+      ).data;
+      let brightnessTotal = 0;
+      let samples = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        brightnessTotal += (
+          pixels[index] * 0.2126
+          + pixels[index + 1] * 0.7152
+          + pixels[index + 2] * 0.0722
+        );
+        samples += 1;
+      }
+      frameBrightness = samples ? brightnessTotal / samples : null;
+      // Diagnostic baseline: transmit the unfiltered source frame. Any future
+      // correction must be justified by saved-frame A/B inference results.
+      captureContext.filter = "none";
+    }
 
     const imageBlob =
       await new Promise(
@@ -1817,7 +1953,7 @@ async function sendFrameForAnalysis() {
 
     // Freeze this request's frame before awaiting the backend. It is used only
     // when the backend explicitly has no completed best-pose image.
-    const submittedFrameDataUrl = selectedExerciseCode === "SQUAT"
+    const submittedFrameDataUrl = ["SQUAT", "PUSHUP"].includes(selectedExerciseCode)
       ? null
       : captureCanvas.toDataURL("image/jpeg", 0.82);
 
@@ -1832,6 +1968,10 @@ async function sendFrameForAnalysis() {
       `${selectedExerciseCode.toLowerCase()}-frame.jpg`
     );
     formData.append("frame_id", String(requestFrameId));
+    if (selectedExerciseCode === "PUSHUP" && Number.isFinite(frameBrightness)) {
+      formData.append("frame_mean_brightness", frameBrightness.toFixed(2));
+      formData.append("brightness_adjusted", String(brightnessAdjusted));
+    }
 
     const framePrepareMs = performance.now() - framePreparationStartedAt;
     const requestStartedAt = performance.now();
@@ -1875,6 +2015,8 @@ async function sendFrameForAnalysis() {
       detectionReason: data.detection_reason,
       detectionDebug: data.detection_debug,
       detectionFailureCounts: data.detection_failure_counts,
+      frameBrightness,
+      brightnessAdjusted,
     });
 
   } catch (error) {
@@ -1888,6 +2030,7 @@ async function sendFrameForAnalysis() {
     if (
       isWorkoutActive
       && !isWorkoutPaused
+      && !isResting
       && !isWorkoutFinished
       && coachingSessionId
     ) {
@@ -1902,6 +2045,14 @@ async function sendFrameForAnalysis() {
 
 function startPoseAnalysis() {
   stopPoseAnalysis();
+  if (
+    analysisInProgress
+    || isResting
+    || isWorkoutPaused
+    || isWorkoutFinished
+  ) {
+    return;
+  }
   analysisTimer = window.setTimeout(sendFrameForAnalysis, 0);
 }
 
@@ -1915,7 +2066,6 @@ function stopPoseAnalysis() {
     analysisTimer = null;
   }
 
-  analysisInProgress = false;
 }
 
 
@@ -2097,7 +2247,8 @@ async function startWorkout() {
     pauseButton.hidden = false;
     pauseButton.textContent = "일시정지";
     cameraPlaceholder.hidden = true;
-
+    attachOrientationListeners();
+    updatePushupOrientationAdvisory();
     startPoseAnalysis();
 
     movementState.textContent =

@@ -103,6 +103,11 @@ def test_frontend_uses_cover_crop_mirror_and_rejects_old_frame_ids():
     assert "drawLivePoseOverlay(data);" in source
     assert "drawPoseOverlay(data);" not in source
     assert "}, 700);" in source
+    assert (
+        "!status.person_detected || !sourceWidth || !sourceHeight"
+        in source
+    )
+    assert "!status.pose_valid || !sourceWidth" not in source
 
 
 def test_pose_analysis_uses_single_request_continuous_loop_and_reports_timing():
@@ -121,6 +126,12 @@ def test_pose_analysis_uses_single_request_continuous_loop_and_reports_timing():
     assert "average_inference_ms" in source
     assert "average_round_trip_ms" in source
     assert "analyses_per_second" in source
+    assert 'brightnessCanvas.width = 32' in source
+    assert 'brightness(1.12) contrast(1.08)' not in source
+    assert 'captureContext.filter = "none"' in source
+    assert "sourceWidth,\n      sourceHeight,\n      0,\n      0," in source
+    assert 'formData.append("frame_mean_brightness"' in source
+    assert "brightness_adjusted" in source
 
 
 def test_overlay_confidence_is_separate_from_analysis_confidence():
