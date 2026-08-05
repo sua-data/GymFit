@@ -326,7 +326,6 @@ button {
   transform: scaleX(-1);
 }
 
-
 .camera-card canvas {
   z-index: 2;
 

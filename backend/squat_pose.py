@@ -35,6 +35,7 @@ class SquatAnalyzer:
 
         # 감지 기준
         self.min_keypoint_conf = 0.35
+        self.overlay_min_keypoint_conf = 0.30
         self.min_box_width = 70
         self.min_box_height = 150
 
@@ -59,6 +60,13 @@ class SquatAnalyzer:
         self.down_frames = 0
         self.up_frames = 0
         self.missing_frames = 0
+        self.last_detection_reason = "no-person"
+        self.detection_failure_counts = {
+            "no-person": 0,
+            "bbox-too-small": 0,
+            "insufficient-keypoints": 0,
+            "required-joints-missing": 0,
+        }
 
         self._reset_best_pose()
         self._completed_pose_capture = None
@@ -223,6 +231,7 @@ class SquatAnalyzer:
         result,
     ):
         """화면에서 가장 큰 사람의 인덱스를 반환합니다."""
+        self.last_detection_reason = "no-person"
         if (
             result.boxes is None
             or result.keypoints is None
@@ -233,6 +242,7 @@ class SquatAnalyzer:
 
         largest_index = None
         largest_area = 0
+        rejected_small_box = False
 
         for index, box in enumerate(
             result.boxes.xyxy
@@ -247,12 +257,17 @@ class SquatAnalyzer:
                 width < self.min_box_width
                 or height < self.min_box_height
             ):
+                rejected_small_box = True
                 continue
 
             if area > largest_area:
                 largest_area = area
                 largest_index = index
 
+        if largest_index is not None:
+            self.last_detection_reason = "selected"
+        elif rejected_small_box:
+            self.last_detection_reason = "bbox-too-small"
         return largest_index
 
     def _extract_pose_data(
@@ -374,6 +389,173 @@ class SquatAnalyzer:
             right_angle,
             torso_angle,
         )
+
+    def _build_pose_overlay(
+        self,
+        result,
+        person_index,
+        frame_width,
+        frame_height,
+        left_angle,
+        right_angle,
+    ):
+        """Return validated source-frame coordinates for browser drawing."""
+        if result.keypoints.conf is None:
+            return None
+
+        person = result.keypoints.xy[person_index]
+        confidences = result.keypoints.conf[person_index]
+        keypoints = []
+        for index in range(min(17, len(person))):
+            x, y = person[index].tolist()
+            confidence = float(confidences[index])
+            if (
+                confidence < self.overlay_min_keypoint_conf
+                or x <= 0
+                or y <= 0
+                or x >= frame_width
+                or y >= frame_height
+            ):
+                continue
+            keypoints.append({
+                "id": index,
+                "x": round(float(x), 2),
+                "y": round(float(y), 2),
+                "confidence": round(confidence, 3),
+            })
+
+        selected_side = (
+            "BOTH"
+            if left_angle is not None and right_angle is not None
+            else "LEFT"
+            if left_angle is not None
+            else "RIGHT"
+            if right_angle is not None
+            else None
+        )
+        x1, y1, x2, y2 = result.boxes.xyxy[person_index].tolist()
+        person_confidence = (
+            float(result.boxes.conf[person_index])
+            if result.boxes.conf is not None
+            else None
+        )
+        return {
+            "source_width": frame_width,
+            "source_height": frame_height,
+            "keypoints": keypoints,
+            "selected_side": selected_side,
+            "bbox": {
+                "x1": round(float(x1), 2),
+                "y1": round(float(y1), 2),
+                "x2": round(float(x2), 2),
+                "y2": round(float(y2), 2),
+                "confidence": (
+                    round(person_confidence, 3)
+                    if person_confidence is not None
+                    else None
+                ),
+            },
+        }
+
+    def _build_detection_debug(self, result, person_index, pose_overlay):
+        confidences = [
+            round(float(value), 3)
+            for value in result.keypoints.conf[person_index].tolist()[:17]
+        ]
+        required = {
+            "left_shoulder": confidences[5],
+            "right_shoulder": confidences[6],
+            "left_hip": confidences[11],
+            "right_hip": confidences[12],
+            "left_knee": confidences[13],
+            "right_knee": confidences[14],
+            "left_ankle": confidences[15],
+            "right_ankle": confidences[16],
+        }
+        return {
+            "person_confidence": (
+                round(float(result.boxes.conf[person_index]), 3)
+                if result.boxes.conf is not None
+                else None
+            ),
+            "keypoint_confidences": confidences,
+            "analysis_valid_keypoints": sum(
+                confidence >= self.min_keypoint_conf
+                for confidence in confidences
+            ),
+            "overlay_valid_keypoints": len(pose_overlay["keypoints"]),
+            "required_joint_confidences": required,
+            "selected_bbox": pose_overlay["bbox"],
+        }
+
+    def _draw_annotated_pose(self, frame, result, person_index):
+        """Draw only the selected person's bbox and validated COCO pose."""
+        annotated = frame.copy()
+        height, width = annotated.shape[:2]
+        person = result.keypoints.xy[person_index]
+        confidences = result.keypoints.conf[person_index]
+        points = {}
+        for index in range(min(17, len(person))):
+            x, y = person[index].tolist()
+            confidence = float(confidences[index])
+            if (
+                confidence < self.min_keypoint_conf
+                or x <= 0
+                or y <= 0
+                or x >= width
+                or y >= height
+            ):
+                continue
+            points[index] = (int(round(x)), int(round(y)))
+
+        connections = (
+            (0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6),
+            (5, 6), (5, 7), (7, 9), (6, 8), (8, 10),
+            (5, 11), (6, 12), (11, 12),
+            (11, 13), (13, 15), (12, 14), (14, 16),
+        )
+        left_ids = {1, 3, 5, 7, 9, 11, 13, 15}
+        right_ids = {2, 4, 6, 8, 10, 12, 14, 16}
+        for start, end in connections:
+            if start not in points or end not in points:
+                continue
+            if start in left_ids and end in left_ids:
+                color = (80, 220, 255)
+            elif start in right_ids and end in right_ids:
+                color = (255, 150, 70)
+            else:
+                color = (80, 255, 120)
+            cv2.line(annotated, points[start], points[end], color, 2, cv2.LINE_AA)
+
+        for index, point in points.items():
+            color = (
+                (80, 220, 255) if index in left_ids
+                else (255, 150, 70) if index in right_ids
+                else (80, 255, 120)
+            )
+            cv2.circle(annotated, point, 3, color, -1, cv2.LINE_AA)
+
+        x1, y1, x2, y2 = result.boxes.xyxy[person_index].tolist()
+        box_start = (max(0, int(x1)), max(0, int(y1)))
+        box_end = (min(width - 1, int(x2)), min(height - 1, int(y2)))
+        cv2.rectangle(annotated, box_start, box_end, (168, 255, 53), 1, cv2.LINE_AA)
+        box_confidence = (
+            float(result.boxes.conf[person_index])
+            if result.boxes.conf is not None
+            else 0.0
+        )
+        label_y = max(16, box_start[1] - 6)
+        cv2.putText(
+            annotated,
+            f"person {box_confidence:.2f}",
+            (box_start[0], label_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (168, 255, 53),
+            1,
+            cv2.LINE_AA,
+        )
+        return annotated
 
     def _update_feedback(
         self,
@@ -621,6 +803,9 @@ class SquatAnalyzer:
 
         valid_person = False
         valid_pose = False
+        pose_overlay = None
+        detection_debug = None
+        detection_reason = "no-person"
 
         results = self.model(
             frame,
@@ -632,8 +817,6 @@ class SquatAnalyzer:
         annotated_frame = frame.copy()
 
         for result in results:
-            annotated_frame = result.plot()
-
             person_index = (
                 self._select_largest_person(
                     result
@@ -641,6 +824,7 @@ class SquatAnalyzer:
             )
 
             if person_index is None:
+                detection_reason = self.last_detection_reason
                 continue
 
             valid_person = True
@@ -652,6 +836,18 @@ class SquatAnalyzer:
             ) = self._extract_pose_data(
                 result,
                 person_index,
+            )
+
+            pose_overlay = self._build_pose_overlay(
+                result,
+                person_index,
+                frame.shape[1],
+                frame.shape[0],
+                left_angle,
+                right_angle,
+            )
+            detection_debug = self._build_detection_debug(
+                result, person_index, pose_overlay
             )
 
             break
@@ -666,6 +862,7 @@ class SquatAnalyzer:
 
         if angles:
             valid_pose = True
+            detection_reason = "ok"
             self.missing_frames = 0
 
             average_angle = (
@@ -680,6 +877,12 @@ class SquatAnalyzer:
             )
 
         else:
+            if valid_person and detection_debug is not None:
+                detection_reason = (
+                    "insufficient-keypoints"
+                    if detection_debug["analysis_valid_keypoints"] < 6
+                    else "required-joints-missing"
+                )
             self.missing_frames += 1
 
             if (
@@ -693,6 +896,9 @@ class SquatAnalyzer:
                 self.feedback = (
                     "전신이 화면에 나오도록 이동하세요"
                 )
+
+        if detection_reason in self.detection_failure_counts:
+            self.detection_failure_counts[detection_reason] += 1
 
         if valid_pose:
             status_text = "자세 인식 중"
@@ -777,6 +983,10 @@ class SquatAnalyzer:
             "person_valid": valid_person,
             "status_text": status_text,
             "repetition_completed": self.squat_count > count_before_frame,
+            "pose_overlay": pose_overlay if valid_pose else None,
+            "detection_reason": detection_reason,
+            "detection_debug": detection_debug,
+            "detection_failure_counts": dict(self.detection_failure_counts),
         }
 
         return annotated_frame, status

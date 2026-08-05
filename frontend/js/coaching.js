@@ -73,6 +73,234 @@ const finishButton =
     "#finishButton"
   );
 
+const poseContext = poseCanvas.getContext("2d");
+
+const POSE_SKELETON_CONNECTIONS = [
+  [5, 6], [5, 11], [6, 12], [11, 12],
+  [11, 13], [13, 15], [12, 14], [14, 16],
+  [5, 7], [7, 9], [6, 8], [8, 10]
+];
+
+const LEFT_ANALYSIS_KEYPOINTS = new Set([5, 11, 13, 15]);
+const RIGHT_ANALYSIS_KEYPOINTS = new Set([6, 12, 14, 16]);
+
+function clearPoseOverlay() {
+  poseContext.setTransform(1, 0, 0, 1, 0, 0);
+  poseContext.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+}
+
+function drawPoseOverlay(status) {
+  const overlay = status.pose_overlay;
+  const width = Number(overlay?.source_width);
+  const height = Number(overlay?.source_height);
+  const keypoints = Array.isArray(overlay?.keypoints)
+    ? overlay.keypoints
+    : [];
+
+  if (!status.pose_valid || !width || !height || keypoints.length === 0) {
+    clearPoseOverlay();
+    return;
+  }
+
+  if (poseCanvas.width !== width || poseCanvas.height !== height) {
+    poseCanvas.width = width;
+    poseCanvas.height = height;
+  } else {
+    clearPoseOverlay();
+  }
+
+  // The video is mirrored with CSS. Mirror only x coordinates here so text
+  // remains readable while joints stay aligned with the front-camera image.
+  const points = new Map(
+    keypoints.map((point) => [point.id, {
+      ...point,
+      drawX: width - point.x,
+      drawY: point.y,
+    }])
+  );
+  const selectedSide = overlay.selected_side;
+  const emphasized = new Set();
+  if (selectedSide === "LEFT" || selectedSide === "BOTH") {
+    LEFT_ANALYSIS_KEYPOINTS.forEach((id) => emphasized.add(id));
+  }
+  if (selectedSide === "RIGHT" || selectedSide === "BOTH") {
+    RIGHT_ANALYSIS_KEYPOINTS.forEach((id) => emphasized.add(id));
+  }
+
+  poseContext.lineCap = "round";
+  poseContext.lineJoin = "round";
+  POSE_SKELETON_CONNECTIONS.forEach(([fromId, toId]) => {
+    const from = points.get(fromId);
+    const to = points.get(toId);
+    if (!from || !to) return;
+    const highlighted = emphasized.has(fromId) && emphasized.has(toId);
+    poseContext.beginPath();
+    poseContext.moveTo(from.drawX, from.drawY);
+    poseContext.lineTo(to.drawX, to.drawY);
+    poseContext.strokeStyle = highlighted
+      ? "rgba(255, 224, 88, 0.96)"
+      : "rgba(168, 255, 53, 0.82)";
+    poseContext.lineWidth = highlighted ? 4 : 2.5;
+    poseContext.stroke();
+  });
+
+  points.forEach((point, id) => {
+    const highlighted = emphasized.has(id);
+    poseContext.beginPath();
+    poseContext.arc(point.drawX, point.drawY, highlighted ? 5 : 3.5, 0, Math.PI * 2);
+    poseContext.fillStyle = highlighted ? "#ffe058" : "#a8ff35";
+    poseContext.fill();
+    poseContext.lineWidth = 1.5;
+    poseContext.strokeStyle = "rgba(0, 0, 0, 0.78)";
+    poseContext.stroke();
+  });
+
+  const kneeIds = selectedSide === "LEFT"
+    ? [13]
+    : selectedSide === "RIGHT"
+      ? [14]
+      : [13, 14];
+  const kneeAngle = Number(status.average_angle);
+  if (Number.isFinite(kneeAngle)) {
+    kneeIds.forEach((id) => {
+      const knee = points.get(id);
+      if (!knee) return;
+      const labelX = Math.max(8, Math.min(width - 66, knee.drawX + 10));
+      const labelY = Math.max(22, Math.min(height - 8, knee.drawY - 10));
+      poseContext.font = "700 15px system-ui, sans-serif";
+      poseContext.lineWidth = 4;
+      poseContext.strokeStyle = "rgba(0, 0, 0, 0.82)";
+      poseContext.strokeText(`${Math.round(kneeAngle)}°`, labelX, labelY);
+      poseContext.fillStyle = "#ffffff";
+      poseContext.fillText(`${Math.round(kneeAngle)}°`, labelX, labelY);
+    });
+  }
+
+  const score = Number(status.posture_score);
+  const summary = Number.isFinite(score)
+    ? `${status.stage || "UP"} · ${Math.round(score)}`
+    : String(status.stage || "UP");
+  poseContext.font = "800 14px system-ui, sans-serif";
+  poseContext.textBaseline = "bottom";
+  poseContext.lineWidth = 4;
+  poseContext.strokeStyle = "rgba(0, 0, 0, 0.82)";
+  poseContext.strokeText(summary, 12, height - 12);
+  poseContext.fillStyle = "#ffffff";
+  poseContext.fillText(summary, 12, height - 12);
+  poseContext.textBaseline = "alphabetic";
+}
+
+function drawLivePoseOverlay(status) {
+  const frameId = Number(status.frame_id);
+  if (!Number.isInteger(frameId) || frameId < latestAnnotatedResponseId) {
+    return;
+  }
+  latestAnnotatedResponseId = frameId;
+
+  const overlay = status.pose_overlay;
+  const sourceWidth = Number(overlay?.source_width);
+  const sourceHeight = Number(overlay?.source_height);
+  const keypoints = Array.isArray(overlay?.keypoints) ? overlay.keypoints : [];
+  if (!status.pose_valid || !sourceWidth || !sourceHeight || keypoints.length === 0) {
+    clearPoseOverlay();
+    return;
+  }
+
+  const rect = poseCanvas.getBoundingClientRect();
+  const viewWidth = rect.width;
+  const viewHeight = rect.height;
+  if (viewWidth <= 0 || viewHeight <= 0) {
+    clearPoseOverlay();
+    return;
+  }
+  const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
+  const backingWidth = Math.round(viewWidth * pixelRatio);
+  const backingHeight = Math.round(viewHeight * pixelRatio);
+  if (poseCanvas.width !== backingWidth || poseCanvas.height !== backingHeight) {
+    poseCanvas.width = backingWidth;
+    poseCanvas.height = backingHeight;
+  }
+  poseContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  poseContext.clearRect(0, 0, viewWidth, viewHeight);
+
+  const coverScale = Math.max(
+    viewWidth / sourceWidth,
+    viewHeight / sourceHeight
+  );
+  const offsetX = (viewWidth - sourceWidth * coverScale) / 2;
+  const offsetY = (viewHeight - sourceHeight * coverScale) / 2;
+  const project = (x, y) => {
+    const coveredX = x * coverScale + offsetX;
+    return {
+      x: viewWidth - coveredX,
+      y: y * coverScale + offsetY,
+    };
+  };
+
+  const points = new Map(
+    keypoints.map((point) => [point.id, project(point.x, point.y)])
+  );
+  const connections = [
+    [0, 1], [0, 2], [1, 3], [2, 4], [3, 5], [4, 6],
+    [5, 6], [5, 7], [7, 9], [6, 8], [8, 10],
+    [5, 11], [6, 12], [11, 12],
+    [11, 13], [13, 15], [12, 14], [14, 16]
+  ];
+  const leftIds = new Set([1, 3, 5, 7, 9, 11, 13, 15]);
+  const rightIds = new Set([2, 4, 6, 8, 10, 12, 14, 16]);
+  const colorFor = (start, end = start) => {
+    if (leftIds.has(start) && leftIds.has(end)) return "#ffdc50";
+    if (rightIds.has(start) && rightIds.has(end)) return "#4696ff";
+    return "#50ff78";
+  };
+
+  poseContext.lineCap = "round";
+  connections.forEach(([start, end]) => {
+    const from = points.get(start);
+    const to = points.get(end);
+    if (!from || !to) return;
+    poseContext.beginPath();
+    poseContext.moveTo(from.x, from.y);
+    poseContext.lineTo(to.x, to.y);
+    poseContext.strokeStyle = colorFor(start, end);
+    poseContext.lineWidth = 1.5;
+    poseContext.stroke();
+  });
+  points.forEach((point, id) => {
+    poseContext.beginPath();
+    poseContext.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
+    poseContext.fillStyle = colorFor(id);
+    poseContext.fill();
+  });
+
+  const bbox = overlay.bbox;
+  if (bbox) {
+    const topRight = project(bbox.x1, bbox.y1);
+    const bottomLeft = project(bbox.x2, bbox.y2);
+    const boxX = bottomLeft.x;
+    const boxY = topRight.y;
+    const boxWidth = topRight.x - bottomLeft.x;
+    const boxHeight = bottomLeft.y - topRight.y;
+    poseContext.strokeStyle = "rgba(168, 255, 53, 0.9)";
+    poseContext.lineWidth = 1;
+    poseContext.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    if (Number.isFinite(Number(bbox.confidence))) {
+      poseContext.font = "600 11px system-ui, sans-serif";
+      poseContext.fillStyle = "#a8ff35";
+      poseContext.fillText(
+        `person ${Number(bbox.confidence).toFixed(2)}`,
+        Math.max(3, boxX),
+        Math.max(12, boxY - 4)
+      );
+    }
+  }
+
+  window.clearTimeout(poseStaleTimer);
+  poseStaleTimer = window.setTimeout(() => {
+    if (frameId === latestAnnotatedResponseId) clearPoseOverlay();
+  }, 700);
+}
+
 const coachingSetCurrent =
   document.querySelector("#coachingSetCurrent");
 const coachingSetTotal =
@@ -265,6 +493,9 @@ let isGoalCompleted = false;
 let analysisTimer = null;
 let analysisInProgress = false;
 let lastServerCount = 0;
+let nextAnalysisFrameId = 0;
+let latestAnnotatedResponseId = -1;
+let poseStaleTimer = null;
 
 const captureCanvas =
   document.createElement("canvas");
@@ -274,7 +505,75 @@ const captureContext =
     "2d"
   );
 
-const ANALYSIS_INTERVAL_MS = 350;
+const LEGACY_ANALYSIS_INTERVAL_MS = 350;
+const ANALYSIS_LOOP_DELAY_MS = 80;
+const ANALYSIS_INPUT_WIDTH = 480;
+const ANALYSIS_JPEG_QUALITY = 0.75;
+const POSE_PERFORMANCE_SAMPLE_SIZE = 30;
+const posePerformanceSamples = [];
+let lastPoseResponseAt = null;
+let posePerformanceResponseCount = 0;
+
+function recordPosePerformance({
+  roundTripMs,
+  inferenceMs,
+  prepareMs,
+  detectionReason,
+  detectionDebug,
+  detectionFailureCounts,
+}) {
+  const now = performance.now();
+  const responseIntervalMs = lastPoseResponseAt === null
+    ? null
+    : now - lastPoseResponseAt;
+  lastPoseResponseAt = now;
+  posePerformanceResponseCount += 1;
+  posePerformanceSamples.push({
+    roundTripMs,
+    inferenceMs,
+    prepareMs,
+    responseIntervalMs,
+  });
+  if (posePerformanceSamples.length > POSE_PERFORMANCE_SAMPLE_SIZE) {
+    posePerformanceSamples.shift();
+  }
+  if (posePerformanceResponseCount % 10 !== 0) return;
+
+  const average = (key) => {
+    const values = posePerformanceSamples
+      .map((sample) => sample[key])
+      .filter(Number.isFinite);
+    return values.length
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : 0;
+  };
+  const averageInterval = average("responseIntervalMs");
+  console.log("[pose performance]", {
+    strategy: "continuous-after-response",
+    legacy_interval_ms: LEGACY_ANALYSIS_INTERVAL_MS,
+    loop_delay_ms: ANALYSIS_LOOP_DELAY_MS,
+    input_width: ANALYSIS_INPUT_WIDTH,
+    jpeg_quality: ANALYSIS_JPEG_QUALITY,
+    samples: posePerformanceSamples.length,
+    average_prepare_ms: Number(average("prepareMs").toFixed(1)),
+    average_inference_ms: Number(average("inferenceMs").toFixed(1)),
+    average_round_trip_ms: Number(average("roundTripMs").toFixed(1)),
+    analyses_per_second: averageInterval > 0
+      ? Number((1000 / averageInterval).toFixed(2))
+      : 0,
+  });
+  console.log("[pose detection summary]", {
+    latest_reason: detectionReason,
+    failure_counts: detectionFailureCounts,
+    person_confidence: detectionDebug?.person_confidence ?? null,
+    analysis_valid_keypoints: detectionDebug?.analysis_valid_keypoints ?? 0,
+    overlay_valid_keypoints: detectionDebug?.overlay_valid_keypoints ?? 0,
+    required_joint_confidences:
+      detectionDebug?.required_joint_confidences ?? null,
+    keypoint_confidences: detectionDebug?.keypoint_confidences ?? null,
+    selected_bbox: detectionDebug?.selected_bbox ?? null,
+  });
+}
 const COACHING_REST_STORAGE_KEY =
   "gymfitCoachingRestSeconds";
 const FREE_COACHING_SETS_STORAGE_KEY =
@@ -1004,6 +1303,8 @@ function setCameraPlaceholderState(state, title, message, { error = false } = {}
 function stopCamera() {
   stopPoseAnalysis();
   stopSpeech();
+  clearPoseOverlay();
+  window.clearTimeout(poseStaleTimer);
 
   if (!cameraStream) {
     return;
@@ -1465,6 +1766,7 @@ async function sendFrameForAnalysis() {
   }
 
   analysisInProgress = true;
+  const framePreparationStartedAt = performance.now();
 
   try {
     const sourceWidth =
@@ -1473,7 +1775,7 @@ async function sendFrameForAnalysis() {
     const sourceHeight =
       cameraVideo.videoHeight;
 
-    const targetWidth = 480;
+    const targetWidth = ANALYSIS_INPUT_WIDTH;
 
     const targetHeight =
       Math.round(
@@ -1504,7 +1806,7 @@ async function sendFrameForAnalysis() {
           captureCanvas.toBlob(
             resolve,
             "image/jpeg",
-            0.75
+            ANALYSIS_JPEG_QUALITY
           );
         }
       );
@@ -1522,11 +1824,17 @@ async function sendFrameForAnalysis() {
     const formData =
       new FormData();
 
+    const requestFrameId = ++nextAnalysisFrameId;
+
     formData.append(
       "image",
       imageBlob,
       `${selectedExerciseCode.toLowerCase()}-frame.jpg`
     );
+    formData.append("frame_id", String(requestFrameId));
+
+    const framePrepareMs = performance.now() - framePreparationStartedAt;
+    const requestStartedAt = performance.now();
 
     const response =
       await fetch(
@@ -1539,6 +1847,7 @@ async function sendFrameForAnalysis() {
 
     const data =
       await response.json();
+    const roundTripMs = performance.now() - requestStartedAt;
 
     if (!response.ok) {
       if (response.status === 404 || response.status === 410) {
@@ -1557,7 +1866,16 @@ async function sendFrameForAnalysis() {
       );
     }
 
+    drawLivePoseOverlay(data);
     applyPoseStatus(data, submittedFrameDataUrl);
+    recordPosePerformance({
+      roundTripMs,
+      inferenceMs: Number(data.performance?.inference_ms),
+      prepareMs: framePrepareMs,
+      detectionReason: data.detection_reason,
+      detectionDebug: data.detection_debug,
+      detectionFailureCounts: data.detection_failure_counts,
+    });
 
   } catch (error) {
     console.error(
@@ -1567,24 +1885,30 @@ async function sendFrameForAnalysis() {
 
   } finally {
     analysisInProgress = false;
+    if (
+      isWorkoutActive
+      && !isWorkoutPaused
+      && !isWorkoutFinished
+      && coachingSessionId
+    ) {
+      analysisTimer = window.setTimeout(
+        sendFrameForAnalysis,
+        ANALYSIS_LOOP_DELAY_MS
+      );
+    }
   }
 }
 
 
 function startPoseAnalysis() {
   stopPoseAnalysis();
-
-  analysisTimer =
-    window.setInterval(
-      sendFrameForAnalysis,
-      ANALYSIS_INTERVAL_MS
-    );
+  analysisTimer = window.setTimeout(sendFrameForAnalysis, 0);
 }
 
 
 function stopPoseAnalysis() {
   if (analysisTimer !== null) {
-    window.clearInterval(
+    window.clearTimeout(
       analysisTimer
     );
 

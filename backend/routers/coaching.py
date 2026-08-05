@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,6 +46,10 @@ async def decode_uploaded_image(image: UploadFile):
         np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR
     )
     if frame is None:
+        if os.getenv("POSE_DEBUG", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }:
+            print({"event": "pose-detection", "reason": "frame-decode-failed"})
         raise HTTPException(status_code=400, detail="이미지를 읽을 수 없습니다.")
     return frame
 
@@ -129,6 +134,7 @@ def create_coaching_session(
 async def analyze_coaching_frame(
     session_id: str,
     image: UploadFile = File(...),
+    frame_id: int = Form(..., ge=0),
     user: User = Depends(require_member),
 ):
     frame = await decode_uploaded_image(image)
@@ -137,10 +143,26 @@ async def analyze_coaching_frame(
         with coaching_session_store.locked(
             session_id, user_id=user.user_id
         ) as session:
+            inference_started_at = time.perf_counter()
             _, status = session.analyzer.process_frame(frame)
+            inference_ms = (time.perf_counter() - inference_started_at) * 1000
             normalized = normalize_analysis_status(
                 session.exercise_code, status, session.analyzer
             )
+            normalized["frame_id"] = frame_id
+            normalized["performance"] = {
+                "inference_ms": round(inference_ms, 1),
+            }
+            if os.getenv("POSE_DEBUG", "").strip().lower() in {
+                "1", "true", "yes", "on"
+            }:
+                print({
+                    "event": "pose-detection",
+                    "frame_id": frame_id,
+                    "reason": status.get("detection_reason"),
+                    "debug": status.get("detection_debug"),
+                    "failure_counts": status.get("detection_failure_counts"),
+                })
             if session.exercise_code == "SQUAT":
                 capture = session.analyzer.get_completed_pose_capture()
                 if capture is not None:
