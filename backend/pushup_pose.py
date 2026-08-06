@@ -19,11 +19,11 @@ from backend.squat_pose import render_pose_capture
 
 
 PUSHUP_CONFIG = {
-    "down_elbow_angle": 90.0,
-    "up_elbow_angle": 155.0,
+    "down_elbow_angle": 105.0,
+    "up_elbow_angle": 145.0,
     "body_alignment_warning": 18.0,
     "hip_offset_warning": 0.12,
-    "required_frames": 3,
+    "required_frames": 2,
     "max_missing_frames": 15,
     "min_keypoint_confidence": 0.35,
 }
@@ -32,11 +32,14 @@ PUSHUP_CONFIG = {
 class PushUpAnalyzer(UpperBodyExerciseAnalyzer):
     exercise_code = "PUSHUP"
     display_name = "푸시업"
-    missing_feedback = "카메라에 몸 전체가 보이게 해주세요"
+    missing_feedback = "카메라를 몸 옆쪽에 배치해 주세요"
     model_detection_conf = 0.25
 
     def __init__(self, model_path: str | Any = "yolo11n-pose.pt"):
         super().__init__(model_path, PUSHUP_CONFIG)
+
+        self.min_box_width = 80
+        self.min_box_height = 35
         self.completed_down_phase = False
 
     def reset(self):
@@ -70,7 +73,10 @@ class PushUpAnalyzer(UpperBodyExerciseAnalyzer):
 
     @property
     def stage_text(self):
-        return {"UP": "올라옴", "DOWN": "내려감"}.get(self.stage, "준비")
+        return {"UP": "올라옴", "DOWN": "내려감"}.get(
+            self.stage,
+            "준비",
+        )
 
     def _resolve_joint(self, person, person_conf, index, max_frames, max_ms):
         confidence = float(person_conf[index])

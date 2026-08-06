@@ -511,6 +511,13 @@ const captureContext =
     "2d"
   );
 
+const brightnessCanvas = document.createElement("canvas");
+brightnessCanvas.width = 32;
+brightnessCanvas.height = 32;
+const brightnessContext = brightnessCanvas.getContext("2d", {
+  willReadFrequently: true
+});
+
 const LEGACY_ANALYSIS_INTERVAL_MS = 350;
 const ANALYSIS_LOOP_DELAY_MS = 80;
 const ANALYSIS_INPUT_WIDTH = 480;
@@ -556,13 +563,6 @@ function updatePushupOrientationAdvisory() {
       && isMobileTouchDevice()
       && !showAdvisory
   );
-
-const brightnessCanvas = document.createElement("canvas");
-brightnessCanvas.width = 32;
-brightnessCanvas.height = 32;
-const brightnessContext = brightnessCanvas.getContext("2d", {
-  willReadFrequently: true
-});
 
   resizePoseCanvasToCamera();
 }
@@ -1913,27 +1913,53 @@ async function sendFrameForAnalysis() {
       targetHeight
     );
 
-    if (selectedExerciseCode === "PUSHUP") {
-      brightnessContext.drawImage(
-        cameraVideo, 0, 0, brightnessCanvas.width, brightnessCanvas.height
+    if (
+      selectedExerciseCode === "PUSHUP"
+      && brightnessCanvas
+      && brightnessContext
+    ) {
+      brightnessContext.clearRect(
+        0,
+        0,
+        brightnessCanvas.width,
+        brightnessCanvas.height
       );
+
+      brightnessContext.drawImage(
+        cameraVideo,
+        0,
+        0,
+        brightnessCanvas.width,
+        brightnessCanvas.height
+      );
+
       const pixels = brightnessContext.getImageData(
-        0, 0, brightnessCanvas.width, brightnessCanvas.height
+        0,
+        0,
+        brightnessCanvas.width,
+        brightnessCanvas.height
       ).data;
+
       let brightnessTotal = 0;
       let samples = 0;
-      for (let index = 0; index < pixels.length; index += 4) {
+
+      for (
+        let index = 0;
+        index < pixels.length;
+        index += 4
+      ) {
         brightnessTotal += (
-          pixels[index] * 0.2126
-          + pixels[index + 1] * 0.7152
-          + pixels[index + 2] * 0.0722
-        );
+          pixels[index]
+          + pixels[index + 1]
+          + pixels[index + 2]
+        ) / 3;
+
         samples += 1;
       }
-      frameBrightness = samples ? brightnessTotal / samples : null;
-      // Diagnostic baseline: transmit the unfiltered source frame. Any future
-      // correction must be justified by saved-frame A/B inference results.
-      captureContext.filter = "none";
+
+      frameBrightness = samples > 0
+        ? brightnessTotal / samples
+        : null;
     }
 
     const imageBlob =
