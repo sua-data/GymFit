@@ -9,6 +9,7 @@ import backend.exercise_pose as exercise_pose
 import backend.pose_factory as pose_factory
 import backend.pushup_pose as pushup_pose
 from backend.pushup_pose import PUSHUP_CONFIG, PushUpAnalyzer
+from backend.shoulder_press_pose import ShoulderPressPoseAnalyzer
 
 
 class FakePoseModel:
@@ -419,7 +420,7 @@ def test_factory_selects_dedicated_analyzers_and_shares_one_model(monkeypatch):
     assert analyzers["SQUAT"].model is shared_model
     assert isinstance(analyzers["PUSHUP"], PushUpAnalyzer)
     assert analyzers["PUSHUP"].model is shared_model
-    assert isinstance(analyzers["SHOULDER_PRESS"], exercise_pose.ShoulderPressAnalyzer)
+    assert isinstance(analyzers["SHOULDER_PRESS"], ShoulderPressPoseAnalyzer)
     assert analyzers["SHOULDER_PRESS"].model is shared_model
     assert pose_factory.get_pose_analyzer(analyzers, " pushup ") is analyzers["PUSHUP"]
 
