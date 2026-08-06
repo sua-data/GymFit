@@ -146,6 +146,8 @@ def create_coaching_session(
     return {
         "coaching_session_id": session.session_id,
         "exercise_code": session.exercise_code,
+        "analyzer_class": type(session.analyzer).__name__,
+        "analyzer_instance_id": id(session.analyzer),
         "target_reps": session.target_reps,
         "target_sets": session.target_sets,
         "workout_plan_id": session.workout_plan_id,
