@@ -488,6 +488,10 @@ let effectiveWorkoutStartedAt = null;
 let workoutFinishedAt = null;
 let pauseStartedAt = null;
 let accumulatedPausedMilliseconds = 0;
+const workoutActivityTimer = new CoachingActivityTimer({
+  idleTimeoutMs: 7000,
+  angleChangeDegrees: 4.5,
+});
 let cameraStream = null;
 let currentFacingMode = "user";
 let orientationListenersAttached = false;
@@ -1556,6 +1560,7 @@ function registerRepetition(
 function startRestPeriod() {
   clearRestTimer();
   stopPoseAnalysis();
+  workoutActivityTimer.suspend();
   isResting = true;
   pauseButton.disabled = true;
   restSecondsRemaining = restDurationSeconds;
@@ -1608,6 +1613,7 @@ async function startNextSet() {
   currentReps = 0;
   isCurrentSetCompleted = false;
   isResting = false;
+  workoutActivityTimer.resume();
   pauseButton.disabled = false;
   restCard.hidden = true;
 
@@ -1703,6 +1709,13 @@ function applyPoseStatus(
       0,
       serverCount - lastServerCount
     );
+
+  workoutActivityTimer.update(status, Date.now(), (
+    isWorkoutActive
+    && !isWorkoutPaused
+    && !isResting
+    && !isWorkoutFinished
+  ));
 
   const completedCapture = status.completed_pose_capture;
   const backendImageValue = String(completedCapture?.image || "").trim();
@@ -2236,6 +2249,7 @@ async function startWorkout() {
     workoutFinishedAt = null;
     pauseStartedAt = null;
     accumulatedPausedMilliseconds = 0;
+    workoutActivityTimer.reset();
     restCard.hidden = true;
     workoutIntensityStep.hidden = true;
     workoutIntensityMessage.textContent = "";
@@ -2343,28 +2357,7 @@ async function startWorkout() {
 ========================= */
 
 function getWorkoutMinutes() {
-  if (
-    totalCompletedReps <= 0
-    || !effectiveWorkoutStartedAt
-  ) {
-    return 0;
-  }
-
-  const effectiveEnd = workoutFinishedAt
-    || pauseStartedAt
-    || new Date();
-  const elapsedMilliseconds =
-    effectiveEnd.getTime()
-    - effectiveWorkoutStartedAt.getTime()
-    - accumulatedPausedMilliseconds;
-
-  return Math.max(
-    1,
-    Math.ceil(
-      elapsedMilliseconds
-      / 60000
-    )
-  );
+  return workoutActivityTimer.getWholeMinutes(totalCompletedReps);
 }
 
 function freezeEffectiveWorkoutTime() {
@@ -2551,9 +2544,11 @@ async function saveWorkoutRecord() {
           image_url: null,
 
           started_at:
-            effectiveWorkoutStartedAt
-              ? effectiveWorkoutStartedAt
-                  .toISOString()
+            totalCompletedReps > 0
+              ? new Date(
+                  (workoutFinishedAt || new Date()).getTime()
+                  - workoutActivityTimer.getMilliseconds()
+                ).toISOString()
               : null,
 
           assignment_id:
@@ -2940,6 +2935,7 @@ async function toggleWorkoutPause() {
 
   if (!isWorkoutPaused) {
     isWorkoutPaused = true;
+    workoutActivityTimer.suspend();
     pauseStartedAt = new Date();
     stopPoseAnalysis();
     document.body.classList.add("coaching-paused");
@@ -2962,6 +2958,7 @@ async function toggleWorkoutPause() {
       pauseStartedAt = null;
     }
     isWorkoutPaused = false;
+    workoutActivityTimer.resume();
     document.body.classList.remove("coaching-paused");
     pauseButton.textContent = "일시정지";
     movementState.textContent = `${currentSetIndex + 1}세트 준비`;
