@@ -44,7 +44,7 @@
   ></script>
 
   <script
-    src="/static/js/dashboard.js?v=17"
+    src="/static/js/dashboard.js?v=18"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -277,25 +277,35 @@
 
           <div class="posture-info-grid">
             <div class="posture-info-item">
-              <span>반복 횟수</span>
+              <span>오늘 운동</span>
 
               <strong>
-                <b id="repCount">0</b>회
+                <b id="sessionCount">0</b>회
               </strong>
             </div>
 
             <div class="posture-info-item">
-              <span>완료 세트</span>
+              <span>평균 점수</span>
 
               <strong>
-                <b id="setCount">0</b>세트
+                <b id="averagePostureScore">0</b>점
               </strong>
             </div>
           </div>
 
+          <div class="exercise-name-row posture-daily-summary">
+            <span>오늘 누적</span>
+
+            <strong>
+              <b id="totalRepCount">0</b>회
+              ·
+              <b id="totalSetCount">0</b>세트
+            </strong>
+          </div>
+
           <div class="score-section">
             <div class="score-text">
-              <span>자세 점수</span>
+              <span>최고 자세</span>
 
               <strong>
                 <b id="postureScore">0</b>점

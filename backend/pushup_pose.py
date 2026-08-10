@@ -20,10 +20,10 @@ from backend.squat_pose import render_pose_capture
 
 PUSHUP_CONFIG = {
     "down_elbow_angle": 105.0,
-    "up_elbow_angle": 145.0,
+    "up_elbow_angle": 135.0,
     "body_alignment_warning": 18.0,
     "hip_offset_warning": 0.12,
-    "required_frames": 2,
+    "required_frames": 1,
     "max_missing_frames": 15,
     "min_keypoint_confidence": 0.35,
 }
@@ -333,8 +333,8 @@ class PushUpAnalyzer(UpperBodyExerciseAnalyzer):
 
     def _candidate_rank(self, score, elbow_angle, body_alignment_angle):
         return (
+            -float(elbow_angle),
             float(score),
-            -abs(float(elbow_angle) - self.config["down_elbow_angle"]),
             -abs(180.0 - float(body_alignment_angle))
             if body_alignment_angle is not None
             else float("-inf"),
@@ -421,27 +421,45 @@ class PushUpAnalyzer(UpperBodyExerciseAnalyzer):
         self._reset_repetition_capture()
 
     def _on_stable_transition(self, previous_stage, target_stage):
-        if target_stage == "DOWN" and previous_stage == "UP":
+        print(
+            "[PUSHUP TRANSITION]",
+            {
+                "previous": previous_stage,
+                "target": target_stage,
+                "completed_down": self.completed_down_phase,
+                "count": self.count,
+            }
+        )
+
+        # DOWN 자세가 확인되면 다음 UP을 카운트할 준비
+        if target_stage == "DOWN":
             self.completed_down_phase = True
-        elif (
+            return
+
+        # DOWN을 거친 뒤 UP으로 돌아오면 1회 완료
+        if (
             target_stage == "UP"
-            and previous_stage == "DOWN"
             and self.completed_down_phase
         ):
             self.count += 1
             self.completed_down_phase = False
             self.last_counted = True
             self.feedback = "좋은 푸시업입니다"
+
             if self.best_pose_snapshot is not None:
-                capture = copy.deepcopy(self.best_pose_snapshot)
+                capture = copy.deepcopy(
+                    self.best_pose_snapshot
+                )
                 capture.pop("_rank", None)
+
                 self._completed_pose_capture = capture
                 self.capture_fallback_reason = None
+
             else:
                 self._completed_pose_capture = None
-                self.capture_fallback_reason = "no-valid-down-pose"
-        elif previous_stage == "UNKNOWN":
-            self.completed_down_phase = False
+                self.capture_fallback_reason = (
+                    "no-valid-down-pose"
+                )
 
     def _record_detection(self, reason):
         if reason in self.detection_failure_counts:

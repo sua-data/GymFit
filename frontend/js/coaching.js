@@ -1350,34 +1350,59 @@ async function changeSelectedExercise(exerciseCode) {
 async function startCamera() {
   if (
     !navigator.mediaDevices
-    || !navigator.mediaDevices
-      .getUserMedia
+    || !navigator.mediaDevices.getUserMedia
   ) {
     throw new Error(
       "이 브라우저는 카메라를 지원하지 않습니다."
     );
   }
 
-  setCameraPlaceholderState("permission", "카메라 권한 요청 중", "브라우저의 카메라 권한을 확인하고 있어요.");
-  cameraStream =
-    await navigator.mediaDevices
-      .getUserMedia({
-        video: {
-          facingMode: currentFacingMode,
-          width: {
-            ideal: 720
-          },
-          height: {
-            ideal: 960
-          }
-        },
-        audio: false
-      });
+  setCameraPlaceholderState(
+    "permission",
+    "카메라 권한 요청 중",
+    "브라우저의 카메라 권한을 확인하고 있어요."
+  );
 
-  setCameraPlaceholderState("connecting", "카메라 연결 중", "영상 장치를 준비하고 있어요.");
+  const isLandscape =
+    window.innerWidth > window.innerHeight;
+
+  cameraStream =
+    await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: currentFacingMode,
+
+        width: {
+          ideal: isLandscape
+            ? 1280
+            : 720
+        },
+
+        height: {
+          ideal: isLandscape
+            ? 720
+            : 960
+        }
+      },
+
+      audio: false
+    });
+
+  setCameraPlaceholderState(
+    "connecting",
+    "카메라 연결 중",
+    "영상 장치를 준비하고 있어요."
+  );
+
   cameraVideo.srcObject = cameraStream;
+
   await cameraVideo.play();
-  setCameraPlaceholderState("ready", "분석 준비 완료", "운동을 시작합니다.");
+
+  setCameraPlaceholderState(
+    "ready",
+    "분석 준비 완료",
+    "운동을 시작합니다."
+  );
+
   cameraPlaceholder.hidden = true;
 }
 
@@ -1870,7 +1895,6 @@ function applyPoseStatus(
   }
 }
 
-
 async function sendFrameForAnalysis() {
   if (
     !isWorkoutActive
@@ -1890,30 +1914,38 @@ async function sendFrameForAnalysis() {
   let brightnessAdjusted = false;
 
   try {
-    const sourceWidth =
-      cameraVideo.videoWidth;
-
-    const sourceHeight =
-      cameraVideo.videoHeight;
+    const sourceWidth = cameraVideo.videoWidth;
+    const sourceHeight = cameraVideo.videoHeight;
 
     const targetWidth = ANALYSIS_INPUT_WIDTH;
 
-    const targetHeight =
-      Math.round(
-        sourceHeight
-        * (
-          targetWidth
-          / sourceWidth
-        )
-      );
+    const targetHeight = Math.round(
+      sourceHeight * (
+        targetWidth / sourceWidth
+      )
+    );
 
-    captureCanvas.width =
-      targetWidth;
+    captureCanvas.width = targetWidth;
+    captureCanvas.height = targetHeight;
 
-    captureCanvas.height =
-      targetHeight;
+    captureContext.setTransform(
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+    );
+
+    captureContext.clearRect(
+      0,
+      0,
+      targetWidth,
+      targetHeight
+    );
 
     captureContext.filter = "none";
+
     captureContext.drawImage(
       cameraVideo,
       0,
@@ -2012,12 +2044,15 @@ async function sendFrameForAnalysis() {
       formData.append("brightness_adjusted", String(brightnessAdjusted));
     }
 
-    const framePrepareMs = performance.now() - framePreparationStartedAt;
+    const framePrepareMs =
+      performance.now() - framePreparationStartedAt;
+
+    const requestSessionId = coachingSessionId;
     const requestStartedAt = performance.now();
 
     const response =
       await fetch(
-        `/api/coaching/sessions/${encodeURIComponent(coachingSessionId)}/analyze`,
+        `/api/coaching/sessions/${encodeURIComponent(requestSessionId)}/analyze`,
         {
           method: "POST",
           body: formData
@@ -2026,19 +2061,40 @@ async function sendFrameForAnalysis() {
 
     const data =
       await response.json();
-    const roundTripMs = performance.now() - requestStartedAt;
+
+    const roundTripMs =
+      performance.now() - requestStartedAt;
+
+    if (
+      response.status === 404
+      || response.status === 410
+    ) {
+      if (coachingSessionId === requestSessionId) {
+        coachingSessionId = null;
+
+        sessionStorage.removeItem(
+          COACHING_SESSION_STORAGE_KEY
+        );
+
+        stopPoseAnalysis();
+
+        movementState.textContent =
+          "세션 만료";
+
+        feedbackText.textContent =
+          "코칭 세션이 만료되었습니다. 운동 재개 시 자동으로 다시 연결합니다.";
+
+        setOverlayFeedback(
+          feedbackText.textContent
+        );
+      }
+
+      throw new Error(
+        "코칭 분석 세션이 만료되었습니다."
+      );
+    }
 
     if (!response.ok) {
-      if (response.status === 404 || response.status === 410) {
-        coachingSessionId = null;
-        sessionStorage.removeItem(COACHING_SESSION_STORAGE_KEY);
-        stopPoseAnalysis();
-        movementState.textContent = "세션 만료";
-        feedbackText.textContent =
-          "코칭 세션이 만료되었습니다. 다시 시작해주세요.";
-        setOverlayFeedback(feedbackText.textContent);
-        throw new Error("코칭 세션이 만료되었습니다. 다시 시작해주세요.");
-      }
       throw new Error(
         data.detail
         || "자세 분석에 실패했습니다."
@@ -2046,7 +2102,10 @@ async function sendFrameForAnalysis() {
     }
 
     drawLivePoseOverlay(data);
-    applyPoseStatus(data, submittedFrameDataUrl);
+    applyPoseStatus(
+      data,
+      submittedFrameDataUrl
+    );
     recordPosePerformance({
       roundTripMs,
       inferenceMs: Number(data.performance?.inference_ms),
@@ -2110,31 +2169,56 @@ function stopPoseAnalysis() {
 
 async function resetCurrentExerciseAnalyzer() {
   if (!coachingSessionId) {
-    throw new Error("분석 세션을 찾을 수 없습니다.");
+    await createCoachingSession();
+    lastServerCount = 0;
+    return;
   }
 
-  const response =
-    await fetch(
-      `/api/coaching/sessions/${encodeURIComponent(coachingSessionId)}/reset`,
-      {
-        method: "POST"
-      }
+  const sessionId = coachingSessionId;
+
+  const response = await fetch(
+    `/api/coaching/sessions/${encodeURIComponent(sessionId)}/reset`,
+    {
+      method: "POST",
+    }
+  );
+
+  if (
+    response.status === 404
+    || response.status === 410
+  ) {
+    console.warn(
+      "[coaching] 분석 세션 만료/유실 → 새 세션 생성"
     );
 
-  const data =
-    await response.json();
+    // 현재 요청한 세션이 아직 활성 세션일 때만 제거
+    if (coachingSessionId === sessionId) {
+      coachingSessionId = null;
+      sessionStorage.removeItem(
+        COACHING_SESSION_STORAGE_KEY
+      );
+    }
+
+    await createCoachingSession();
+
+    // 새 Analyzer는 count 0부터 시작
+    lastServerCount = 0;
+
+    return;
+  }
 
   if (!response.ok) {
-    if (response.status === 404 || response.status === 410) {
-      coachingSessionId = null;
-      sessionStorage.removeItem(COACHING_SESSION_STORAGE_KEY);
-    }
+    const errorData = await response
+      .json()
+      .catch(() => ({}));
+
     throw new Error(
-      data.detail
-      || `${selectedExerciseName} 분석 상태를 초기화하지 못했습니다.`
+      errorData.detail
+      || "분석 세션 초기화에 실패했습니다."
     );
   }
 
+  // 정상 reset도 Analyzer count가 0부터 다시 시작함
   lastServerCount = 0;
 }
 

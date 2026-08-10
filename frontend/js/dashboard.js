@@ -34,11 +34,17 @@ const frameScoreValue =
 const exerciseName =
   document.querySelector("#exerciseName");
 
-const repCount =
-  document.querySelector("#repCount");
+const sessionCount =
+  document.querySelector("#sessionCount");
 
-const setCount =
-  document.querySelector("#setCount");
+const averagePostureScore =
+  document.querySelector("#averagePostureScore");
+
+const totalRepCount =
+  document.querySelector("#totalRepCount");
+
+const totalSetCount =
+  document.querySelector("#totalSetCount");
 
 const postureScore =
   document.querySelector("#postureScore");
@@ -331,11 +337,17 @@ function renderBestPosture(
   exerciseName.textContent =
     posture.exercise_name || "-";
 
-  repCount.textContent =
-    posture.repetition_count ?? 0;
+  sessionCount.textContent =
+    posture.session_count ?? 0;
 
-  setCount.textContent =
-    posture.completed_sets ?? 0;
+  averagePostureScore.textContent =
+    posture.average_posture_score ?? 0;
+
+  totalRepCount.textContent =
+    posture.total_repetitions ?? 0;
+
+  totalSetCount.textContent =
+    posture.total_completed_sets ?? 0;
 
   postureScore.textContent =
     posture.posture_score ?? 0;
@@ -374,8 +386,10 @@ function renderEmptyPosture(posture = null) {
 
   frameScoreValue.textContent = "0";
   exerciseName.textContent = posture?.exercise_name || "-";
-  repCount.textContent = "0";
-  setCount.textContent = "0";
+  sessionCount.textContent = "0";
+  averagePostureScore.textContent = "0";
+  totalRepCount.textContent = "0";
+  totalSetCount.textContent = "0";
   postureScore.textContent = "0";
   scoreRingValue.textContent = "0";
 

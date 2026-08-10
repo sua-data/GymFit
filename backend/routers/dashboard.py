@@ -121,7 +121,11 @@ def best_posture_exercises_statement():
     )
 
 
-def best_posture_records_statement(user_id: int):
+def best_posture_records_statement(
+    user_id: int,
+    today_start: datetime,
+    today_end: datetime,
+):
     return (
         select(WorkoutRecord)
         .join(
@@ -133,6 +137,8 @@ def best_posture_records_statement(user_id: int):
             Exercise.exercise_code.in_(AI_COACHING_EXERCISE_CODES),
             WorkoutRecord.record_source == "COACHING",
             WorkoutRecord.best_posture_score.is_not(None),
+            WorkoutRecord.started_at >= today_start,
+            WorkoutRecord.started_at < today_end,
         )
         .order_by(
             WorkoutRecord.best_posture_score.desc(),
@@ -298,18 +304,54 @@ def get_dashboard(
     ).all()
 
     posture_records = db.scalars(
-        best_posture_records_statement(user_id)
+        best_posture_records_statement(
+            user_id,
+            today_start,
+            today_end,
+        )
     ).all()
-
-    best_record_by_exercise = select_best_posture_records(
-        posture_records
-    )
 
     best_postures = []
 
     for exercise in exercises:
-        record = best_record_by_exercise.get(
-            exercise.exercise_id
+        exercise_records = [
+            record
+            for record in posture_records
+            if record.exercise_id == exercise.exercise_id
+        ]
+
+        # posture_records는 최고 자세 점수 내림차순이므로 첫 기록이 오늘 최고 자세.
+        best_record = (
+            exercise_records[0]
+            if exercise_records
+            else None
+        )
+
+        session_count = len(exercise_records)
+
+        total_repetitions = sum(
+            int(record.repetition_count or 0)
+            for record in exercise_records
+        )
+
+        total_completed_sets = sum(
+            int(record.completed_sets or 0)
+            for record in exercise_records
+        )
+
+        average_scores = [
+            float(record.average_posture_score)
+            for record in exercise_records
+            if record.average_posture_score is not None
+        ]
+
+        average_posture_score = (
+            round(
+                sum(average_scores)
+                / len(average_scores)
+            )
+            if average_scores
+            else 0
         )
 
         best_postures.append(
@@ -320,36 +362,34 @@ def get_dashboard(
                 "exercise_name": (
                     exercise.exercise_name
                 ),
+
+                # 오늘 최고 자세 기록
                 "image_url": (
-                    record.image_url
-                    if record
+                    best_record.image_url
+                    if best_record
                     else None
                 ),
-                "repetition_count": (
-                    record.repetition_count
-                    if record
-                    else 0
-                ),
-                "completed_sets": (
-                    record.completed_sets
-                    if record
-                    else 0
-                ),
                 "posture_score": (
-                    record.best_posture_score
-                    if record
+                    best_record.best_posture_score
+                    if best_record
                     else None
                 ),
                 "feedback_title": (
-                    record.feedback_title
-                    if record
+                    best_record.feedback_title
+                    if best_record
                     else None
                 ),
                 "feedback": (
-                    record.feedback
-                    if record
+                    best_record.feedback
+                    if best_record
                     else None
                 ),
+
+                # 오늘 해당 종목 전체 요약
+                "session_count": session_count,
+                "total_repetitions": total_repetitions,
+                "total_completed_sets": total_completed_sets,
+                "average_posture_score": average_posture_score,
             }
         )
 
