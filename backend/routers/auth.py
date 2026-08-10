@@ -391,11 +391,6 @@ def exchange_google_code(
         )
 
     except ValueError as error:
-        print(
-            "Google 토큰 응답 파싱 실패:",
-            response.text,
-        )
-
         raise HTTPException(
             status_code=(
                 status.HTTP_502_BAD_GATEWAY
@@ -407,11 +402,6 @@ def exchange_google_code(
         ) from error
 
     if not response.ok:
-        print(
-            "Google 토큰 교환 실패:",
-            token_response,
-        )
-
         raise HTTPException(
             status_code=(
                 status.HTTP_401_UNAUTHORIZED

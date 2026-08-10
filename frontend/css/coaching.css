@@ -755,58 +755,6 @@ button {
 }
 
 
-/* =========================
-   테스트 패널
-========================= */
-
-.test-panel {
-  margin-top: 14px;
-  padding: 14px;
-
-  display: grid;
-  grid-template-columns:
-    1fr 1fr;
-
-  gap: 8px;
-
-  background:
-    rgba(255, 255, 255, 0.03);
-
-  border:
-    1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-}
-
-
-.test-panel p {
-  grid-column: 1 / -1;
-
-  margin: 0 0 3px;
-
-  color: var(--text-muted);
-
-  font-size: 10px;
-}
-
-
-.test-panel button {
-  min-height: 40px;
-
-  color: var(--white);
-  background: #202020;
-
-  border:
-    1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-
-  font-size: 11px;
-}
-
-
-.test-panel button:disabled {
-  opacity: 0.35;
-}
-
 .routine-coaching-sets {
   margin-top: 14px;
   display: grid;

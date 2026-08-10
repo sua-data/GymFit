@@ -109,8 +109,7 @@ def test_frontend_uses_cover_crop_mirror_and_rejects_old_frame_ids():
     )
     assert "!status.pose_valid || !sourceWidth" not in source
 
-
-def test_pose_analysis_uses_single_request_continuous_loop_and_reports_timing():
+def test_pose_analysis_uses_single_request_continuous_loop():
     source = (Path(__file__).resolve().parents[1] / "frontend/js/coaching.js").read_text(
         encoding="utf-8"
     )
@@ -122,10 +121,10 @@ def test_pose_analysis_uses_single_request_continuous_loop_and_reports_timing():
     assert "analysisInProgress = false" in source
     assert "window.setTimeout(\n        sendFrameForAnalysis" in source
     assert "window.setInterval(\n      sendFrameForAnalysis" not in source
-    assert 'console.log("[pose performance]"' in source
-    assert "average_inference_ms" in source
-    assert "average_round_trip_ms" in source
-    assert "analyses_per_second" in source
+    assert 'console.log("[pose performance]"' not in source
+    assert "average_inference_ms" not in source
+    assert "average_round_trip_ms" not in source
+    assert "analyses_per_second" not in source
     assert 'brightnessCanvas.width = 32' in source
     assert 'brightness(1.12) contrast(1.08)' not in source
     assert 'captureContext.filter = "none"' in source

@@ -848,11 +848,6 @@ profileForm.addEventListener(
           signupData
         );
 
-      console.log(
-        "일반 회원가입 완료:",
-        result
-      );
-
       handleSignupSuccess(
         result
       );
@@ -913,11 +908,6 @@ skipButton.addEventListener(
         await submitSignup(
           signupData
         );
-
-      console.log(
-        "일반 회원가입 완료:",
-        result
-      );
 
       handleSignupSuccess(
         result

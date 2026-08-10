@@ -422,8 +422,6 @@ const cameraRetryButton =
   document.querySelector("#cameraRetryButton");
 const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
 const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
-const poseInitialNotice = document.querySelector("#poseInitialNotice");
-
 const workoutCountdown =
   document.querySelector("#workoutCountdown");
 
@@ -640,36 +638,6 @@ function recordPosePerformance({
       ? values.reduce((sum, value) => sum + value, 0) / values.length
       : 0;
   };
-  const averageInterval = average("responseIntervalMs");
-  console.log("[pose performance]", {
-    strategy: "continuous-after-response",
-    legacy_interval_ms: LEGACY_ANALYSIS_INTERVAL_MS,
-    loop_delay_ms: ANALYSIS_LOOP_DELAY_MS,
-    input_width: ANALYSIS_INPUT_WIDTH,
-    jpeg_quality: ANALYSIS_JPEG_QUALITY,
-    samples: posePerformanceSamples.length,
-    average_prepare_ms: Number(average("prepareMs").toFixed(1)),
-    average_inference_ms: Number(average("inferenceMs").toFixed(1)),
-    average_round_trip_ms: Number(average("roundTripMs").toFixed(1)),
-    analyses_per_second: averageInterval > 0
-      ? Number((1000 / averageInterval).toFixed(2))
-      : 0,
-  });
-  console.log("[pose detection summary]", {
-    latest_reason: detectionReason,
-    failure_counts: detectionFailureCounts,
-    person_confidence: detectionDebug?.person_confidence ?? null,
-    analysis_valid_keypoints: detectionDebug?.analysis_valid_keypoints ?? 0,
-    overlay_valid_keypoints: detectionDebug?.overlay_valid_keypoints ?? 0,
-    required_joint_confidences:
-      detectionDebug?.required_joint_confidences ?? null,
-    keypoint_confidences: detectionDebug?.keypoint_confidences ?? null,
-    selected_bbox: detectionDebug?.selected_bbox ?? null,
-    frame_brightness: Number.isFinite(frameBrightness)
-      ? Number(frameBrightness.toFixed(1))
-      : null,
-    brightness_adjusted: Boolean(brightnessAdjusted),
-  });
 }
 const COACHING_REST_STORAGE_KEY =
   "gymfitCoachingRestSeconds";
@@ -1280,10 +1248,6 @@ function selectExerciseTab(exerciseCode) {
   });
   selectedExerciseCode = targetTab.dataset.exerciseCode;
   selectedExerciseName = targetTab.dataset.exerciseName;
-  const analyzer = getExerciseAnalyzer(selectedExerciseCode);
-  if (poseInitialNotice) {
-    poseInitialNotice.hidden = !analyzer?.initialTest;
-  }
   if (selectedExerciseCode === "PUSHUP") {
     attachOrientationListeners();
   } else if (!isWorkoutActive) {
@@ -1787,17 +1751,6 @@ function applyPoseStatus(
     || (["SQUAT", "PUSHUP"].includes(selectedExerciseCode)
       ? null
       : submittedFrameDataUrl);
-
-  if (repetitionDifference > 0) {
-    console.log("[capture source]", captureSource, {
-      count: serverCount,
-      score: completedCapture?.score ?? null,
-      knee_angle: completedCapture?.knee_angle ?? null,
-      elbow_angle: completedCapture?.elbow_angle ?? null,
-      has_image: Boolean(backendImage),
-      fallback_reason: status.capture_fallback_reason ?? null,
-    });
-  }
 
   const score = completedCapture?.score
     ?? getPostureScoreFromStatus(status);

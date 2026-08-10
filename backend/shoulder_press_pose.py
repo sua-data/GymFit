@@ -1,7 +1,8 @@
 """Shoulder-press pose analysis built on the shared upper-body analyzer."""
 
-import time
 import math
+import os
+import time
 from typing import Any
 
 from backend.exercise_pose import UpperBodyExerciseAnalyzer, calculate_angle
@@ -199,34 +200,36 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
             else self.last_missing_reason
             or ("PERSON_NOT_FOUND" if not status["person_detected"] else "POSE_INVALID")
         )
-        runtime_debug = {
-            "left_elbow_angle": status.get("left_elbow_angle"),
-            "right_elbow_angle": status.get("right_elbow_angle"),
-            "elbow_angle": status.get("elbow_angle"),
-            "average_elbow_angle": status.get("average_elbow_angle"),
-            "selected_side": status.get("selected_side"),
-            "selected_side_confidence": status.get("selected_side_confidence"),
-            "down_frames": self.down_frames,
-            "up_frames": self.up_frames,
-            "required_frames": self.required_frames,
-            "stage": self.stage,
-            "count": self.count,
-            "pose_valid": status["pose_valid"],
-            "person_detected": status["person_detected"],
-            "detection_reason": detection_reason,
-            "analyzer_class": type(self).__name__,
-            "analyzer_instance_id": id(self),
-            "candidate_stage": self.candidate_stage,
-            "side_candidate": self.side_candidate,
-            "side_candidate_frames": self.side_candidate_frames,
-            "down_threshold": self.config["down_elbow_angle"],
-            "up_threshold": self.config["up_elbow_angle"],
-            "last_count_time": self.last_count_time,
-        }
-
         status["detection_reason"] = detection_reason
-        status["detection_debug"] = runtime_debug
-        status["debug"] = {**status.get("debug", {}), **runtime_debug}
+        if os.getenv("POSE_DEBUG", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }:
+            runtime_debug = {
+                "left_elbow_angle": status.get("left_elbow_angle"),
+                "right_elbow_angle": status.get("right_elbow_angle"),
+                "elbow_angle": status.get("elbow_angle"),
+                "average_elbow_angle": status.get("average_elbow_angle"),
+                "selected_side": status.get("selected_side"),
+                "selected_side_confidence": status.get("selected_side_confidence"),
+                "down_frames": self.down_frames,
+                "up_frames": self.up_frames,
+                "required_frames": self.required_frames,
+                "stage": self.stage,
+                "count": self.count,
+                "pose_valid": status["pose_valid"],
+                "person_detected": status["person_detected"],
+                "detection_reason": detection_reason,
+                "analyzer_class": type(self).__name__,
+                "analyzer_instance_id": id(self),
+                "candidate_stage": self.candidate_stage,
+                "side_candidate": self.side_candidate,
+                "side_candidate_frames": self.side_candidate_frames,
+                "down_threshold": self.config["down_elbow_angle"],
+                "up_threshold": self.config["up_elbow_angle"],
+                "last_count_time": self.last_count_time,
+            }
+            status["detection_debug"] = runtime_debug
+            status["debug"] = {**status.get("debug", {}), **runtime_debug}
         return annotated_frame, status
 
 

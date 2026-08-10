@@ -421,16 +421,6 @@ class PushUpAnalyzer(UpperBodyExerciseAnalyzer):
         self._reset_repetition_capture()
 
     def _on_stable_transition(self, previous_stage, target_stage):
-        print(
-            "[PUSHUP TRANSITION]",
-            {
-                "previous": previous_stage,
-                "target": target_stage,
-                "completed_down": self.completed_down_phase,
-                "count": self.count,
-            }
-        )
-
         # DOWN 자세가 확인되면 다음 UP을 카운트할 준비
         if target_stage == "DOWN":
             self.completed_down_phase = True

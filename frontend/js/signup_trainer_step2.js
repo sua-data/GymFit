@@ -1191,11 +1191,6 @@ trainerProfileForm.addEventListener(
           signupData
         );
 
-      console.log(
-        "트레이너 가입 완료:",
-        result
-      );
-
       handleSignupSuccess(
         result
       );
@@ -1258,11 +1253,6 @@ skipButton.addEventListener(
         await submitSignup(
           signupData
         );
-
-      console.log(
-        "트레이너 가입 완료:",
-        result
-      );
 
       handleSignupSuccess(
         result
