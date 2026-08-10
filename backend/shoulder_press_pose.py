@@ -6,7 +6,6 @@ from typing import Any
 
 from backend.exercise_pose import UpperBodyExerciseAnalyzer, calculate_angle
 
-
 SHOULDER_PRESS_CONFIG = {
     "up_elbow_angle": 143.5,
     "down_elbow_angle": 115.0,
@@ -128,6 +127,7 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
         }
 
     def _evaluate(self, metrics):
+
         elbow = metrics["elbow_angle"]
 
         if elbow < 45.0:
@@ -183,26 +183,13 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
         now = time.monotonic()
         elapsed = now - self.last_count_time
 
-        print(
-            "[SHOULDER PRESS TRANSITION]",
-            {
-                "previous": previous_stage,
-                "target": target_stage,
-                "elapsed": round(elapsed, 3),
-                "count_before": self.count,
-            },
-        )
-
         if elapsed < 0.85:
-            print("[SHOULDER PRESS] cooldown blocked")
             return
 
         self.count += 1
         self.last_count_time = now
         self.last_counted = True
         self.feedback = "좋은 숄더프레스입니다"
-
-        print("[SHOULDER PRESS] counted", self.count)
 
     def process_frame(self, frame):
         annotated_frame, status = super().process_frame(frame)
@@ -234,17 +221,9 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
             "side_candidate_frames": self.side_candidate_frames,
             "down_threshold": self.config["down_elbow_angle"],
             "up_threshold": self.config["up_elbow_angle"],
-            "arm_angle_difference": (
-                abs(
-                    status["left_elbow_angle"]
-                    - status["right_elbow_angle"]
-                )
-                if status.get("left_elbow_angle") is not None
-                and status.get("right_elbow_angle") is not None
-                else None
-            ),
-            "last_count_time": self.last_count_time
+            "last_count_time": self.last_count_time,
         }
+
         status["detection_reason"] = detection_reason
         status["detection_debug"] = runtime_debug
         status["debug"] = {**status.get("debug", {}), **runtime_debug}
