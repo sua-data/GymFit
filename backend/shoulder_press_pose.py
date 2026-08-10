@@ -1,5 +1,6 @@
 """Shoulder-press pose analysis built on the shared upper-body analyzer."""
 
+import time
 import math
 from typing import Any
 
@@ -7,16 +8,17 @@ from backend.exercise_pose import UpperBodyExerciseAnalyzer, calculate_angle
 
 
 SHOULDER_PRESS_CONFIG = {
-    "up_elbow_angle": 155.0,
-    "down_elbow_angle": 105.0,
-    "required_frames": 2,
+    "up_elbow_angle": 143.5,
+    "down_elbow_angle": 115.0,
+    "required_frames": 1,
     "max_missing_frames": 15,
     "min_keypoint_confidence": 0.35,
-    "side_switch_margin": 0.12,
-    "side_switch_frames": 3,
+    "side_switch_margin": 0.20,
+    "side_switch_frames": 5,
     "torso_warning_angle": 25.0,
-}
 
+    "arm_angle_difference_limit": 50.0
+}
 
 class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
     exercise_code = "SHOULDER_PRESS"
@@ -33,6 +35,8 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
         self.side_candidate_frames = 0
         self.down_frames = 0
         self.up_frames = 0
+
+        self.last_count_time = 0.0
 
     @property
     def stage_text(self):
@@ -126,6 +130,13 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
 
     def _evaluate(self, metrics):
         elbow = metrics["elbow_angle"]
+
+        # YOLO가 팔 관절을 순간적으로 잘못 연결한 프레임 제거
+        if elbow < 45.0:
+            self.down_frames = 0
+            self.up_frames = 0
+            return None, "팔이 카메라에 잘 보이게 유지해주세요", 75
+
         target = (
             "UP"
             if elbow >= self.config["up_elbow_angle"]
@@ -133,6 +144,7 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
             if elbow <= self.config["down_elbow_angle"]
             else None
         )
+
         if target == "DOWN":
             self.down_frames += 1
             self.up_frames = 0
@@ -142,19 +154,45 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
         else:
             self.down_frames = 0
             self.up_frames = 0
+
         if metrics["torso_angle"] > self.config["torso_warning_angle"]:
             return target, "상체를 곧게 유지해주세요", 70
+
         if target == "DOWN":
             return target, "팔을 머리 위로 끝까지 밀어주세요", 84
+
         if target is None:
             return target, "팔꿈치를 충분히 펴주세요", 86
+
         return target, "좋은 자세예요", 92
 
     def _on_stable_transition(self, previous_stage, target_stage):
-        if previous_stage == "DOWN" and target_stage == "UP":
-            self.count += 1
-            self.last_counted = True
-            self.feedback = "좋은 숄더프레스입니다"
+        if previous_stage != "DOWN" or target_stage != "UP":
+            return
+
+        now = time.monotonic()
+        elapsed = now - self.last_count_time
+
+        print(
+            "[SHOULDER PRESS TRANSITION]",
+            {
+                "previous": previous_stage,
+                "target": target_stage,
+                "elapsed": round(elapsed, 3),
+                "count_before": self.count,
+            },
+        )
+
+        if elapsed < 0.85:
+            print("[SHOULDER PRESS] cooldown blocked")
+            return
+
+        self.count += 1
+        self.last_count_time = now
+        self.last_counted = True
+        self.feedback = "좋은 숄더프레스입니다"
+
+        print("[SHOULDER PRESS] counted", self.count)
 
     def process_frame(self, frame):
         annotated_frame, status = super().process_frame(frame)
@@ -186,6 +224,16 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
             "side_candidate_frames": self.side_candidate_frames,
             "down_threshold": self.config["down_elbow_angle"],
             "up_threshold": self.config["up_elbow_angle"],
+            "arm_angle_difference": (
+                abs(
+                    status["left_elbow_angle"]
+                    - status["right_elbow_angle"]
+                )
+                if status.get("left_elbow_angle") is not None
+                and status.get("right_elbow_angle") is not None
+                else None
+            ),
+            "last_count_time": self.last_count_time
         }
         status["detection_reason"] = detection_reason
         status["detection_debug"] = runtime_debug
