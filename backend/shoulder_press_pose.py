@@ -16,7 +16,6 @@ SHOULDER_PRESS_CONFIG = {
     "side_switch_margin": 0.20,
     "side_switch_frames": 5,
     "torso_warning_angle": 25.0,
-
     "arm_angle_difference_limit": 50.0
 }
 
@@ -34,8 +33,8 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
         self.side_candidate = None
         self.side_candidate_frames = 0
         self.down_frames = 0
+        self.down_grace_frames = 0
         self.up_frames = 0
-
         self.last_count_time = 0.0
 
     @property
@@ -131,29 +130,40 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
     def _evaluate(self, metrics):
         elbow = metrics["elbow_angle"]
 
-        # YOLO가 팔 관절을 순간적으로 잘못 연결한 프레임 제거
         if elbow < 45.0:
             self.down_frames = 0
+            self.down_grace_frames = 0
             self.up_frames = 0
             return None, "팔이 카메라에 잘 보이게 유지해주세요", 75
 
-        target = (
-            "UP"
-            if elbow >= self.config["up_elbow_angle"]
-            else "DOWN"
-            if elbow <= self.config["down_elbow_angle"]
-            else None
-        )
-
-        if target == "DOWN":
+        if elbow <= self.config["down_elbow_angle"]:
             self.down_frames += 1
+            self.down_grace_frames = 0
             self.up_frames = 0
-        elif target == "UP":
+
+            target = (
+                "DOWN"
+                if self.down_frames >= 2
+                else None
+            )
+
+        elif elbow >= self.config["up_elbow_angle"]:
+            self.down_frames = 0
+            self.down_grace_frames = 0
             self.up_frames += 1
-            self.down_frames = 0
+            target = "UP"
+
         else:
-            self.down_frames = 0
             self.up_frames = 0
+
+            if self.down_frames > 0:
+                self.down_grace_frames += 1
+
+                if self.down_grace_frames > 1:
+                    self.down_frames = 0
+                    self.down_grace_frames = 0
+
+            target = None
 
         if metrics["torso_angle"] > self.config["torso_warning_angle"]:
             return target, "상체를 곧게 유지해주세요", 70

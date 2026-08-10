@@ -321,6 +321,37 @@ button {
   object-fit: cover;
 }
 
+.workout-countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.42);
+
+  pointer-events: none;
+}
+
+.workout-countdown[hidden] {
+  display: none;
+}
+
+.workout-countdown strong {
+  color: var(--white);
+
+  font-size:
+    clamp(72px, 24vw, 130px);
+
+  font-weight: 950;
+  line-height: 1;
+
+  text-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.7);
+}
+
 .pushup-orientation-guide {
   position: absolute;
   top: max(68px, calc(env(safe-area-inset-top) + 54px));

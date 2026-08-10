@@ -424,6 +424,12 @@ const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
 const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
 const poseInitialNotice = document.querySelector("#poseInitialNotice");
 
+const workoutCountdown =
+  document.querySelector("#workoutCountdown");
+
+const workoutCountdownText =
+  document.querySelector("#workoutCountdownText");
+
 
 let selectedExerciseCode =
   "SQUAT";
@@ -1406,6 +1412,29 @@ async function startCamera() {
   cameraPlaceholder.hidden = true;
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+async function runWorkoutCountdown() {
+  workoutCountdown.hidden = false;
+
+  for (const value of ["5", "4", "3", "2", "1"]) {
+    workoutCountdownText.textContent = value;
+    speakText(value);
+    await wait(1000);
+  }
+
+  workoutCountdownText.textContent = "START";
+  speakText("시작");
+
+  await wait(500);
+
+  workoutCountdown.hidden = true;
+}
+
 function setCameraPlaceholderState(state, title, message, { error = false } = {}) {
   document.body.dataset.coachingState = state;
   cameraPlaceholder.dataset.cameraState = state;
@@ -2373,14 +2402,23 @@ async function startWorkout() {
     cameraPlaceholder.hidden = true;
     attachOrientationListeners();
     updatePushupOrientationAdvisory();
-    startPoseAnalysis();
 
     movementState.textContent =
-      "1세트 준비";
+      "시작 준비";
     setOverlayMovement("준비");
 
-    postureStatus.textContent =
-      "ACTIVE";
+    feedbackTitle.textContent =
+      "시작 자세를 준비해 주세요.";
+
+    feedbackText.textContent =
+      "카운트다운이 끝나면 자세 분석을 시작합니다.";
+    setOverlayFeedback(feedbackText.textContent);
+
+    await runWorkoutCountdown();
+
+    movementState.textContent =
+      "1세트 시작";
+    setOverlayMovement("시작");
 
     feedbackTitle.textContent =
       "자세 분석을 시작합니다.";
@@ -2388,6 +2426,12 @@ async function startWorkout() {
     feedbackText.textContent =
       "카메라에 전신이 보이도록 유지하세요.";
     setOverlayFeedback(feedbackText.textContent);
+
+    startPoseAnalysis();
+
+    postureStatus.textContent =
+      "ACTIVE";
+
     updateWorkoutOverlay();
     speakText(`${selectedExerciseName} 코칭을 시작합니다`);
 
