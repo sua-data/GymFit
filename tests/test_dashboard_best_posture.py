@@ -32,8 +32,16 @@ def test_best_posture_queries_filter_supported_coaching_records():
             compile_kwargs={"literal_binds": True}
         )
     )
+
+    today_start = datetime(2026, 8, 10, 0, 0, 0)
+    today_end = datetime(2026, 8, 11, 0, 0, 0)
+
     record_sql = str(
-        best_posture_records_statement(7).compile(
+        best_posture_records_statement(
+            7,
+            datetime(2026, 8, 10, 0, 0, 0),
+            datetime(2026, 8, 11, 0, 0, 0),
+        ).compile(
             compile_kwargs={"literal_binds": True}
         )
     )

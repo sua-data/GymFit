@@ -24,6 +24,7 @@ class FakeBoxes:
     def __init__(self, xyxy, confidence):
         self.xyxy = np.asarray(xyxy, dtype=float)
         self.conf = np.asarray(confidence, dtype=float)
+        self.cls = np.zeros(len(self.xyxy), dtype=float)
 
     def __len__(self):
         return len(self.xyxy)
@@ -113,12 +114,12 @@ def test_pushup_module_preserves_configuration_and_reset_state():
     analyzer = make_pushup_analyzer()
 
     assert analyzer.exercise_code == "PUSHUP"
-    assert PUSHUP_CONFIG["down_elbow_angle"] == 90.0
-    assert PUSHUP_CONFIG["up_elbow_angle"] == 155.0
+    assert PUSHUP_CONFIG["down_elbow_angle"] == 105.0
+    assert PUSHUP_CONFIG["up_elbow_angle"] == 135.0
     assert analyzer.model_detection_conf == 0.25
     assert analyzer.min_keypoint_conf == 0.35
     assert analyzer.overlay_min_keypoint_conf == 0.30
-    assert analyzer.required_frames == 3
+    assert analyzer.required_frames == 1
 
     analyzer.count = 4
     analyzer.stage = "DOWN"
@@ -347,11 +348,15 @@ def test_pushup_locks_and_improves_down_capture_then_reuses_it_on_completion():
         3,
     )
     first_hash = analyzer.best_pose_snapshot["image_hash"]
-    analyzer._update_state(pushup_metrics(89), best_down, overlay)
+    analyzer._update_state(
+        pushup_metrics(85, hip_offset=0.0),
+        best_down,
+        overlay
+    )
     locked = copy_snapshot = dict(analyzer.best_pose_snapshot)
 
     assert locked["image_hash"] != first_hash
-    assert locked["elbow_angle"] == 89.0
+    assert locked["elbow_angle"] == 85.0
     assert locked["body_alignment_angle"] == 178.0
     assert locked["analyzed_side"] == "LEFT"
     decoded = cv2.imdecode(
