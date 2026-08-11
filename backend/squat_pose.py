@@ -1166,8 +1166,13 @@ class SquatAnalyzer:
                 else None
             ),
             "feedback": self.feedback,
+
             "pose_valid": valid_pose,
             "person_valid": valid_person,
+
+            "person_detected": valid_person,
+            "pose_detected": valid_pose,
+
             "status_text": status_text,
             "repetition_completed": self.squat_count > count_before_frame,
             "pose_overlay": pose_overlay if valid_pose else None,
