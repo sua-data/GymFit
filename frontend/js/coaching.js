@@ -422,6 +422,9 @@ const cameraRetryButton =
   document.querySelector("#cameraRetryButton");
 const ptAssignmentContext = document.querySelector("#ptAssignmentContext");
 const ptAssignmentSummary = document.querySelector("#ptAssignmentSummary");
+const ptAssignmentTargetSets = document.querySelector("#ptAssignmentTargetSets");
+const ptAssignmentTargetReps = document.querySelector("#ptAssignmentTargetReps");
+const ptAssignmentTargetWeight = document.querySelector("#ptAssignmentTargetWeight");
 const workoutCountdown =
   document.querySelector("#workoutCountdown");
 
@@ -3451,9 +3454,10 @@ async function initializeCoachingTargets() {
     && requestedSets >= 1
     && requestedSets <= 20
   );
-  const requestedAssignmentId = Number(params.get("assignment_id"));
-  const isPtAssignmentRequest = params.get("source") === "PT_ASSIGNMENT"
-    && Number.isInteger(requestedAssignmentId)
+  const requestedAssignmentId = Number(
+    params.get("assignment_id") || params.get("pt_assignment_id")
+  );
+  const isPtAssignmentRequest = Number.isInteger(requestedAssignmentId)
     && requestedAssignmentId > 0;
 
   startButton.disabled = true;
@@ -3505,8 +3509,12 @@ async function initializeCoachingTargets() {
       coachingSettingsTitle.textContent = assignment.title;
       coachingModeLabel.textContent = "PT 숙제";
       coachingPlanMeta.textContent = `${assignment.trainer_name} 트레이너 · ${setCount}세트 × ${repetitions}회`;
+      coachingSettingsCard.classList.add("pt-assignment-settings");
       ptAssignmentContext.hidden = false;
       ptAssignmentSummary.textContent = `${assignment.title} · ${assignment.trainer_name} 트레이너`;
+      ptAssignmentTargetSets.textContent = String(setCount);
+      ptAssignmentTargetReps.textContent = String(repetitions);
+      ptAssignmentTargetWeight.textContent = formatSetWeight(assignment.weight_kg);
       finishModeLoading();
       updateTargetDisplay();
       updateCounterDisplay();

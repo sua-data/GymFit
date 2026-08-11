@@ -790,6 +790,209 @@ body {
   line-height: 1;
 }
 
+/* Trainer assignment create/edit sheet */
+.assignment-form-sheet {
+  --form-surface: #1d1d1d;
+  --form-surface-raised: #232323;
+  --form-divider: rgba(255, 255, 255, 0.08);
+  max-height: min(92dvh, 860px);
+  padding: 0 18px calc(22px + env(safe-area-inset-bottom));
+  background: #121212;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.assignment-form-sheet .assignment-form {
+  gap: 14px;
+}
+
+.assignment-form-sheet .assignment-sheet-heading {
+  position: sticky;
+  z-index: 4;
+  top: 0;
+  margin: 0 -18px;
+  padding: 20px 18px 16px;
+  background: rgba(18, 18, 18, 0.96);
+  border-bottom: 1px solid var(--form-divider);
+  backdrop-filter: blur(14px);
+}
+
+.assignment-form-sheet .assignment-sheet-heading h2 {
+  margin-top: 5px;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.assignment-form-sheet .assignment-sheet-close {
+  width: 40px;
+  min-height: 40px;
+  color: rgba(255, 255, 255, 0.76);
+  background: #262626;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 22px;
+}
+
+.assignment-form-sheet .assignment-selected-member {
+  margin-top: 2px;
+  padding: 13px 15px;
+  color: rgba(255, 255, 255, 0.56);
+  background: rgba(168, 255, 53, 0.07);
+  border: 1px solid rgba(168, 255, 53, 0.18);
+  border-radius: 14px;
+}
+
+.assignment-form-sheet .assignment-selected-member strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.assignment-form-sheet .exercise-picker,
+.assignment-form-sheet .assignment-targets,
+.assignment-form-sheet .assignment-date-grid,
+.assignment-form-sheet .assignment-form > label {
+  padding: 16px;
+  background: var(--form-surface);
+  border: 1px solid var(--form-divider);
+  border-radius: 18px;
+}
+
+.assignment-form-sheet .exercise-picker {
+  display: grid;
+  gap: 11px;
+}
+
+.assignment-form-sheet .exercise-picker-label,
+.assignment-form-sheet .assignment-form label > span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.assignment-form-sheet .assignment-targets,
+.assignment-form-sheet .assignment-date-grid {
+  gap: 12px;
+}
+
+.assignment-form-sheet .assignment-targets label,
+.assignment-form-sheet .assignment-date-grid label,
+.assignment-form-sheet .assignment-weight-target {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.assignment-form-sheet .assignment-weight-target {
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--form-divider);
+}
+
+.assignment-form-sheet input,
+.assignment-form-sheet select,
+.assignment-form-sheet textarea {
+  background-color: #111;
+  border-color: rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+}
+
+.assignment-form-sheet input,
+.assignment-form-sheet select {
+  height: 48px;
+}
+
+.assignment-form-sheet textarea {
+  min-height: 116px;
+  line-height: 1.6;
+}
+
+.assignment-form-sheet .selected-exercise-summary {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--form-surface-raised);
+  border-radius: 11px;
+  line-height: 1.45;
+}
+
+.assignment-form-sheet .exercise-card-list {
+  max-height: 210px;
+  padding-right: 2px;
+}
+
+.assignment-form-sheet .exercise-choice-card {
+  min-height: 58px;
+  padding: 11px 14px;
+  background: #151515;
+  border-radius: 13px;
+}
+
+.assignment-form-sheet .exercise-category-filters {
+  gap: 7px;
+}
+
+.assignment-form-sheet .exercise-category-filters button {
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.assignment-form-sheet #openCustomExercise {
+  min-height: 42px;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+.assignment-form-sheet .custom-exercise-fields {
+  padding: 12px;
+  background: var(--form-surface-raised);
+  border-radius: 14px;
+}
+
+.assignment-form-sheet .assignment-form-message:empty {
+  display: none;
+}
+
+.assignment-form-sheet #assignmentSave {
+  min-height: 54px;
+  margin-top: 2px;
+  border-radius: 15px;
+  box-shadow: 0 10px 24px rgba(168, 255, 53, 0.14);
+  font-size: 15px;
+}
+
+.assignment-form-sheet #assignmentCancelEdit {
+  min-height: 48px;
+  background: #292929;
+}
+
+@media (min-width: 700px) {
+  .assignment-form-sheet {
+    margin-bottom: 24px;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .assignment-form-sheet {
+    padding-inline: 14px;
+  }
+
+  .assignment-form-sheet .assignment-sheet-heading {
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+
+  .assignment-form-sheet .exercise-picker,
+  .assignment-form-sheet .assignment-targets,
+  .assignment-form-sheet .assignment-date-grid,
+  .assignment-form-sheet .assignment-form > label {
+    padding: 14px;
+  }
+}
+
 .assignment-selected-member {
   margin: 0;
   padding: 11px 13px;

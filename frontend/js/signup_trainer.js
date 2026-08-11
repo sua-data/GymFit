@@ -122,15 +122,21 @@ function showFormError(
   message,
   inputElement = null
 ) {
-  formErrorMessage.textContent = message;
+  window.gymfitAuthValidation?.show(
+    inputElement,
+    message,
+    formErrorMessage
+  );
 
   if (inputElement) {
+    inputElement.setAttribute("aria-invalid", "true");
     inputElement.focus();
   }
 }
 
 function clearFormError() {
   formErrorMessage.textContent = "";
+  window.gymfitAuthValidation?.clearAll(trainerSignupForm);
 }
 
 function setEmailMessage(
@@ -138,6 +144,7 @@ function setEmailMessage(
   isSuccess = false
 ) {
   emailMessage.textContent = message;
+  trainerEmailInput.toggleAttribute("aria-invalid", Boolean(message) && !isSuccess);
 
   emailMessage.classList.toggle(
     "success",
@@ -150,6 +157,7 @@ function setVerificationMessage(
   isSuccess = false
 ) {
   verificationMessage.textContent = message;
+  verificationCodeInput.toggleAttribute("aria-invalid", Boolean(message) && !isSuccess);
 
   verificationMessage.classList.toggle(
     "success",

@@ -285,6 +285,8 @@ class WorkoutPlanSetInput(BaseModel):
 
 class TodayWorkoutPlanItem(BaseModel):
     workout_plan_id: int
+    plan_source: str
+    pt_assignment_id: int | None = None
     exercise_type: str
     exercise_id: int | None
     user_exercise_id: int | None
@@ -655,6 +657,8 @@ def create_plan_item(
         workout_plan_id=(
             workout_plan.workout_plan_id
         ),
+        plan_source=workout_plan.plan_source,
+        pt_assignment_id=workout_plan.pt_assignment_id,
         exercise_type=exercise_type,
         exercise_id=exercise_id,
         user_exercise_id=user_exercise_id,

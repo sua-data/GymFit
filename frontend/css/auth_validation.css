@@ -1,0 +1,82 @@
+:root {
+  --auth-validation-danger: #ff8585;
+  --auth-validation-focus: #a8ff35;
+}
+
+.auth-inline-error,
+.field-error-message,
+.field-message:not(.success),
+.form-error-message,
+.form-message,
+.date-input-error {
+  min-height: 0;
+  margin: -7px 4px 11px;
+  color: var(--auth-validation-danger);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.auth-inline-error:empty,
+.field-error-message:empty,
+.field-message:empty,
+.form-error-message:empty,
+.form-message:empty,
+.date-input-error:empty { display: none; }
+
+.field-message.success {
+  margin: -7px 4px 11px;
+  color: var(--auth-validation-focus);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: rgba(255, 112, 112, 0.62) !important;
+  box-shadow: 0 0 0 3px rgba(255, 112, 112, 0.06) !important;
+}
+
+input[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  border-color: rgba(255, 133, 133, 0.82) !important;
+  box-shadow: 0 0 0 3px rgba(255, 112, 112, 0.09) !important;
+}
+
+.login-field-label {
+  display: block;
+  margin: 0 4px 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.login-button:focus-visible,
+.next-button:focus-visible,
+.complete-button:focus-visible,
+button[type="submit"]:focus-visible {
+  outline: 2px solid var(--auth-validation-focus);
+  outline-offset: 3px;
+}
+
+.login-button,
+.next-button,
+.complete-button,
+button[type="submit"] {
+  min-height: 54px;
+  border-radius: 16px;
+  font-weight: 850;
+}
+
+@media (max-width: 390px) {
+  .auth-inline-error,
+  .field-error-message,
+  .field-message:not(.success),
+  .form-error-message,
+  .form-message,
+  .date-input-error { font-size: 10px; }
+}

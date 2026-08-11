@@ -1411,9 +1411,16 @@ function renderPlan(data) {
   data.items.forEach((item, index) => {
     const buttonState = getButtonState(item);
     const card = document.createElement("article");
+    const isTrainerRoutine = String(item.plan_source || "").toUpperCase() === "TRAINER";
+    const firstWeightedSet = (item.sets || []).find(
+      (setItem) => setItem.weight_kg != null
+    );
+    const weightLabel = firstWeightedSet
+      ? `${Number(firstWeightedSet.weight_kg)}kg`
+      : "맨몸";
 
     card.className =
-      `routine-card${item.is_completed ? " completed" : ""}`;
+      `routine-card${item.is_completed ? " completed" : ""}${isTrainerRoutine ? " trainer-routine" : ""}`;
 
     const setDetails = (item.sets || []).map((setItem) => {
       const details = [];
@@ -1441,15 +1448,20 @@ function renderPlan(data) {
 
       <div class="routine-card-content">
         <div class="routine-card-heading">
-          <span>${item.is_completed ? "완료" : "오늘의 운동"}</span>
+          <div class="routine-card-labels">
+            <span>${item.is_completed ? "완료" : "오늘의 운동"}</span>
+            ${isTrainerRoutine ? '<span class="routine-trainer-badge">트레이너 숙제</span>' : ""}
+          </div>
           <h2>${escapeHtml(item.exercise_name)}</h2>
         </div>
 
         <div class="routine-meta">
-          <span>${Number(item.set_count) || 0}세트</span>
-          <span>${Number(item.repetition_count) || 0}회</span>
-          <span>${Number(item.estimated_minutes) || 0}분</span>
+          <span><small>세트</small><strong>${Number(item.set_count) || 0}</strong></span>
+          <span><small>반복</small><strong>${Number(item.repetition_count) || 0}<b>회</b></strong></span>
+          <span><small>중량</small><strong>${weightLabel}</strong></span>
         </div>
+
+        <p class="routine-duration">예상 운동 시간 <strong>${Number(item.estimated_minutes) || 0}분</strong></p>
 
         <ol class="routine-set-summary">
           ${setDetails}

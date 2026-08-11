@@ -24,7 +24,7 @@
 
   <link
     rel="stylesheet"
-    href="/static/css/coaching.css?v=20"
+    href="/static/css/coaching.css?v=21"
   >
 
   <script src="/static/js/api_client.js?v=3" defer></script>
@@ -49,7 +49,7 @@
   ></script>
 
   <script
-    src="/static/js/coaching.js?v=24"
+    src="/static/js/coaching.js?v=25"
     defer
   ></script>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=1">
@@ -117,8 +117,16 @@
 
       <section class="coaching-settings-card" id="coachingSettingsCard" hidden>
         <div class="pt-assignment-context" id="ptAssignmentContext" hidden>
-          <strong>PT 숙제</strong>
-          <span id="ptAssignmentSummary"></span>
+          <div class="pt-assignment-heading">
+            <span class="pt-assignment-badge">트레이너 설정</span>
+            <strong>PT 숙제 목표</strong>
+            <span id="ptAssignmentSummary"></span>
+          </div>
+          <div class="pt-assignment-targets" aria-label="트레이너 설정 운동 목표">
+            <span><small>세트</small><strong id="ptAssignmentTargetSets">0</strong></span>
+            <span><small>반복</small><strong><b id="ptAssignmentTargetReps">0</b>회</strong></span>
+            <span><small>중량</small><strong id="ptAssignmentTargetWeight">맨몸</strong></span>
+          </div>
         </div>
         <div class="coaching-settings-heading">
           <div>

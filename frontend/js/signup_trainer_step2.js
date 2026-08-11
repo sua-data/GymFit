@@ -195,10 +195,14 @@ function showMessage(
   message,
   inputElement = null
 ) {
-  formMessage.textContent =
-    message;
+  window.gymfitAuthValidation?.show(
+    inputElement,
+    message,
+    formMessage
+  );
 
   if (inputElement) {
+    inputElement.setAttribute("aria-invalid", "true");
     inputElement.focus();
   }
 }
@@ -206,6 +210,7 @@ function showMessage(
 
 function clearMessage() {
   formMessage.textContent = "";
+  window.gymfitAuthValidation?.clearAll(trainerProfileForm);
 }
 
 

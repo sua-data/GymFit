@@ -431,18 +431,40 @@ function renderWorkoutPlan(planData) {
   items.forEach((item) => {
     const listItem =
       document.createElement("li");
+    const isTrainerRoutine =
+      String(item.plan_source || "").toUpperCase() === "TRAINER";
+    const firstWeightedSet = (item.sets || []).find(
+      (setItem) => setItem.weight_kg != null
+    );
+    const weightLabel = firstWeightedSet
+      ? `${Number(firstWeightedSet.weight_kg)}kg`
+      : "맨몸";
+
+    listItem.className = [
+      "workout-plan-item",
+      item.is_completed ? "completed" : "pending",
+      isTrainerRoutine ? "trainer-plan" : "",
+    ].filter(Boolean).join(" ");
 
     listItem.innerHTML = `
-      <span class="plan-dot"></span>
+      <span class="plan-status-icon" aria-hidden="true">
+        ${item.is_completed ? "✓" : ""}
+      </span>
 
-      <div>
-        <strong>
-          ${escapeHtml(item.exercise_name)}
-        </strong>
+      <div class="workout-plan-content">
+        <div class="workout-plan-heading">
+          <div class="workout-plan-labels">
+            <span class="workout-plan-state">${item.is_completed ? "완료" : "진행 전"}</span>
+            ${isTrainerRoutine ? '<span class="workout-trainer-badge">트레이너 숙제</span>' : ""}
+          </div>
+          <strong>${escapeHtml(item.exercise_name)}</strong>
+        </div>
 
-        <small>
-          ${Number(item.set_count) || 0}세트
-        </small>
+        <div class="workout-plan-metrics">
+          <span><small>세트</small><strong>${Number(item.set_count) || 0}</strong></span>
+          <span><small>반복</small><strong>${Number(item.repetition_count) || 0}<b>회</b></strong></span>
+          <span><small>중량</small><strong>${weightLabel}</strong></span>
+        </div>
       </div>
     `;
 

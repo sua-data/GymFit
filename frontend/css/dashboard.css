@@ -808,6 +808,15 @@ select {
   letter-spacing: -0.5px;
 }
 
+.small-card-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--gymfit-green);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
 .small-card-heading img {
   width: 25px;
   height: 25px;
@@ -819,32 +828,55 @@ select {
 /* 오늘의 운동 계획 */
 
 .workout-plan-list {
-  margin: 20px 0 0;
+  margin: 18px 0 0;
   padding: 0;
 
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
 
   list-style: none;
 }
 
-.workout-plan-list li {
+.workout-plan-list .workout-plan-item {
+  position: relative;
   width: 100%;
-  min-height: 56px;
-
-  padding: 0 14px;
+  min-height: 126px;
+  padding: 14px;
 
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
 
-  background: rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
 
   border:
-    1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+    1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.workout-plan-list .workout-plan-item.trainer-plan {
+  background: linear-gradient(135deg, rgba(168, 255, 53, 0.09), rgba(255, 255, 255, 0.035) 46%);
+  border-color: rgba(168, 255, 53, 0.24);
+}
+
+.workout-plan-list .workout-plan-item.trainer-plan::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--gymfit-green);
+  content: "";
+}
+
+.workout-plan-list .workout-plan-item.completed {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.055);
+}
+
+.workout-plan-list .workout-plan-item.completed .workout-plan-content {
+  opacity: 0.58;
 }
 
 .workout-plan-list li.empty-message {
@@ -865,49 +897,104 @@ select {
   word-break: keep-all;
 }
 
-.plan-dot {
-  width: 9px;
-  height: 9px;
-
+.plan-status-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: #050505;
   background: var(--gymfit-green);
-
-  border-radius: 50%;
-
-  box-shadow:
-    0 0 0 4px rgba(168, 255, 53, 0.08);
+  border: 1px solid var(--gymfit-green);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
 }
 
-.workout-plan-list li div {
+.workout-plan-item.pending .plan-status-icon {
+  background: transparent;
+  box-shadow: inset 0 0 0 4px #1f1f1f;
+}
+
+.workout-plan-content {
   min-width: 0;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
 }
 
-.workout-plan-list strong {
+.workout-plan-heading {
+  min-width: 0;
+}
+
+.workout-plan-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.workout-plan-state {
+  color: var(--gymfit-green);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.workout-trainer-badge {
+  padding: 4px 7px;
+  color: #050505;
+  background: var(--gymfit-green);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.workout-plan-heading > strong {
+  display: block;
   overflow: hidden;
-
   color: var(--white);
-
-  font-size: 14px;
-  font-weight: 750;
-
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.workout-plan-list small {
-  flex-shrink: 0;
+.workout-plan-metrics {
+  min-width: 0;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
 
-  padding: 5px 9px;
+.workout-plan-metrics > span {
+  min-width: 0;
+  padding: 8px 5px;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 10px;
+}
 
-  color: var(--gymfit-green);
-  background: rgba(168, 255, 53, 0.08);
+.workout-plan-metrics small {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+}
 
-  border-radius: 999px;
+.workout-plan-metrics strong {
+  overflow: hidden;
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
+.workout-plan-metrics b {
+  margin-left: 1px;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 700;
 }
