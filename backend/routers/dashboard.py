@@ -603,6 +603,9 @@ def get_dashboard(
                 "repetition_count": (
                     record.repetition_count
                 ),
+                "workout_minutes": (
+                    record.workout_minutes
+                ),
                 "average_posture_score": (
                     record.average_posture_score
                 ),

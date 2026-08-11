@@ -596,45 +596,32 @@ function renderRecentWorkouts(workouts) {
           workout.exercise_name
         )}"
       >` : "";
+    button.classList.toggle("has-image", Boolean(workout.image_url));
     const ptDetail = isPt
       ? [workout.trainer_name && `${workout.trainer_name} 트레이너`, ...(workout.exercise_names || []).slice(0, 2)].filter(Boolean).join(" · ")
       : `${Number(workout.completed_sets) || 0}세트`;
+    const workoutMinutesText = dashboardWorkoutMinutes(workout.workout_minutes);
 
     button.innerHTML = `
       ${imageMarkup}
 
       <div class="recent-workout-info">
-        <strong>
+        <strong class="recent-workout-name">
           ${escapeHtml(
             workout.exercise_name
           )}
         </strong>
 
-        <span>
-          ${escapeHtml(
-            workout.workout_date_text
-          )}
-          ·
-          ${escapeHtml(ptDetail || dashboardWorkoutMinutes(workout.workout_minutes))}
-        </span>
+        <div class="recent-workout-meta">
+          ${isPt ? '<span class="pt-record-badge">PT</span>' : `<span>${Number(workout.repetition_count) || 0}회</span>`}
+          ${ptDetail ? `<span>${escapeHtml(ptDetail)}</span>` : ""}
+          <span>${escapeHtml(workoutMinutesText)}</span>
+        </div>
+
+        <small class="recent-workout-date">${escapeHtml(workout.workout_date_text)}</small>
       </div>
 
-      <div class="recent-workout-result">
-        <span${isPt ? ' class="pt-record-badge"' : ""}>
-          <strong>
-            ${isPt ? "PT" : Number(workout.repetition_count) || 0}
-          </strong>
-          ${isPt ? "" : "회"}
-        </span>
-
-        <span>
-          ${workout.average_posture_score === null || workout.average_posture_score === undefined
-            ? dashboardWorkoutMinutes(workout.workout_minutes)
-            : `<strong>${Number(workout.average_posture_score)}</strong>점`}
-        </span>
-      </div>
-
-      <span class="recent-arrow">
+      <span class="recent-arrow" aria-hidden="true">
         ›
       </span>
     `;
