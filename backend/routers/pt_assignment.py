@@ -7,7 +7,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from backend.database import get_db
-from backend.models import Exercise, PtAssignment, User, UserExercise, WorkoutRecord, WorkoutRecordDetailItem
+from backend.models import (
+    Exercise,
+    PtAssignment,
+    User,
+    UserExercise,
+    WorkoutPlan,
+    WorkoutPlanSet,
+    WorkoutRecord,
+    WorkoutRecordDetailItem
+)
 from backend.pt_assignment_schemas import (
     PtAssignmentComplete,
     PtAssignmentCreate,
@@ -245,6 +254,60 @@ def create_assignment(payload: PtAssignmentCreate, current_user: User = Depends(
             due_date=payload.due_date, target_sets=payload.target_sets, target_reps=payload.target_reps,
             target_minutes=payload.target_minutes, weight_kg=payload.weight_kg)
         db.add(item); db.flush()
+
+        plan_date = payload.due_date or payload.assigned_date
+
+        existing_plan = db.scalar(
+            select(WorkoutPlan).where(
+                WorkoutPlan.user_id == payload.member_id,
+                WorkoutPlan.plan_date == plan_date,
+                (
+                    WorkoutPlan.exercise_id == payload.exercise_id
+                    if payload.exercise_id is not None
+                    else WorkoutPlan.user_exercise_id == payload.user_exercise_id
+                ),
+            )
+        )
+
+        if existing_plan is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="해당 날짜에 같은 운동 루틴이 이미 등록되어 있습니다.",
+            )
+
+        target_sets = payload.target_sets or 1
+        target_reps = payload.target_reps or 1
+        estimated_minutes = payload.target_minutes or 10
+
+        workout_plan = WorkoutPlan(
+            user_id=payload.member_id,
+            exercise_id=payload.exercise_id,
+            user_exercise_id=payload.user_exercise_id,
+            pt_assignment_id=item.assignment_id,
+            plan_date=plan_date,
+            set_count=target_sets,
+            repetition_count=target_reps,
+            estimated_minutes=estimated_minutes,
+            plan_source="TRAINER"
+        )
+        db.add(workout_plan)
+        db.flush()
+
+        for set_order in range(1, target_sets + 1):
+            db.add(
+                WorkoutPlanSet(
+                    workout_plan_id=workout_plan.workout_plan_id,
+                    set_order=set_order,
+                    repetition_count=(
+                        payload.target_reps
+                        if payload.target_reps is not None
+                        else None
+                    ),
+                    weight_kg=payload.weight_kg,
+                    is_completed=False,
+                )
+            )
+
         create_notification(db, user_id=item.member_id, title="새 PT 숙제가 도착했어요",
             message=f"{current_user.name} 트레이너가 '{item.title}' 숙제를 등록했습니다.",
             notification_type="PT_ASSIGNMENT_CREATED", target_url="/pt/assignments", reference_id=item.assignment_id)

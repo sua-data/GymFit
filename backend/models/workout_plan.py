@@ -156,6 +156,24 @@ class WorkoutPlan(Base):
         unique=True,
     )
 
+    pt_assignment_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey(
+            "pt_assignment.assignment_id",
+            ondelete="SET NULL",
+            onupdate="CASCADE",
+        ),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="연결된 PT 숙제 번호",
+    )
+
+    pt_assignment = relationship(
+        "PtAssignment",
+        back_populates="workout_plan",
+    )
+
     plan_source: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

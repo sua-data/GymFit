@@ -55,3 +55,9 @@ class PtAssignment(Base):
     exercise = relationship("Exercise")
     user_exercise = relationship("UserExercise")
     workout_record = relationship("WorkoutRecord")
+
+    workout_plan = relationship(
+        "WorkoutPlan",
+        back_populates="pt_assignment",
+        uselist=False,
+    )

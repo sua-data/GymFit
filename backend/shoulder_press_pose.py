@@ -194,13 +194,27 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
 
     def process_frame(self, frame):
         annotated_frame, status = super().process_frame(frame)
+
         detection_reason = (
             "ok"
             if status["pose_valid"]
             else self.last_missing_reason
-            or ("PERSON_NOT_FOUND" if not status["person_detected"] else "POSE_INVALID")
+            or (
+                "PERSON_NOT_FOUND"
+                if not status["person_detected"]
+                else "POSE_INVALID"
+            )
         )
+
         status["detection_reason"] = detection_reason
+
+        # 항상 제공하는 최소 디버그 정보
+        status["debug"] = {
+            "analyzer_class": type(self).__name__,
+            "analyzer_instance_id": id(self),
+            "required_frames": self.required_frames,
+        }
+
         if os.getenv("POSE_DEBUG", "").strip().lower() in {
             "1", "true", "yes", "on"
         }:
@@ -210,7 +224,9 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
                 "elbow_angle": status.get("elbow_angle"),
                 "average_elbow_angle": status.get("average_elbow_angle"),
                 "selected_side": status.get("selected_side"),
-                "selected_side_confidence": status.get("selected_side_confidence"),
+                "selected_side_confidence": status.get(
+                    "selected_side_confidence"
+                ),
                 "down_frames": self.down_frames,
                 "up_frames": self.up_frames,
                 "required_frames": self.required_frames,
@@ -228,8 +244,13 @@ class ShoulderPressPoseAnalyzer(UpperBodyExerciseAnalyzer):
                 "up_threshold": self.config["up_elbow_angle"],
                 "last_count_time": self.last_count_time,
             }
+
             status["detection_debug"] = runtime_debug
-            status["debug"] = {**status.get("debug", {}), **runtime_debug}
+            status["debug"] = {
+                **status["debug"],
+                **runtime_debug,
+            }
+
         return annotated_frame, status
 
 
