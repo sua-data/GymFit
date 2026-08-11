@@ -908,7 +908,7 @@ body {
 }
 
 .assignment-form-sheet .selected-exercise-summary {
-  margin: 0;
+  margin: 3px 0 0;
   padding: 10px 12px;
   background: var(--form-surface-raised);
   border-radius: 11px;
@@ -928,14 +928,33 @@ body {
 }
 
 .assignment-form-sheet .exercise-category-filters {
-  gap: 7px;
+  width: calc(100% + 8px);
+  margin-inline: -4px;
+  padding: 2px 4px 4px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.assignment-form-sheet .exercise-category-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .assignment-form-sheet .exercise-category-filters button {
-  min-height: 34px;
-  padding: 0 13px;
-  border-radius: 999px;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
+  white-space: nowrap;
+  border-radius: 11px;
   font-size: 12px;
+  line-height: 1;
 }
 
 .assignment-form-sheet #openCustomExercise {
