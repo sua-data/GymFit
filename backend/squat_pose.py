@@ -40,7 +40,7 @@ class SquatAnalyzer:
         self.min_box_height = 150
 
         # 연속 프레임 기준
-        self.required_frames = 3
+        self.required_frames = 2
         self.max_missing_frames = 15
 
         self.reset()

@@ -650,7 +650,7 @@ const FREE_COACHING_SETS_STORAGE_KEY =
   "gymfitFreeCoachingSets";
 const COACHING_VOICE_STORAGE_KEY =
   "gymfitCoachingVoiceEnabled";
-const FEEDBACK_SPEECH_COOLDOWN_MS = 3000;
+const FEEDBACK_SPEECH_COOLDOWN_MS = 7000;
 
 
 /* =========================
@@ -803,19 +803,27 @@ function speakText(text) {
 function speakPostureFeedback(text) {
   const normalizedText = String(text || "").trim();
   const now = Date.now();
+
+  if (!normalizedText) {
+    return;
+  }
+
+  // 같은 안내는 반복해서 읽지 않음
+  if (normalizedText === lastSpokenFeedback) {
+    return;
+  }
+
+  // 서로 다른 자세 안내도 최소 7초 간격
   if (
-    !normalizedText
-    || (
-      normalizedText === lastSpokenFeedback
-      && now - lastFeedbackSpokenAt < FEEDBACK_SPEECH_COOLDOWN_MS
-    )
-    || now - lastFeedbackSpokenAt < FEEDBACK_SPEECH_COOLDOWN_MS
+    lastFeedbackSpokenAt > 0
+    && now - lastFeedbackSpokenAt < FEEDBACK_SPEECH_COOLDOWN_MS
   ) {
     return;
   }
 
   lastSpokenFeedback = normalizedText;
   lastFeedbackSpokenAt = now;
+
   speakText(normalizedText);
 }
 
