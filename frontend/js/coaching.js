@@ -506,7 +506,12 @@ let isGoalCompleted = false;
 
 let analysisTimer = null;
 let analysisInProgress = false;
+let analysisAbortController = null;
+
+const ANALYSIS_REQUEST_TIMEOUT_MS = 5000;
+
 let lastServerCount = 0;
+
 let nextAnalysisFrameId = 0;
 let latestAnnotatedResponseId = -1;
 let poseStaleTimer = null;
@@ -1376,6 +1381,55 @@ async function startCamera() {
   cameraPlaceholder.hidden = true;
 }
 
+async function ensureCameraReady() {
+  const videoTrack = cameraStream
+    ?.getVideoTracks()
+    ?.find((track) => track.readyState === "live");
+
+  if (videoTrack && cameraStream?.active) {
+    cameraVideo.srcObject = cameraStream;
+
+    if (cameraVideo.paused) {
+      await cameraVideo.play();
+    }
+
+    const previousTime = cameraVideo.currentTime;
+
+    await wait(300);
+
+    const videoIsMoving =
+      !cameraVideo.paused
+      && cameraVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      && cameraVideo.currentTime > previousTime;
+
+    if (videoIsMoving) {
+      return;
+    }
+
+    console.warn(
+      "[coaching] 카메라 스트림은 live지만 영상이 멈춤 → 재연결"
+    );
+  }
+
+  console.warn("[coaching] 카메라 스트림 재연결");
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => {
+      track.stop();
+    });
+  }
+
+  cameraStream = null;
+  cameraVideo.srcObject = null;
+
+  await wait(150);
+
+  await startCamera();
+
+  attachOrientationListeners();
+  updatePushupOrientationAdvisory();
+}
+
 function wait(milliseconds) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, milliseconds);
@@ -2032,14 +2086,27 @@ async function sendFrameForAnalysis() {
     const requestSessionId = coachingSessionId;
     const requestStartedAt = performance.now();
 
-    const response =
-      await fetch(
+    const requestAbortController = new AbortController();
+    analysisAbortController = requestAbortController;
+
+    const requestTimeoutId = window.setTimeout(() => {
+      requestAbortController.abort();
+    }, ANALYSIS_REQUEST_TIMEOUT_MS);
+
+    let response;
+
+    try {
+      response = await fetch(
         `/api/coaching/sessions/${encodeURIComponent(requestSessionId)}/analyze`,
         {
           method: "POST",
-          body: formData
+          body: formData,
+          signal: requestAbortController.signal
         }
       );
+    } finally {
+      window.clearTimeout(requestTimeoutId);
+    }
 
     const data =
       await response.json();
@@ -2100,12 +2167,19 @@ async function sendFrameForAnalysis() {
     });
 
   } catch (error) {
-    console.error(
-      `${selectedExerciseName} 자세 분석 실패:`,
-      error
-    );
+    if (error?.name === "AbortError") {
+      console.warn(
+        "[coaching] 자세 분석 요청 중단 또는 시간 초과"
+      );
+    } else {
+      console.error(
+        `${selectedExerciseName} 자세 분석 실패:`,
+        error
+      );
+    }
 
   } finally {
+    analysisAbortController = null;
     analysisInProgress = false;
     if (
       isWorkoutActive
@@ -2139,13 +2213,14 @@ function startPoseAnalysis() {
 
 function stopPoseAnalysis() {
   if (analysisTimer !== null) {
-    window.clearTimeout(
-      analysisTimer
-    );
-
+    window.clearTimeout(analysisTimer);
     analysisTimer = null;
   }
 
+  if (analysisAbortController) {
+    analysisAbortController.abort();
+    analysisAbortController = null;
+  }
 }
 
 
@@ -3029,8 +3104,30 @@ async function toggleWorkoutPause() {
   }
 
   pauseButton.disabled = true;
+  if (!navigator.onLine) {
+    setOverlayFeedback(
+      "네트워크 연결을 확인한 후 다시 시도해 주세요."
+    );
+
+    feedbackText.textContent =
+      "인터넷 연결이 끊어져 있습니다. 연결 후 운동 재개를 눌러주세요.";
+
+    alert(
+      "인터넷 연결이 끊어져 있습니다. 연결 후 다시 시도해 주세요."
+    );
+
+    return;
+  }
+
+  pauseButton.disabled = true;
+
   try {
+    // 서버 연결부터 확인
     await resetCurrentExerciseAnalyzer();
+
+    // 서버 연결 성공 후 카메라 복구
+    await ensureCameraReady();
+
     if (pauseStartedAt) {
       accumulatedPausedMilliseconds += Math.max(
         0,
@@ -3046,6 +3143,11 @@ async function toggleWorkoutPause() {
     setOverlayMovement("준비");
     setOverlayFeedback(`${selectedExerciseName} 코칭을 재개합니다.`);
     speakText("운동을 재개합니다");
+
+    if (cameraVideo.paused) {
+      await cameraVideo.play();
+    }
+
     startPoseAnalysis();
   } catch (error) {
     console.error("코칭 재개 실패:", error);
