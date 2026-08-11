@@ -482,6 +482,7 @@ let isWorkoutPaused = false;
 let isVoiceEnabled = true;
 let lastSpokenFeedback = "";
 let lastFeedbackSpokenAt = 0;
+let isCountSpeechActive = false;
 
 let postureScores = [];
 let bestCapturedPostureScore = -1;
@@ -800,7 +801,42 @@ function speakText(text) {
   window.speechSynthesis.speak(utterance);
 }
 
+function speakCount(text) {
+  if (
+    !isVoiceEnabled
+    || !text
+    || !("speechSynthesis" in window)
+    || !("SpeechSynthesisUtterance" in window)
+  ) {
+    return;
+  }
+
+  stopSpeech();
+  isCountSpeechActive = true;
+
+  const utterance =
+    new SpeechSynthesisUtterance(String(text));
+
+  utterance.lang = "ko-KR";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  utterance.onend = () => {
+    isCountSpeechActive = false;
+  };
+
+  utterance.onerror = () => {
+    isCountSpeechActive = false;
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
 function speakPostureFeedback(text) {
+  if (isCountSpeechActive) {
+    return;
+  }
+
   const normalizedText = String(text || "").trim();
   const now = Date.now();
 
@@ -1622,7 +1658,9 @@ function registerRepetition(
     movementState.textContent =
       `${currentSets}세트 완료`;
     setOverlayMovement(`${currentSets}세트 완료`);
-    speakText(`${currentReps}, ${currentSets}세트 완료`);
+    speakCount(
+      `${currentReps}, ${currentSets}세트 완료`
+    );
 
     if (currentSetIndex >= coachingSets.length - 1) {
       finishWorkoutAutomatically();
@@ -1633,7 +1671,7 @@ function registerRepetition(
     return;
   }
 
-  speakText(String(currentReps));
+  speakCount(String(currentReps));
 }
 
 
